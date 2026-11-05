@@ -44,6 +44,8 @@ export const WARM_RATE = 0.25;
 export const TASTE_MEMORY_RATE = 0.08;
 /** Desde cuántos días sin ver el turno se cuenta como salto de tiempo. */
 export const MONTAGE_DAYS = 7;
+/** Desde cuántos días un salto delegado (la rutina vivió por él) se cuenta como montaje. */
+export const DELEGATED_MONTAGE_DAYS = 1;
 
 export interface ThoughtsIn {
   /** Desde cuándo pasó el turno (el inicio del reporte). */
@@ -52,6 +54,8 @@ export interface ThoughtsIn {
   readonly present: readonly AgentId[];
   /** Los conocidos del personaje: solo a ellos se les puede dar una etiqueta. */
   readonly known: ReadonlySet<string>;
+  /** La rutina del hogar vivió el turno por él (un salto delegado): desde un día ya es montaje. */
+  readonly delegated?: boolean;
 }
 
 export interface ThoughtsOut {
@@ -183,7 +187,8 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
 
   const opened = mental?.conditions.some((c) => c.onset > since) === true;
   // Un salto largo se cuenta como montaje aunque haya terminado durmiendo (novel-montage-while).
-  const long = now - since >= MONTAGE_DAYS * w.clock.day;
+  const long =
+    now - since >= (input.delegated === true ? DELEGATED_MONTAGE_DAYS : MONTAGE_DAYS) * w.clock.day;
   const mode: SpecialMode | undefined = long
     ? opened
       ? "aftermath"

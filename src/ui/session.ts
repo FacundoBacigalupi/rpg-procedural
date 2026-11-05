@@ -30,7 +30,10 @@ import {
   characterPanel,
   characterVoiceData,
   claimOfText,
+  DEFAULT_ROUTINE_RULES,
   DEFAULT_SUGGESTIONS,
+  DELEGATION_LEVELS,
+  type DelegationLevel,
   type EnvironmentItem,
   type EnvironmentMemory,
   environmentPanel,
@@ -52,6 +55,7 @@ import {
   playerView,
   presenceKey,
   type ResumeAnchor,
+  type RoutineRules,
   recapOf,
   renderChronicle,
   renderEpilogue,
@@ -67,6 +71,9 @@ import {
   topicEntity,
   topicText,
   VERB_WORDS,
+  type WatchedEvent,
+  type WatchOn,
+  type WatchRule,
   WORLD_LEXICON,
   weatherPanel,
   withNarratedWords,
@@ -143,8 +150,10 @@ import {
   renderInterrupt,
   renderInventory,
   renderJournal,
+  renderNotes,
   renderPeople,
   renderRecap,
+  renderRoutineRules,
   renderStatus,
   renderSuggestion,
   renderThinking,
@@ -178,6 +187,7 @@ export const HELP = [
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
   "Para que pase el tiempo viviendo tu rutina: paso el invierno · trabajo el campo un mes · sigo con mi vida hasta la primavera · dejo pasar tres semanas",
+  "  qué corta el salto: !delegar mínima|normal|amplia · !avisar mi madre · !anotar nacimientos · !no avisar X · !avisos",
   "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
 
@@ -221,6 +231,43 @@ const MEMORY_META = "narration_memory";
 /** La clave de `meta` con la postura de contenerse (skills §9), fuera del hash y del replay. */
 const HOLD_STANCE_META = "hold_stance";
 
+/**
+ * La clave de `meta` con las reglas de los saltos (player-loop §6-§7): delegación y avisos. Solo
+ * deciden dónde corta un turno; el replay sigue los planes guardados, así que van fuera del hash.
+ */
+const ROUTINE_RULES_META = "routine_rules";
+
+/** «!delegar amplia»: las palabras de cada nivel. */
+const DELEGATION_WORDS: Readonly<Record<string, DelegationLevel>> = {
+  minima: "minimal",
+  minimal: "minimal",
+  poca: "minimal",
+  normal: "normal",
+  amplia: "wide",
+  wide: "wide",
+  mucha: "wide",
+};
+
+/** «!avisar nacimientos»: los sucesos que se pueden vigilar, por sus palabras. */
+const WATCH_WORDS: readonly [RegExp, WatchedEvent][] = [
+  [/^(?:los |las )?(?:nacimientos?|nace\b|partos?)/u, "family.birth"],
+  [/^(?:los |las )?(?:muertes?|muere\b|muertos?)/u, "body.died"],
+  [/^(?:los |las )?(?:peleas?|pelea\b|combates?)/u, "combat.fight"],
+];
+
+/** Las reglas guardadas, o las de siempre si no hay (o si el guardado no tiene la forma). */
+function routineRulesOf(raw: unknown): RoutineRules {
+  const r = raw as Partial<RoutineRules> | undefined;
+  if (
+    r === undefined ||
+    r === null ||
+    !DELEGATION_LEVELS.includes(r.delegation as DelegationLevel) ||
+    !Array.isArray(r.watch)
+  )
+    return DEFAULT_ROUTINE_RULES;
+  return { delegation: r.delegation as DelegationLevel, watch: r.watch };
+}
+
 /** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
 const WARN_WEIGHT = 0.5;
 
@@ -248,6 +295,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
   // del hash, para retomarla con la misma postura.
   let holdStance = store.getMeta(HOLD_STANCE_META) === true;
+  // Delegación y avisos de los saltos (novel-montage-rules), guardados con la vida.
+  let routineRules = routineRulesOf(store.getMeta(ROUTINE_RULES_META));
+  const setRules = (next: RoutineRules) => {
+    routineRules = next;
+    store.setMeta(ROUTINE_RULES_META, next);
+  };
+  const nameOf = (who: AgentId): string =>
+    callName(life.world.truth.get(PERSON_NAME, who) ?? { language: "", parts: [] }) ?? "alguien";
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
   // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
@@ -473,13 +528,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       store.saveSnapshot(life.state());
       lastSnapshot = tick;
     }
-    const report = life.turn(plan, seq);
+    const report = life.turn(plan, seq, routineRules);
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
     recent.push(line.trim());
     if (recent.length > RECENT_INTENTS) recent.shift();
     const told = [
       await tell(report, report.to),
-      ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
+      ...(report.interrupt ? [renderInterrupt(report.interrupt, nameOf)] : []),
+      ...(report.notes !== undefined && renderNotes(report.notes, nameOf) !== ""
+        ? [renderNotes(report.notes, nameOf)]
+        : []),
     ].join("\n");
     store.appendNarration(report.to, told);
     const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
@@ -554,6 +612,51 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return { text: "Vas a pelear con todo lo que tenés." };
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
+      // Delegación y avisos de los saltos (player-loop §6-§7, novel-montage-rules).
+      const plain = text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+      if (/^avisos$/u.test(plain)) return { text: renderRoutineRules(routineRules, nameOf) };
+      const deleg = /^delega(?:r|cion)?\s*(\S*)/u.exec(plain);
+      if (deleg) {
+        const level = DELEGATION_WORDS[deleg[1] ?? ""];
+        if (level === undefined) {
+          return {
+            text: `${renderRoutineRules(routineRules, nameOf)}\nPara cambiarla: !delegar mínima, !delegar normal o !delegar amplia.`,
+          };
+        }
+        setRules({ ...routineRules, delegation: level });
+        return { text: renderRoutineRules(routineRules, nameOf) };
+      }
+      const unwatch = /^no (?:avisar|anotar)(?:me)?\s+(?:si |cuando |de )?(.+)$/u.exec(plain);
+      const watch = /^(avisar|avisame|anotar|anota)\s+(?:si |cuando |de )?(.+)$/u.exec(plain);
+      if (unwatch || watch) {
+        const target = ((unwatch ?? watch)?.at(-1) ?? "").trim();
+        let on: WatchOn | undefined;
+        const event = WATCH_WORDS.find(([re]) => re.test(target))?.[1];
+        if (event !== undefined) on = { kind: "event", event };
+        else if (!(unwatch && /^(?:nada|todo|nadie)$/u.test(target))) {
+          const fold = (n: string) => n.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          const ref = topicEntity(
+            target.replace(/^(?:a |al )?(?:el |la |los |las |mi |mis )?/u, ""),
+            knownNow().map((k) => ({ ref: k.ref, names: k.names.map(fold) })),
+          );
+          if (ref === undefined || !ref.startsWith("agent"))
+            return { text: "No sabés de quién hablás. Por ejemplo: !avisar mi madre." };
+          on = { kind: "person", who: ref as AgentId };
+        }
+        const same = (r: WatchRule) =>
+          on !== undefined && JSON.stringify(r.on) === JSON.stringify(on);
+        const rest = on === undefined ? [] : routineRules.watch.filter((r) => !same(r));
+        const action = watch?.[1]?.startsWith("anot") ? "note" : "stop";
+        setRules({
+          ...routineRules,
+          watch: unwatch || on === undefined ? rest : [...rest, { on, action }],
+        });
+        return { text: renderRoutineRules(routineRules, nameOf) };
+      }
       if (/^personaje/i.test(text)) {
         const panel = renderCharacter(
           characterPanel(life.world, {

@@ -1,18 +1,20 @@
 // Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
+import { type AgentId, EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
 import {
   type AboutPanel,
   type BookLine,
   type BookPanel,
   type CharacterPanel,
+  type DelegationLevel,
   type EnvironmentItem,
   type HypothesesPanel,
   type Interrupt,
   type InventoryPanel,
   type PeoplePanel,
   type Recap,
+  type RoutineRules,
   type Suggestion,
   type ThinkResult,
   TONE_MARK,
@@ -506,10 +508,70 @@ const INTERRUPTS: Readonly<Record<Interrupt["kind"], string>> = {
   spoken_to: "Algo te saca de lo que hacías: te hablan.",
   body_alarm: "Dejás lo que hacías: algo en tu cuerpo no anda bien.",
   death_seen: "Dejás lo que hacías: alguien de los tuyos acaba de morir delante tuyo.",
+  watched: "Dejás lo que hacías: pasa algo que querías saber.",
 };
 
-export function renderInterrupt(i: Interrupt): string {
+/** Lo que mira cada clase de suceso de los avisos (player-loop §6), en presente y en el resumen. */
+const WATCHED_NOW: Readonly<Record<string, string>> = {
+  "body.died": "alguien acaba de morir",
+  "family.birth": "nació una criatura",
+  "combat.fight": "hay una pelea",
+};
+const WATCHED_NOTED: Readonly<Record<string, string>> = {
+  "body.died": "alguien murió",
+  "family.birth": "nació una criatura",
+  "combat.fight": "hubo una pelea",
+};
+
+/** `nameOf`: cómo llama el personaje a quien vigila (lo eligió él, así que lo conoce). */
+export function renderInterrupt(i: Interrupt, nameOf?: (who: AgentId) => string): string {
+  if (i.kind === "watched" && i.rule !== undefined) {
+    if (i.rule.kind === "person")
+      return `Dejás lo que hacías: ves a ${nameOf?.(i.rule.who) ?? "quien esperabas"}.`;
+    const what = WATCHED_NOW[i.rule.event];
+    if (what !== undefined) return `Dejás lo que hacías: ${what}.`;
+  }
   return INTERRUPTS[i.kind];
+}
+
+/**
+ * Lo anotado sin cortar en un salto (los avisos `note`, player-loop §6): una línea por persona o
+ * suceso, con en cuántos días pasó. Vacío si no hay nada.
+ */
+export function renderNotes(notes: readonly Interrupt[], nameOf: (who: AgentId) => string): string {
+  const rows = new Map<string, { text: string; days: number }>();
+  for (const n of notes) {
+    if (n.kind !== "watched" || n.rule === undefined) continue;
+    const key = JSON.stringify(n.rule);
+    const text =
+      n.rule.kind === "person"
+        ? `viste a ${nameOf(n.rule.who)}`
+        : (WATCHED_NOTED[n.rule.event] ?? "pasó algo");
+    const row = rows.get(key) ?? { text, days: 0 };
+    rows.set(key, { text, days: row.days + 1 });
+  }
+  return [...rows.values()]
+    .map((r) => `Anotado: ${r.text}${r.days > 1 ? ` (en ${r.days} días distintos)` : ""}.`)
+    .join("\n");
+}
+
+const DELEGATION_TEXT: Readonly<Record<DelegationLevel, string>> = {
+  minimal: "mínima: te avisan en cuanto alguien te habla",
+  normal: "normal: te avisan si te piden o te prometen algo",
+  wide: "amplia: solo te avisan si te prometen algo",
+};
+
+/** Las reglas de los saltos: delegación y avisos. */
+export function renderRoutineRules(rules: RoutineRules, nameOf: (who: AgentId) => string): string {
+  const watch = rules.watch.map((r) => {
+    const what =
+      r.on.kind === "person" ? nameOf(r.on.who) : (WATCHED_NOTED[r.on.event] ?? r.on.event);
+    return `  ${r.action === "stop" ? "avisar" : "anotar"}: ${what}`;
+  });
+  return [
+    `Delegación ${DELEGATION_TEXT[rules.delegation]}.`,
+    ...(watch.length > 0 ? ["Avisos:", ...watch] : ["Sin avisos propios."]),
+  ].join("\n");
 }
 
 export function renderJournal(

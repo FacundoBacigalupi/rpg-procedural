@@ -39,7 +39,13 @@ import {
   resumeParts,
   withDeclaredExternals,
 } from "./create.ts";
-import { alarmingSigns, fixedInterrupt, type Interrupt } from "./interrupts.ts";
+import {
+  alarmingSigns,
+  DEFAULT_ROUTINE_RULES,
+  fixedInterrupt,
+  type Interrupt,
+  type RoutineRules,
+} from "./interrupts.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
@@ -664,7 +670,12 @@ export class Life {
   }
 
   /** Un turno: el plan, el avance hasta que termina o algo lo corta, y lo que pasó. */
-  turn(plan: ActionPlan, seq: number): TurnReport {
+  turn(
+    plan: ActionPlan,
+    seq: number,
+    /** Las reglas del salto si el plan es `routine` (player-loop §6-§7); no tocan el estado. */
+    rules: RoutineRules = DEFAULT_ROUTINE_RULES,
+  ): TurnReport {
     const w = this.#w;
     const from = this.now;
     this.submit(plan, seq);
@@ -673,7 +684,7 @@ export class Life {
     const cap = from + days * w.clock.day;
     const known = alarmingSigns(w);
     let interrupt: Interrupt | null = null;
-    const routine = plan.source === "routine";
+    const routine = plan.source === "routine" ? rules : null;
     const notes: Interrupt[] = [];
     const result = w.scheduler.advanceUntil(cap, (report) => {
       for (const e of report.events) {

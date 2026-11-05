@@ -610,6 +610,7 @@ export function playerView(
             return typeof who === "string" ? [who as AgentId] : [];
           }),
           known: new Set<string>(acq.keys()),
+          delegated: livedByRoutine(w, options.heardSince),
         });
   const thoughtList = [...(options.thinking ?? []), ...(inner?.thoughts ?? [])];
   const digested = digest(percepts);
@@ -698,6 +699,17 @@ export function playerView(
         }
       : {}),
   });
+}
+
+/** Si la rutina del hogar hizo algo por el personaje desde `since` (un salto delegado). */
+function livedByRoutine(w: LifeWorld, since: Tick): boolean {
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) return false;
+    if (e.actors[0] === w.player && e.kind.startsWith("routine.")) return true;
+  }
+  return false;
 }
 
 /** La fase del año (0-1) en que cae el tick. */

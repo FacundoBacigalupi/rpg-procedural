@@ -20,7 +20,9 @@ export type InterruptKind =
   /** Nota algo grave en el cuerpo que antes no notaba. */
   | "body_alarm"
   /** Ve u oye morir a alguien cercano. */
-  | "death_seen";
+  | "death_seen"
+  /** En un salto delegado, percibe algo que el usuario pidió que lo avise (player-loop §6). */
+  | "watched";
 
 export interface Interrupt {
   readonly kind: InterruptKind;
@@ -31,7 +33,36 @@ export interface Interrupt {
   readonly who?: AgentId;
   /** Los signos nuevos, para `body_alarm`. */
   readonly signs?: readonly string[];
+  /** La regla que lo disparó, para `watched`. */
+  readonly rule?: WatchOn;
 }
+
+/** Qué decisiones chicas toma solo el personaje en un salto delegado (player-loop §7). */
+export const DELEGATION_LEVELS = ["minimal", "normal", "wide"] as const;
+export type DelegationLevel = (typeof DELEGATION_LEVELS)[number];
+
+/** Qué mira una regla del usuario: alguien de su lista que aparece, o una clase de suceso. */
+export type WatchOn =
+  | { readonly kind: "person"; readonly who: AgentId }
+  | { readonly kind: "event"; readonly event: WatchedEvent };
+
+/** Los sucesos que se pueden pedir que avisen (los que el personaje percibe como evento). */
+export const WATCHED_EVENTS = ["body.died", "family.birth", "combat.fight"] as const;
+export type WatchedEvent = (typeof WATCHED_EVENTS)[number];
+
+/** Una regla configurable (player-loop §6): `stop` corta el salto, `note` lo anota y sigue. */
+export interface WatchRule {
+  readonly on: WatchOn;
+  readonly action: "stop" | "note";
+}
+
+/** Las reglas de un salto delegado: delegación y avisos del usuario. Leen solo lo percibido. */
+export interface RoutineRules {
+  readonly delegation: DelegationLevel;
+  readonly watch: readonly WatchRule[];
+}
+
+export const DEFAULT_ROUTINE_RULES: RoutineRules = { delegation: "normal", watch: [] };
 
 export { ALARMING_SIGNS, alarmingSignsOf };
 
@@ -47,6 +78,26 @@ export const ROUTINE_TOLERATED_SIGNS: ReadonlySet<string> = new Set(["exhausted"
  * que la rutina no toma, player-loop §7); el saludo, la pregunta o la noticia quedan anotados.
  */
 export const ROUTINE_STOPPING_ACTS: ReadonlySet<string> = new Set(["request", "promise"]);
+
+/**
+ * Qué actos de habla cortan un salto según la delegación (`null`: cualquiera): con `minimal` toda
+ * palabra dirigida a él; con `normal`, pedidos y promesas; con `wide`, solo las promesas (un
+ * compromiso, que lo grande interrumpe siempre).
+ */
+export const DELEGATION_STOPPING_ACTS: Readonly<
+  Record<DelegationLevel, ReadonlySet<string> | null>
+> = {
+  minimal: null,
+  normal: ROUTINE_STOPPING_ACTS,
+  wide: new Set(["promise"]),
+};
+
+/** Si el evento es lo que mira la regla (sin mirar si lo percibió). */
+function matches(on: WatchOn, e: Event, me: AgentId): boolean {
+  return on.kind === "person"
+    ? on.who !== me && e.actors.includes(on.who)
+    : e.kind === on.event && !e.actors.includes(me);
+}
 
 /** Los signos graves que el personaje siente ahora. */
 export function alarmingSigns(w: LifeWorld): Set<string> {
@@ -75,8 +126,11 @@ export function fixedInterrupt(
   w: LifeWorld,
   events: readonly Event[],
   known: Set<string>,
-  /** Un salto delegado: los signos de `ROUTINE_TOLERATED_SIGNS` no alarman. */
-  routine = false,
+  /**
+   * Las reglas de un salto delegado, o `null` si no lo es: los signos de `ROUTINE_TOLERATED_SIGNS`
+   * no alarman, que le hablen corta según la delegación y los avisos del usuario cortan o anotan.
+   */
+  routine: RoutineRules | null = null,
   /** En un salto delegado, lo que no corta y queda anotado para el montaje. */
   notes?: Interrupt[],
 ): Interrupt | null {
@@ -94,9 +148,32 @@ export function fixedInterrupt(
       if (data?.effect?.to === me && perceives(w, e)) {
         const heard: Interrupt = { kind: "spoken_to", tick: e.tick, event: e.id, who };
         const act = data.effect.act?.kind;
-        if (!routine || (act !== undefined && ROUTINE_STOPPING_ACTS.has(act))) return heard;
+        const stopping = routine === null ? null : DELEGATION_STOPPING_ACTS[routine.delegation];
+        if (stopping === null || (act !== undefined && stopping.has(act))) return heard;
         notes?.push(heard);
         continue;
+      }
+    }
+    if (routine !== null && routine.watch.length > 0) {
+      const rule = routine.watch.find((r) => matches(r.on, e, me));
+      if (rule !== undefined && perceives(w, e)) {
+        const seen: Interrupt = {
+          kind: "watched",
+          tick: e.tick,
+          event: e.id,
+          who,
+          rule: rule.on,
+        };
+        if (rule.action === "stop") return seen;
+        // Una nota por persona o suceso y por día: verlo trabajar diez veces no son diez noticias.
+        const day = Math.floor(e.tick / w.clock.day);
+        const dup = notes?.some(
+          (n) =>
+            n.kind === "watched" &&
+            Math.floor(n.tick / w.clock.day) === day &&
+            JSON.stringify(n.rule) === JSON.stringify(rule.on),
+        );
+        if (!dup) notes?.push(seen);
       }
     }
     if (e.kind === "body.died" && close.has(who) && perceives(w, e)) {
@@ -104,7 +181,7 @@ export function fixedInterrupt(
     }
   }
   const now = alarmingSigns(w);
-  if (routine) for (const s of ROUTINE_TOLERATED_SIGNS) now.delete(s);
+  if (routine !== null) for (const s of ROUTINE_TOLERATED_SIGNS) now.delete(s);
   const fresh = [...now].filter((s) => !known.has(s));
   // Lo que ya no siente vuelve a poder alarmarlo si reaparece.
   for (const s of [...known]) if (!now.has(s)) known.delete(s);
