@@ -42,6 +42,12 @@ export { ALARMING_SIGNS, alarmingSignsOf };
  */
 export const ROUTINE_TOLERATED_SIGNS: ReadonlySet<string> = new Set(["exhausted"]);
 
+/**
+ * En un salto delegado, que le hablen corta solo si le piden algo o le prometen algo (una decisión
+ * que la rutina no toma, player-loop §7); el saludo, la pregunta o la noticia quedan anotados.
+ */
+export const ROUTINE_STOPPING_ACTS: ReadonlySet<string> = new Set(["request", "promise"]);
+
 /** Los signos graves que el personaje siente ahora. */
 export function alarmingSigns(w: LifeWorld): Set<string> {
   const body = w.truth.get(BODY_STATE, w.player);
@@ -71,6 +77,8 @@ export function fixedInterrupt(
   known: Set<string>,
   /** Un salto delegado: los signos de `ROUTINE_TOLERATED_SIGNS` no alarman. */
   routine = false,
+  /** En un salto delegado, lo que no corta y queda anotado para el montaje. */
+  notes?: Interrupt[],
 ): Interrupt | null {
   const me = w.player;
   const close = acquaintances(w);
@@ -80,9 +88,15 @@ export function fixedInterrupt(
       return { kind: "attacked", tick: e.tick, event: e.id, ...(who ? { who } : {}) };
     if (!who || who === me) continue;
     if (e.kind === "action.speak") {
-      const data = e.data as { effect?: { to?: string | null; text?: string | null } } | null;
+      const data = e.data as {
+        effect?: { to?: string | null; text?: string | null; act?: { kind: string } | null };
+      } | null;
       if (data?.effect?.to === me && perceives(w, e)) {
-        return { kind: "spoken_to", tick: e.tick, event: e.id, who };
+        const heard: Interrupt = { kind: "spoken_to", tick: e.tick, event: e.id, who };
+        const act = data.effect.act?.kind;
+        if (!routine || (act !== undefined && ROUTINE_STOPPING_ACTS.has(act))) return heard;
+        notes?.push(heard);
+        continue;
       }
     }
     if (e.kind === "body.died" && close.has(who) && perceives(w, e)) {

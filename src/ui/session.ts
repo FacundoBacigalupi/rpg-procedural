@@ -47,6 +47,7 @@ import {
   optionsOf,
   PLAYER,
   panelOptionsOf,
+  parseSkip,
   peoplePanel,
   playerView,
   presenceKey,
@@ -56,6 +57,8 @@ import {
   renderEpilogue,
   runEpilogue,
   type Suggestion,
+  skipPlan,
+  skipTicks,
   suggestions,
   type ThoughtInput,
   type TurnReport,
@@ -174,6 +177,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
+  "Para que pase el tiempo viviendo tu rutina: paso el invierno · trabajo el campo un mes · sigo con mi vida hasta la primavera · dejo pasar tres semanas",
   "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
 
@@ -455,6 +459,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     }
     warned = "";
     attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
+    return runTurn(plan, line);
+  };
+
+  /** Juega un plan ya validado: snapshot, turno, guardado y lo que pasó. */
+  const runTurn = async (plan: ActionPlan, line: string): Promise<Reply> => {
     const tick = life.now;
     const seq = store.nextPlanSeq();
     // El snapshot completo (verdad entera, comprimida y hasheada) es el 75 % del costo de un turno y
@@ -487,6 +496,24 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
     let draft: IntentDraft | null = parseCommand(line, catalog, parser.words);
+    // «Paso el invierno», «trabajo el campo un mes»: un salto delegado (novel-montage-parse), sin
+    // modelo; la fecha sale del calendario del personaje.
+    const skip = draft?.kind === "meta" ? null : parseSkip(line);
+    if (skip !== null) {
+      pending = null;
+      warned = "";
+      attended = false;
+      const w = life.world;
+      const wait = w.catalog.verb("wait")?.duration;
+      const ticks = skipTicks(
+        skip.target,
+        w.clock,
+        life.now,
+        w.map.climate.latDeg,
+        wait?.kind === "arg" ? wait.max : undefined,
+      );
+      return runTurn(skipPlan(life.player, ticks), line);
+    }
     if (pending !== null && draft?.kind !== "meta") {
       // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
       const chosen = answerClarify(line, pending.options);

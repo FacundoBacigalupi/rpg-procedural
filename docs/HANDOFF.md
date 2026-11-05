@@ -71,6 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **novel-montage-parse (2026-11-05)**: «paso el invierno», «trabajo el campo un mes» → `parseSkip`/`skipTicks`/`skipPlan` (`game/life/skip.ts`), reconocido en `session.say` antes del modelo; en el salto lo que no pide decisión queda en `TurnReport.notes`. Sigue `novel-montage-while` (el montaje hoy dice «Esperás, inquieto»: `stretchOf` no cuenta lo de la rutina).
 - **novel-montage-live (2026-11-05)**: plan `routine` de solo esperas = el jugador vive la rutina del hogar hasta 366 días (`delegatedPlan`, `MAX_ROUTINE_DAYS`, `ROUTINE_TOLERATED_SIGNS`). Siguen `novel-montage-parse`, `-while`, `-rules`.
 - **Novela jugable primero (2026-11-05)**: el usuario quiere jugar una novela (decidir y avanzar). Se congela el detalle fino de ganado y economía (queda opt-in, materia prima del montaje). Orden en ROADMAP «Ahora»: `novel-montage` → `novel-goals` → `novel-cultivation-min` → `novel-narration` → `novel-flags-group` → `novel-full-profile-default`. Empezar por `novel-montage` (player-loop §4-§7; base: `game/life/stretch.ts`, `interrupts.ts`, nodo `until` de `sim/actions/plan.ts`).
 - **livestock-look-pregnant-skill (2026-11-04)**: opt-in `livestockLookSkill`; la panza se nota según `farming` de quien mira (`pregnantLookShareFor` en `animal-marks.ts`). Sigue `livestock-look-pregnant-more` (la panza que confunde, con `livestock-body`; el NPC que la nota).

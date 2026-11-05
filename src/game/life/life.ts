@@ -490,6 +490,8 @@ export interface TurnReport {
   readonly events: readonly Event[];
   /** El personaje ya no está. */
   readonly over: boolean;
+  /** En un salto delegado: lo que pasó sin cortarlo (le hablaron sin pedirle nada), para el montaje. */
+  readonly notes?: readonly Interrupt[];
 }
 
 /** Lo que hace falta para guardar o seguir la vida (la forma de `LifeState`). */
@@ -671,13 +673,15 @@ export class Life {
     const cap = from + days * w.clock.day;
     const known = alarmingSigns(w);
     let interrupt: Interrupt | null = null;
+    const routine = plan.source === "routine";
+    const notes: Interrupt[] = [];
     const result = w.scheduler.advanceUntil(cap, (report) => {
       for (const e of report.events) {
         if (e.actors.includes(this.player)) events.push(e);
       }
       if (!this.alive) return true;
       if (w.truth.get(PLAN_STATE, this.player)?.done ?? true) return true;
-      interrupt = fixedInterrupt(w, report.events, known, plan.source === "routine");
+      interrupt = fixedInterrupt(w, report.events, known, routine, notes);
       return interrupt !== null;
     });
     const state = w.truth.get(PLAN_STATE, this.player);
@@ -689,6 +693,7 @@ export class Life {
       steps: state?.steps ?? [],
       events,
       over: !this.alive,
+      ...(notes.length > 0 ? { notes } : {}),
     };
   }
 }
