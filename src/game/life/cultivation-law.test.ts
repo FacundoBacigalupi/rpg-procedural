@@ -11,10 +11,15 @@ import {
   PLACE_NAME,
   SECT,
   SECT_FOUNDED_EVENT,
+  SECT_LORE,
   TALENT,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { aboutPanel } from "./about.ts";
+import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
+import { lexiconWords } from "./view.ts";
+import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -91,5 +96,45 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(w.truth.get(PLACE_NAME, sect.seatPlace)?.form.length).toBeGreaterThan(0);
     expect(sect.seat.hops).toBeLessThanOrEqual(2);
     expect(sect.slots.some((s) => s.rank === "master")).toBe(true);
+  });
+
+  it("la aldea la sabe de oídas y el personaje la nombra solo si la oyó (novel-cult-sect-known)", () => {
+    const on = Life.create(3, content, { cultivation: true });
+    const w = on.world;
+    const org = w.truth.ids(SECT)[0];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !sect) throw new Error("sin secta");
+    const name = w.truth.get(PLACE_NAME, sect.seatPlace)?.form ?? "";
+    const ages = living(w.truth).map((p) => ({ p, r: w.truth.get(PERSON, p) }));
+    const adults = ages.filter((x) => (on.now - (x.r?.born ?? 0)) / w.clock.year >= 14);
+    const babies = ages.filter((x) => (on.now - (x.r?.born ?? 0)) / w.clock.year < 7);
+    const knowing = adults.filter((x) => w.truth.get(SECT_LORE, x.p));
+    expect(knowing.length).toBeGreaterThan(adults.length / 2);
+    expect(babies.every((x) => !w.truth.get(SECT_LORE, x.p))).toBe(true);
+    for (const x of knowing) expect(w.truth.get(SECT_LORE, x.p)?.seat).toBe(sect.seatPlace);
+
+    // Sin haberla oído, ni la nombra ni la cuenta.
+    w.truth.deleteRaw(SECT_LORE.name, w.player);
+    expect(lexiconWords(w, false)).not.toContain(name);
+    expect(knownEntities(w).some((k) => k.ref === sect.seatPlace)).toBe(false);
+    // Oída: lugar nombrable, lejos, y el panel dice lo que cree.
+    w.truth.set(SECT_LORE, w.player, {
+      org,
+      seat: sect.seatPlace,
+      bearing: "ne",
+      days: 4,
+      confidence: 0.5,
+      learnedAt: on.now,
+    });
+    expect(lexiconWords(w, false)).toContain(name);
+    const seat = knownEntities(w).find((k) => k.ref === sect.seatPlace);
+    expect(seat?.names).toContain("la secta");
+    expect(seat?.present).toBe(false);
+    expect(aboutPanel(w, sect.seatPlace, "la secta").hearsay).toEqual({
+      what: "sect",
+      bearing: "ne",
+      days: 4,
+      surety: "unsure",
+    });
   });
 });

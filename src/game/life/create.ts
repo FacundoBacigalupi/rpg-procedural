@@ -136,6 +136,7 @@ import {
   seedRelations,
   seedReligion,
   seedSect,
+  seedSectLore,
   seedSettlement,
   seedSkills,
   seedStatus,
@@ -2132,6 +2133,17 @@ export function createLife(
           event: sect.sect.originEventId,
         },
       ]);
+    }
+    // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.
+    if (sect) {
+      seedSectLore(truth, {
+        seed,
+        now: pop.now,
+        yearTicks: clock.year,
+        org: sect.org,
+        sect: sect.sect,
+        people: pop.people.filter((p) => p.end === null).map((p) => p.id),
+      });
     }
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;

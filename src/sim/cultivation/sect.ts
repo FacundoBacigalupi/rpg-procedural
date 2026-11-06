@@ -178,3 +178,50 @@ export function generateSect(i: GenerateSectInput): Sect {
 /** Quién manda: la ranura de maestro, si quedó alguna. */
 export const sectMaster = (s: Sect): SectSlot | undefined =>
   s.slots.find((x) => x.rank === "master");
+
+// Lo que la aldea sabe de la secta (novel-cult-sect-known, information §1): no es un menú, es una
+// creencia de cada uno con errores. Rumbo en ocho puntos y distancia en jornadas a pie, cada una con
+// su error de quien lo oyó contar; la confianza decide cómo lo dice («dicen que…», «sabés que…»).
+
+export const COMPASS8 = ["n", "ne", "e", "se", "s", "sw", "w", "nw"] as const;
+export type Compass8 = (typeof COMPASS8)[number];
+
+/** Lo que alguien cree de la secta: dónde queda su sede y que ahí viven cultivadores. */
+export interface SectLore {
+  readonly org: EntityRef;
+  readonly seat: EntityRef;
+  readonly bearing: Compass8;
+  /** Jornadas a pie que cree que hay, al menos una. */
+  readonly days: number;
+  /** 0-1: qué tan firme lo cree (de oídas en la aldea, casi nunca seguro). */
+  readonly confidence: number;
+  readonly learnedAt: Tick;
+}
+
+/** La creencia sobre la secta, en la entidad de quien cree. */
+export const SECT_LORE = table<SectLore>("cultivation.sect_lore");
+
+/** Lo que se camina en una jornada por senderos (sin calibrar). */
+export const WALK_KM_PER_DAY = 25;
+/** El desvío típico del rumbo que se cuenta, en grados. */
+const BEARING_ERROR_SD = 25;
+
+export function compassOf(deg: number): Compass8 {
+  const i = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+  return COMPASS8[i] as Compass8;
+}
+
+/** La creencia de una persona: rumbo y jornadas con el error de lo oído. */
+export function sectLoreOf(rng: Rng, org: EntityRef, sect: Sect, learnedAt: Tick): SectLore {
+  const bearing = compassOf(sect.seat.bearingDeg + rng.fork("bearing").normal(0, BEARING_ERROR_SD));
+  const spread = 0.7 + 0.6 * rng.fork("days").float();
+  const days = Math.max(1, Math.round((sect.seat.km / WALK_KM_PER_DAY) * spread));
+  return {
+    org,
+    seat: sect.seatPlace,
+    bearing,
+    days,
+    confidence: Math.round((0.4 + 0.45 * rng.fork("confidence").float()) * 1000) / 1000,
+    learnedAt,
+  };
+}

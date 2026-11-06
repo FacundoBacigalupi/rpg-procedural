@@ -6,6 +6,7 @@
 import {
   type AgentId,
   compareStrings,
+  type EntityRef,
   type EventId,
   type EventLog,
   type IdAllocator,
@@ -19,7 +20,15 @@ import { ENTITY, type WorldTruth } from "../world/index.ts";
 import { QI_TAKEN } from "./absorb.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
 import { PLACE_QI, type PlaceQi } from "./meditation.ts";
-import { generateSect, SECT, SECT_FOUNDED_EVENT, type Sect, type SectSeat } from "./sect.ts";
+import {
+  generateSect,
+  SECT,
+  SECT_FOUNDED_EVENT,
+  SECT_LORE,
+  type Sect,
+  type SectSeat,
+  sectLoreOf,
+} from "./sect.ts";
 import { TALENT, type TalentRecord, talentOf } from "./talent.ts";
 
 export const CULTIVATION_LAW_EVENT = "cultivation.law";
@@ -121,7 +130,7 @@ export function seedSect(
   ids: IdAllocator,
   log: EventLog,
   o: SeedSectOptions,
-): { org: string; sect: Sect } | undefined {
+): { org: EntityRef; sect: Sect } | undefined {
   const plane = truth.ids(CULTIVATION_LAW)[0];
   const law = plane ? truth.get(CULTIVATION_LAW, plane) : undefined;
   if (!plane || !law) return undefined;
@@ -167,4 +176,41 @@ export function seedSect(
   truth.set(ENTITY, seatPlace, { id: seatPlace, originEventId: event, createdAt: sect.founded });
   truth.set(SECT, org, sect);
   return { org, sect };
+}
+
+/** Desde qué edad se sabe de la secta, y con qué probabilidad un adulto y un chico. */
+const LORE_ADULT_YEARS = 14;
+const LORE_CHILD_YEARS = 7;
+const LORE_ADULT_CHANCE = 0.85;
+const LORE_CHILD_CHANCE = 0.4;
+
+export interface SeedSectLoreOptions {
+  readonly seed: Seed;
+  readonly now: Tick;
+  readonly yearTicks: number;
+  readonly org: EntityRef;
+  readonly sect: Sect;
+  /** Quienes viven en la aldea (los muertos no aprenden). */
+  readonly people: readonly AgentId[];
+}
+
+/**
+ * Lo que la aldea sabe de la secta (novel-cult-sect-known): casi todos los adultos y algunos chicos
+ * la tienen oída, cada uno con su error. Los más chicos no saben nada todavía.
+ */
+export function seedSectLore(truth: WorldTruth, o: SeedSectLoreOptions): number {
+  const root = Rng.root(o.seed).fork("cultivation", "sect", "lore");
+  let n = 0;
+  for (const id of [...o.people].sort(compareStrings)) {
+    const p = truth.get(PERSON, id);
+    if (!p) continue;
+    const age = (o.now - p.born) / o.yearTicks;
+    const chance =
+      age >= LORE_ADULT_YEARS ? LORE_ADULT_CHANCE : age >= LORE_CHILD_YEARS ? LORE_CHILD_CHANCE : 0;
+    const rng = root.fork(id);
+    if (!rng.fork("knows").chance(chance)) continue;
+    truth.set(SECT_LORE, id, sectLoreOf(rng, o.org, o.sect, o.now));
+    n++;
+  }
+  return n;
 }
