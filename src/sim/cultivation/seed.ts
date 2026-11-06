@@ -19,6 +19,7 @@ import { ENTITY, type WorldTruth } from "../world/index.ts";
 import { QI_TAKEN } from "./absorb.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
 import { PLACE_QI, type PlaceQi } from "./meditation.ts";
+import { generateSect, SECT, SECT_FOUNDED_EVENT, type Sect, type SectSeat } from "./sect.ts";
 import { TALENT, type TalentRecord, talentOf } from "./talent.ts";
 
 export const CULTIVATION_LAW_EVENT = "cultivation.law";
@@ -98,4 +99,72 @@ export function seedCultivation(
     truth.set(TALENT, who, t);
   }
   return law;
+}
+
+export interface SeedSectOptions {
+  readonly seed: Seed;
+  readonly now: Tick;
+  readonly yearTicks: number;
+  /** Dónde ocurre el evento: la aldea (es lo que la aldea sabe de la fundación). */
+  readonly place: PlaceRef;
+  readonly talents: readonly Trait[];
+  readonly seat: SectSeat;
+}
+
+/**
+ * Funda la secta cercana (novel-cult-sect-place) generaciones antes de ahora, en la sede con más qi
+ * al alcance, con un lugar para su sede (al que quien siembra le pone nombre). Causas: la ley (sin
+ * ella no hay cultivadores) y el qi de la sede (del planeta: el seed), que es por qué está ahí. Devuelve la secta y su id.
+ */
+export function seedSect(
+  truth: WorldTruth,
+  ids: IdAllocator,
+  log: EventLog,
+  o: SeedSectOptions,
+): { org: string; sect: Sect } | undefined {
+  const plane = truth.ids(CULTIVATION_LAW)[0];
+  const law = plane ? truth.get(CULTIVATION_LAW, plane) : undefined;
+  if (!plane || !law) return undefined;
+  const rng = Rng.root(o.seed).fork("cultivation", "sect");
+  const foundedYearsAgo = rng.fork("founded").int(80, 400);
+  const event = ids.next("event") as EventId;
+  const org = ids.next("org");
+  const seatPlace = ids.next("place");
+  const sect = generateSect({
+    rng: rng.fork("slots"),
+    law,
+    talents: o.talents,
+    seat: o.seat,
+    seatPlace,
+    now: o.now,
+    yearTicks: o.yearTicks,
+    originEventId: event,
+    foundedYearsAgo,
+  });
+  log.append({
+    id: event,
+    tick: sect.founded,
+    kind: SECT_FOUNDED_EVENT,
+    actors: [],
+    place: o.place,
+    data: {
+      org,
+      seat: o.seat.cell,
+      hops: o.seat.hops,
+      km: o.seat.km,
+      level: o.seat.qi.level,
+      slots: sect.slots.length,
+    },
+    emissions: {},
+    causes: [
+      { kind: "state", entity: plane, key: CULTIVATION_LAW.name },
+      // El qi de la sede es del planeta: condición del seed, en `data.level`.
+      { kind: "seed" },
+    ],
+    resolution: "world",
+  });
+  truth.set(ENTITY, org, { id: org, originEventId: event, createdAt: sect.founded });
+  truth.set(ENTITY, seatPlace, { id: seatPlace, originEventId: event, createdAt: sect.founded });
+  truth.set(SECT, org, sect);
+  return { org, sect };
 }

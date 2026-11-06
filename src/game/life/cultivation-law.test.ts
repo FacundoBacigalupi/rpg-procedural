@@ -8,6 +8,9 @@ import {
   CULTIVATION_LAW_EVENT,
   ENTITY,
   PERSON,
+  PLACE_NAME,
+  SECT,
+  SECT_FOUNDED_EVENT,
   TALENT,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -34,6 +37,7 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(off.hash().total).toBe(BASE_HASH);
     expect(off.world.truth.ids(CULTIVATION_LAW)).toEqual([]);
     expect(off.world.truth.ids(TALENT)).toEqual([]);
+    expect(off.world.truth.ids(SECT)).toEqual([]);
   });
 
   it("encendido: la ley en el plano con su evento de origen y el talento de cada persona", () => {
@@ -68,5 +72,24 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(rooted.length).toBeLessThan(people.length / 2);
     // Mismo seed, misma vida.
     expect(Life.create(3, content, { cultivation: true }).hash().total).toBe(on.hash().total);
+  });
+
+  it("encendido: una secta cercana con sede nombrada y fundada antes (novel-cult-sect-place)", () => {
+    const on = Life.create(3, content, { cultivation: true });
+    const w = on.world;
+    const orgs = w.truth.ids(SECT);
+    expect(orgs).toHaveLength(1);
+    const org = orgs[0];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !sect) throw new Error("sin secta");
+    const origin = w.log.get(sect.originEventId);
+    expect(origin?.kind).toBe(SECT_FOUNDED_EVENT);
+    expect(origin?.tick).toBe(sect.founded);
+    expect(sect.founded).toBeLessThan(on.now);
+    expect(origin?.causes.length).toBeGreaterThan(0);
+    expect(w.truth.get(ENTITY, org)?.originEventId).toBe(sect.originEventId);
+    expect(w.truth.get(PLACE_NAME, sect.seatPlace)?.form.length).toBeGreaterThan(0);
+    expect(sect.seat.hops).toBeLessThanOrEqual(2);
+    expect(sect.slots.some((s) => s.rank === "master")).toBe(true);
   });
 });
