@@ -1166,6 +1166,20 @@
     "lines": ["Empujás hacia adentro, pero no hay nada que empujar: ni corriente, ni pared."]
   },
   {
+    "id": "self.sect_coming",
+    "lines": [
+      "Corre la voz por la aldea: en unos días bajan los inmortales de la secta a la plaza, a llevarse a los chicos que tengan raíz.",
+      "Lo dicen en todas las casas: dentro de una semana la secta baja a la plaza a probar a los chicos."
+    ]
+  },
+  {
+    "id": "self.sect_here",
+    "lines": [
+      "Hoy la secta está en la plaza: gente de ropas claras que no son de acá, quieta, mirando a los chicos que les traen.",
+      "Bajaron los de la secta. En la plaza se juntan las familias con sus chicos, en silencio."
+    ]
+  },
+  {
     "id": "self.qi_flows",
     "lines": [
       "Con cada respiración, algo tibio entra y se queda, como agua que encuentra su cauce.",

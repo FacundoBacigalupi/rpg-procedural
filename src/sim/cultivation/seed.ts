@@ -118,6 +118,8 @@ export interface SeedSectOptions {
   readonly place: PlaceRef;
   readonly talents: readonly Trait[];
   readonly seat: SectSeat;
+  /** El día del año en que baja a la aldea (`sectVisitDay`); sin él, no baja. */
+  readonly visitDay?: number;
 }
 
 /**
@@ -139,7 +141,7 @@ export function seedSect(
   const event = ids.next("event") as EventId;
   const org = ids.next("org");
   const seatPlace = ids.next("place");
-  const sect = generateSect({
+  const generated = generateSect({
     rng: rng.fork("slots"),
     law,
     talents: o.talents,
@@ -150,6 +152,7 @@ export function seedSect(
     originEventId: event,
     foundedYearsAgo,
   });
+  const sect: Sect = o.visitDay === undefined ? generated : { ...generated, visitDay: o.visitDay };
   log.append({
     id: event,
     tick: sect.founded,

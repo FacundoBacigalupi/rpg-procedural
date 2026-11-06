@@ -233,6 +233,7 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
+import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
   ASLEEP,
@@ -2446,7 +2447,10 @@ export function lifeWorld(
         ponderProcess(),
         resolveGoalProcess(parts.goalSketches ?? []),
         ...(parts.cultivation
-          ? [meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year })]
+          ? [
+              meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year }),
+              sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village }),
+            ]
           : []),
         divinersProcess({
           methods: parts.divinations,

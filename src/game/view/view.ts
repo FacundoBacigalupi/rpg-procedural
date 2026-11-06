@@ -61,7 +61,11 @@ export type SelfCue =
   /** Retroceso: el qi se volvió en contra y se escapó. */
   | "break_backlash"
   /** Intentó romper sin sentir el qi: no hay nada que empujar. */
-  | "break_nothing";
+  | "break_nothing"
+  /** Oyó el aviso: en unos días baja la secta a la plaza a buscar discípulos (novel-cult-sect-visit). */
+  | "sect_coming"
+  /** La gente de la secta está en la plaza. */
+  | "sect_here";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
