@@ -3,11 +3,12 @@
 // `action.resolve` de origen y las palabras que usó) y termina en la siguiente terminada de la misma
 // meta: la dejó, se murió queriéndola, o sigue. Las horas que le dio en los saltos son los
 // `routine.for_goal`. «Creída lograda» (`achieved_believed`) es lo que el personaje cree haber
-// cumplido, no lo que la verdad dice: por ahora solo la venganza tiene esa regla (la persona murió y
-// el personaje lo sabe); las demás esperan a los sistemas que las cumplan.
+// cumplido, no lo que la verdad dice: la venganza (la persona murió y el personaje lo sabe) y cultivar
+// (lo aceptó una secta: `cultivation.sect_joined`, que oyó en la plaza); las demás esperan a los
+// sistemas que las cumplan.
 
 import type { AgentId, Event, EventId, Tick } from "../../core/index.ts";
-import { BELIEFS, believed, ENTITY, MEMORIES } from "../../sim/index.ts";
+import { BELIEFS, believed, ENTITY, MEMORIES, SECT_JOINED_EVENT } from "../../sim/index.ts";
 import { GOAL_EVENT, GOAL_HOUR_EVENT, type LifeWorld } from "../life/index.ts";
 
 /** Cómo terminó una meta: la dejó, se murió con ella o seguía (la crónica de una vida en curso). */
@@ -50,7 +51,8 @@ function aboutOf(e: Event | undefined): string | undefined {
 
 /**
  * Lo que `me` cree haber logrado de una meta hasta `until`. Venganza: la persona murió y el
- * personaje lo recuerda o cree que ya no vive; vale desde la muerte.
+ * personaje lo recuerda o cree que ya no vive; vale desde la muerte. Cultivar: una secta lo tomó
+ * como discípulo (se lo dijeron en la cara); vale desde ese día.
  */
 function achievedBelieved(
   w: LifeWorld,
@@ -59,6 +61,12 @@ function achievedBelieved(
   whom: AgentId | undefined,
   until: Tick,
 ): { at: Tick; event: EventId } | undefined {
+  if (sketch === "cultivate") {
+    const joined = w.log
+      .all()
+      .find((e) => e.kind === SECT_JOINED_EVENT && e.actors[0] === me && e.tick <= until);
+    return joined ? { at: joined.tick, event: joined.id } : undefined;
+  }
   if (sketch !== "revenge" || whom === undefined) return undefined;
   const end = w.truth.get(ENTITY, whom)?.endEventId;
   const death = end ? w.log.get(end) : undefined;

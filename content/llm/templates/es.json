@@ -1187,6 +1187,13 @@
     ]
   },
   {
+    "id": "self.sect_joined",
+    "lines": [
+      "Te anotan entre los suyos: discípulo de afuera. Te dicen hacia dónde queda la sede, cuántas jornadas a pie, y que tenés un mes para presentarte.",
+      "Ya sos de la secta, dicen, aunque sea de los de afuera. Te explican el camino a la sede con cuidado y te dan un mes para subir."
+    ]
+  },
+  {
     "id": "self.trial_rejected",
     "lines": [
       "La piedra brilla apenas, turbia, con varios colores mezclados. El de la secta niega con la cabeza: una raíz que no sirve.",

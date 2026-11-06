@@ -71,7 +71,9 @@ export type SelfCue =
   /** La piedra brilló poco: una raíz que la secta no quiere. */
   | "trial_rejected"
   /** La piedra no brilló: sin raíz, según ella. */
-  | "trial_dark";
+  | "trial_dark"
+  /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
+  | "sect_joined";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

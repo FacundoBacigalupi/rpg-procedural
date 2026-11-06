@@ -12,6 +12,11 @@
 // su casa o no (`TRIAL_BROUGHT_CHANCE`, una tirada por chico y año) y se miden al llegar la secta.
 // Cada uno una vez por año: `SECT_TRIAL` guarda la última lectura, que el medido cree;
 // `cultivation.sect_trial` la deja, causada por la bajada y por el talento.
+//
+// La membresía (novel-cult-sect-join-member): el aceptado queda discípulo externo (`SECT_MEMBER`,
+// `cultivation.sect_joined` causado por su prueba) con la citación a la sede (`summonedLore`: rumbo
+// y jornadas exactos, `SECT_REPORT_DAYS` para presentarse). El que ya era de la secta no se vuelve a
+// sumar. Subir a la sede queda para `novel-sect-seat`.
 
 import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
@@ -24,7 +29,10 @@ import {
   SECT,
   SECT_ANNOUNCE_DAYS,
   SECT_HERALD_EVENT,
+  SECT_JOINED_EVENT,
   SECT_LORE,
+  SECT_MEMBER,
+  SECT_REPORT_DAYS,
   SECT_TRIAL,
   SECT_TRIAL_EVENT,
   SECT_VISIT,
@@ -32,6 +40,7 @@ import {
   type StateChange,
   sectLoreOf,
   setComponent,
+  summonedLore,
   TALENT,
   TRIAL_BROUGHT_CHANCE,
   TRIAL_MAX_YEARS,
@@ -72,8 +81,9 @@ export function sectVisitProcess(o: {
       TALENT.name,
       LOCATION.name,
       SECT_TRIAL.name,
+      SECT_MEMBER.name,
     ],
-    writes: [SECT_VISIT.name, SECT_LORE.name, SECT_TRIAL.name],
+    writes: [SECT_VISIT.name, SECT_LORE.name, SECT_TRIAL.name, SECT_MEMBER.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -154,6 +164,33 @@ export function sectVisitProcess(o: {
               causes: [
                 { kind: "state", entity: org, key: SECT_VISIT.name },
                 { kind: "state", entity: id, key: TALENT.name },
+              ],
+            });
+            if (!accepted || ctx.truth.get(SECT_MEMBER, id)?.org === org) continue;
+            const reportBy = visit.end + SECT_REPORT_DAYS * o.clock.day;
+            changes.push(
+              setComponent(SECT_MEMBER, id, {
+                org,
+                rank: "outer",
+                since: ctx.now,
+                trialYear: visit.year,
+                reportBy,
+              }),
+              setComponent(
+                SECT_LORE,
+                id,
+                summonedLore(ctx.truth.get(SECT_LORE, id), org, sect, ctx.now),
+              ),
+            );
+            events.push({
+              kind: SECT_JOINED_EVENT,
+              actors: [id],
+              place: o.village,
+              data: { org, rank: "outer", reportBy, seat: sect.seatPlace },
+              emissions: { sight: 0.3 },
+              causes: [
+                { kind: "state", entity: id, key: SECT_TRIAL.name },
+                { kind: "state", entity: org, key: SECT.name },
               ],
             });
           }

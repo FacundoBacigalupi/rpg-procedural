@@ -46,6 +46,7 @@ import {
   type ReadonlyWorldTruth,
   rainBetween,
   SECT_HERALD_EVENT,
+  SECT_JOINED_EVENT,
   SECT_LORE,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
@@ -711,6 +712,12 @@ export function playerView(
           ? "trial_rejected"
           : "trial_dark",
     );
+  }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT)
+  ) {
+    cues.add("sect_joined");
   }
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
