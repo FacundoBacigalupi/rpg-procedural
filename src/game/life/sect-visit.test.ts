@@ -3,12 +3,16 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  compassOf,
   LOCATION,
   PERSON,
   SECT,
   SECT_ANNOUNCE_DAYS,
   SECT_HERALD_EVENT,
+  SECT_JOINED_EVENT,
   SECT_LORE,
+  SECT_MEMBER,
+  SECT_REPORT_DAYS,
   SECT_TRIAL,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
@@ -149,5 +153,71 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
       return id !== w.player && age >= TRIAL_MIN_YEARS + 0.1 && age < TRIAL_MAX_YEARS - 0.1;
     });
     if (kids.length >= 3) expect(trials.length).toBeGreaterThan(1);
+  });
+
+  it("el aceptado queda discípulo externo con la citación a la sede (novel-cult-sect-join-member)", () => {
+    const life = Life.create(3, content, { cultivation: true });
+    const w = life.world;
+    const org = w.truth.ids(SECT)[0];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !sect) throw new Error("sin secta");
+    const offset = Math.round((w.map.lonDeg / 360) * w.clock.day);
+    const yearDays = Math.round(w.clock.year / w.clock.day);
+    const today = Math.floor((life.now + offset) / w.clock.day) % yearDays;
+    w.truth.set(SECT, org, { ...sect, visitDay: (today + 2) % yearDays });
+    const visit = upcomingVisit(life.now, (today + 2) % yearDays, w.clock, offset);
+    const me = w.truth.get(PERSON, w.player);
+    const talent = w.truth.get(TALENT, w.player);
+    if (!me || !talent) throw new Error("sin personaje");
+    w.scheduler.advanceTo(visit.start - 3600);
+    // Doce años, en la plaza, con una raíz de fuego que la piedra no puede no ver.
+    w.truth.set(PERSON, w.player, { ...me, born: life.now - 12 * w.clock.year });
+    w.truth.set(TALENT, w.player, {
+      ...talent,
+      innate: { ...talent.innate, spirit_root: 3.5, root_fire: 2 },
+    });
+    const at = w.truth.get(LOCATION, w.player);
+    if (!at) throw new Error("sin lugar");
+    w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    const before = life.now;
+    w.scheduler.advanceTo(visit.start + 3 * 3600);
+
+    expect(w.truth.get(SECT_TRIAL, w.player)?.accepted).toBe(true);
+    const member = w.truth.get(SECT_MEMBER, w.player);
+    expect(member).toMatchObject({ org, rank: "outer", trialYear: visit.year });
+    expect(member?.reportBy).toBe(visit.end + SECT_REPORT_DAYS * w.clock.day);
+    const joined = w.log
+      .all()
+      .filter((e) => e.kind === SECT_JOINED_EVENT && e.actors[0] === w.player);
+    expect(joined).toHaveLength(1);
+    expect(joined[0]?.causes).toContainEqual({
+      kind: "state",
+      entity: w.player,
+      key: SECT_TRIAL.name,
+    });
+    // La citación: el rumbo y las jornadas de la verdad, sin dudas.
+    const lore = w.truth.get(SECT_LORE, w.player);
+    expect(lore).toMatchObject({
+      org,
+      seat: sect.seatPlace,
+      bearing: compassOf(sect.seat.bearingDeg),
+      confidence: 1,
+    });
+    expect(lore?.visitAt).toBe(visit.start);
+    const cues = playerView(w, [], { heardSince: before }).self.cues;
+    expect(cues).toContain("trial_accepted");
+    expect(cues).toContain("sect_joined");
+
+    // Todo aceptado es miembro y nadie se suma dos veces.
+    for (const e of w.log.all().filter((x) => x.kind === SECT_TRIAL_EVENT)) {
+      const accepted = (e.data as { accepted?: boolean }).accepted === true;
+      expect(w.truth.get(SECT_MEMBER, e.actors[0] as never) !== undefined).toBe(accepted);
+    }
+    w.scheduler.advanceTo(visit.end + 3600);
+    const all = w.log
+      .all()
+      .filter((e) => e.kind === SECT_JOINED_EVENT)
+      .map((e) => e.actors[0]);
+    expect(new Set(all).size).toBe(all.length);
   });
 });
