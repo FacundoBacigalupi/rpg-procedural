@@ -165,6 +165,7 @@ import {
   renderNotes,
   renderPeople,
   renderRecap,
+  renderResume,
   renderRoutineRules,
   renderStatus,
   renderSuggestion,
@@ -553,9 +554,18 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   };
   const intro = await tell(null, life.now);
   const openingPeople = present;
-  if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
-  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
-  const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
+  const lastRead = store.narrations(1)[0]?.text;
+  if (lastRead === undefined) store.appendNarration(life.now, intro);
+  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12, novel-narr-recap):
+  // lo último leído, lo que recuerda y lo que se propone.
+  const back =
+    notices[0]?.startsWith("Seguís") === true
+      ? renderResume(
+          lastRead,
+          renderRecap(recapOf(life.world)),
+          goals.filter((g) => g.status === "active").map((g) => g.text),
+        )
+      : "";
   const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now, life.world.map.lonDeg)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
