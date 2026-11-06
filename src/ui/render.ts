@@ -679,6 +679,34 @@ export function renderGoals(
   ].join("\n");
 }
 
+/** Hasta cuántos caracteres del último pasaje leído se repiten al volver. */
+export const RESUME_READ_CHARS = 400;
+
+/**
+ * Al retomar una vida (novel-narr-recap, narration §6): lo último que se leyó (solo texto ya
+ * mostrado, sin rearmar nada desde la verdad), el recuento de recuerdos y las metas activas.
+ */
+export function renderResume(
+  lastRead: string | undefined,
+  recap: string,
+  activeGoals: readonly string[],
+): string {
+  const parts: string[] = [];
+  const paragraphs = (lastRead ?? "")
+    .split(/\n\s*\n/u)
+    .map((p) => p.trim())
+    .filter((p) => p !== "" && !p.startsWith(CHAPTER_MARK));
+  const last = paragraphs[paragraphs.length - 1];
+  if (last !== undefined) {
+    const cut =
+      last.length > RESUME_READ_CHARS ? `…${last.slice(-RESUME_READ_CHARS).trimStart()}` : last;
+    parts.push(`Donde lo dejaste: ${cut}`);
+  }
+  if (recap !== "") parts.push(recap);
+  if (activeGoals.length > 0) parts.push(`Lo que te proponés: ${activeGoals.join("; ")}.`);
+  return parts.join("\n");
+}
+
 export function renderJournal(
   entries: readonly { tick: Tick; text: string }[],
   lonDeg = 0,
