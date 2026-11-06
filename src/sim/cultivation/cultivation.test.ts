@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, Rng } from "../../core/index.ts";
 import type { Trait } from "../family/index.ts";
+import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absorb.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
+import type { PlaceQi } from "./meditation.ts";
 import { aptitudeOf, talentOf } from "./talent.ts";
 
 const talents = JSON.parse(readFileSync("content/talents/human.json", "utf8")) as Trait[];
@@ -87,5 +89,47 @@ describe("el talento (novel-cult-law)", () => {
     const share = (xs: ReturnType<typeof kids>) =>
       xs.filter((a) => a.roots.length > 0).length / xs.length;
     expect(share(kids(strong))).toBeGreaterThan(share(kids(weak)) + 0.1);
+  });
+});
+
+describe("absorber (novel-cult-absorb)", () => {
+  const place: PlaceQi = {
+    cell: 1,
+    level: 1000,
+    reference: 1000,
+    regenPerYear: 100,
+    elements: { fire: 800, water: 200 },
+  };
+  const apt = (element: string) => ({
+    roots: [{ element, affinity: 1 }],
+    rootQuality: 0.8,
+    meridians: 0.5,
+    comprehension: 0.5,
+  });
+
+  it("la raíz que se parece al qi del lugar junta más; sin raíz, nada", () => {
+    expect(rootMatch(apt("fire"), place)).toBe(1);
+    expect(rootMatch(apt("water"), place)).toBeCloseTo(0.4);
+    expect(rootMatch({ ...apt("fire"), roots: [] }, place)).toBe(0);
+    const fire = absorbWant(apt("fire"), 4, 1, 1, rootMatch(apt("fire"), place));
+    const water = absorbWant(apt("water"), 4, 1, 1, rootMatch(apt("water"), place));
+    expect(fire).toBeGreaterThan(water);
+    expect(absorbWant({ ...apt("fire"), roots: [] }, 4, 1, 1, 1)).toBe(0);
+  });
+
+  it("lo que entra lo acotan la celda y el recipiente", () => {
+    expect(absorbDraw(50, place, 0, 0, 100)).toBe(50);
+    expect(absorbDraw(50, place, 0, 80, 100)).toBe(20);
+    expect(absorbDraw(50, place, 990, 0, 100)).toBe(10);
+    expect(absorbDraw(50, place, 0, 100, 100)).toBe(0);
+  });
+
+  it("la regeneración repone el débito sin pasarse; la pureza es la mezcla", () => {
+    const t = { taken: 60, drawn: 60, at: 0 };
+    expect(regrown(t, place, 100, 1000).taken).toBe(50);
+    expect(regrown(t, place, 100_000, 1000).taken).toBe(0);
+    expect(regrown(t, place, 100_000, 1000).drawn).toBe(60);
+    expect(mixedPurity(10, 1, 10, 0)).toBe(0.5);
+    expect(mixedPurity(0, 0, 5, 0.7)).toBe(0.7);
   });
 });

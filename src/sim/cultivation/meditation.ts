@@ -19,6 +19,10 @@ export interface PlaceQi {
   readonly level: number;
   /** La media del planeta: un lugar común vale 1. */
   readonly reference: number;
+  /** Lo que nace por año en la celda (`planet.essence.regen`): repone lo absorbido. */
+  readonly regenPerYear: number;
+  /** De qué elementos está hecho el qi de la celda (`cellElements`, suma `level`). */
+  readonly elements: Readonly<Record<string, number>>;
 }
 
 export const PLACE_QI = table<PlaceQi>("cultivation.place_qi");
@@ -31,6 +35,10 @@ export interface CultivationState {
   readonly hours: number;
   /** Cuándo lo sintió por primera vez y en qué meditación (`action.meditate`). */
   readonly sensed?: { readonly at: Tick; readonly event: EventId };
+  /** Qi en el recipiente (novel-cult-absorb): salido de la celda, conservado. */
+  readonly qi?: number;
+  /** Pureza del qi del recipiente, 0-1: cuánto se parece a la raíz. */
+  readonly purity?: number;
 }
 
 export const CULTIVATION_STATE = table<CultivationState>("cultivation.state");

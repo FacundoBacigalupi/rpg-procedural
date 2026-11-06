@@ -16,6 +16,7 @@ import {
 } from "../../core/index.ts";
 import { PERSON, type Trait } from "../family/index.ts";
 import { ENTITY, type WorldTruth } from "../world/index.ts";
+import { QI_TAKEN } from "./absorb.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
 import { PLACE_QI, type PlaceQi } from "./meditation.ts";
 import { TALENT, type TalentRecord, talentOf } from "./talent.ts";
@@ -62,7 +63,10 @@ export function seedCultivation(
   });
   truth.set(ENTITY, plane, { id: plane, originEventId: event, createdAt: o.now });
   truth.set(CULTIVATION_LAW, plane, law);
-  if (o.qi) truth.set(PLACE_QI, plane, o.qi);
+  if (o.qi) {
+    truth.set(PLACE_QI, plane, o.qi);
+    truth.set(QI_TAKEN, plane, { taken: 0, drawn: 0, at: o.now });
+  }
   const people = truth
     .ids(PERSON)
     .map((id) => id as AgentId)

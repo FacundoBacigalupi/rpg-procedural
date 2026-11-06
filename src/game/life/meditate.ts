@@ -3,9 +3,17 @@
 // primera vez que cruza el umbral nace `cultivation.sensed_qi`, causado por esa meditación y por el
 // talento. Sin raíz la sensibilidad no se mueve y solo quedan las horas: se narra que no pasa nada.
 // Solo con el cultivo encendido (la ley en la verdad).
+//
+// Absorber (novel-cult-absorb): quien ya lo sentía antes de esta meditación saca qi de la celda de la
+// aldea hacia su recipiente (`absorbDraw`: lo pide el cuerpo, lo acota la celda y la capacidad del
+// primer umbral), con la pureza de cuánto se parece a su raíz; la celda lo anota en `QI_TAKEN` (en
+// la fila del plano, repuesto por su regeneración) y cada toma deja `cultivation.absorbed`.
 
 import type { AgentId, Event, EventId } from "../../core/index.ts";
 import {
+  ABSORBED_EVENT,
+  absorbDraw,
+  absorbWant,
   aptitudeOf,
   BODY_STATE,
   type Body,
@@ -15,15 +23,20 @@ import {
   type CultivationState,
   type EventDraft,
   meditationGain,
+  mixedPurity,
   needsFrom,
   PLACE_QI,
   type ProcessDef,
+  QI_TAKEN,
   qiFactor,
+  regrown,
+  rootMatch,
   SENSE_THRESHOLD,
   SENSED_QI_EVENT,
   type StateChange,
   setComponent,
   TALENT,
+  vesselCapacity,
 } from "../../sim/index.ts";
 
 export const MEDITATE_PROCESS = "life.cultivation.meditate";
@@ -48,7 +61,11 @@ function calmOf(plans: ReadonlyMap<string, BodyPlanDef>, b: Body | undefined): n
   return Math.max(0, 1 - (n.pain ?? 0) - 0.3 * distraction);
 }
 
-export function meditateProcess(o: { readonly bodyPlans: readonly BodyPlanDef[] }): ProcessDef {
+export function meditateProcess(o: {
+  readonly bodyPlans: readonly BodyPlanDef[];
+  /** Ticks por año, para la regeneración de la celda. */
+  readonly yearTicks: number;
+}): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   return {
     id: MEDITATE_PROCESS,
@@ -63,13 +80,18 @@ export function meditateProcess(o: { readonly bodyPlans: readonly BodyPlanDef[] 
       TALENT.name,
       BODY_STATE.name,
       CULTIVATION_STATE.name,
+      QI_TAKEN.name,
     ],
-    writes: [CULTIVATION_STATE.name],
+    writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
     run(ctx) {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
       const law = plane ? ctx.truth.get(CULTIVATION_LAW, plane) : undefined;
       if (!plane || !law) return {};
-      const factor = qiFactor(ctx.truth.get(PLACE_QI, plane));
+      const place = ctx.truth.get(PLACE_QI, plane);
+      const factor = qiFactor(place);
+      const capacity = vesselCapacity(law);
+      const takenRow = ctx.truth.get(QI_TAKEN, plane);
+      let taken = place && takenRow ? regrown(takenRow, place, ctx.now, o.yearTicks) : undefined;
       const rows = new Map<AgentId, CultivationState>();
       const events: EventDraft[] = [];
       for (const e of ctx.recent) {
@@ -80,17 +102,44 @@ export function meditateProcess(o: { readonly bodyPlans: readonly BodyPlanDef[] 
         const apt = aptitudeOf(law, talent.innate);
         const before = rows.get(m.who) ??
           ctx.truth.get(CULTIVATION_STATE, m.who) ?? { sensitivity: 0, hours: 0 };
-        const gain = meditationGain(
-          apt,
-          m.hours,
-          calmOf(plans, ctx.truth.get(BODY_STATE, m.who)),
-          factor,
-        );
+        const calm = calmOf(plans, ctx.truth.get(BODY_STATE, m.who));
+        const gain = meditationGain(apt, m.hours, calm, factor);
         let next: CultivationState = {
           ...before,
           sensitivity: round4(before.sensitivity + gain),
           hours: round4(before.hours + m.hours),
         };
+        if (before.sensed && place && taken) {
+          const match = rootMatch(apt, place);
+          const qi = before.qi ?? 0;
+          const drawn = absorbDraw(
+            absorbWant(apt, m.hours, calm, factor, match),
+            place,
+            taken.taken,
+            qi,
+            capacity,
+          );
+          const purity = mixedPurity(qi, before.purity ?? 0, drawn, match);
+          next = { ...next, qi: round4(qi + drawn), purity };
+          if (drawn > 0) {
+            taken = {
+              ...taken,
+              taken: round4(taken.taken + drawn),
+              drawn: round4(taken.drawn + drawn),
+            };
+          }
+          events.push({
+            kind: ABSORBED_EVENT,
+            actors: [m.who],
+            place: e.place,
+            data: { drawn, qi: next.qi, capacity, match, purity, cell: place.cell },
+            emissions: {},
+            causes: [
+              { kind: "event", event: e.id },
+              { kind: "state", entity: plane, key: PLACE_QI.name },
+            ],
+          });
+        }
         if (!before.sensed && next.sensitivity >= SENSE_THRESHOLD) {
           // La fila guarda la meditación que lo dio; el evento nuevo la nombra como causa.
           next = { ...next, sensed: { at: e.tick, event: e.id as EventId } };
@@ -111,6 +160,9 @@ export function meditateProcess(o: { readonly bodyPlans: readonly BodyPlanDef[] 
       const changes: StateChange[] = [...rows].map(([id, row]) =>
         setComponent(CULTIVATION_STATE, id, row),
       );
+      if (taken && taken !== takenRow && changes.length > 0) {
+        changes.push(setComponent(QI_TAKEN, plane, taken));
+      }
       return changes.length === 0 ? {} : { changes, events };
     },
   };

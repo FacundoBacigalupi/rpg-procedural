@@ -43,6 +43,7 @@ import {
   type CultureDef,
   type CurdRule,
   carcassUnits,
+  cellElements,
   DEBRIS_SINK,
   DEMOGRAPHY,
   DIETS,
@@ -95,6 +96,7 @@ import {
   PLACE,
   PLANS,
   type PlaceFeature,
+  type PlaceQi,
   type PlaceToName,
   PRESSURE_CURVES,
   pickTrajectory,
@@ -851,6 +853,23 @@ export function cultivationParts(
 function elementSystemOf(content: Content): { id: string; elements: string[] } {
   const s = required(content.get(ELEMENT_SYSTEMS, "five_phases"), "elements five_phases");
   return { id: s.id, elements: s.elements.map((e) => e.id) };
+}
+
+/**
+ * El qi de la celda de la aldea, fijado al sembrar el cultivo (al retomar no hay planeta): su nivel,
+ * la media del planeta, lo que nace por año y de qué elementos está hecho.
+ */
+function placeQiOf(planet: Planet, cell: number, content: Content): PlaceQi {
+  const e = planet.essence;
+  const system = required(content.get(ELEMENT_SYSTEMS, "five_phases"), "elements five_phases");
+  const vector = cellElements(e, cell, system);
+  return {
+    cell,
+    level: e.level[cell] ?? 0,
+    reference: e.budget / e.level.length,
+    regenPerYear: e.regen[cell] ?? 0,
+    elements: Object.fromEntries(system.elements.map((x, i) => [x.id, vector[i] ?? 0])),
+  };
 }
 
 /** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
@@ -2059,11 +2078,7 @@ export function createLife(
       place: terrain.village,
       elementSystem: elementSystemOf(content),
       talents: content.all(TALENTS),
-      qi: {
-        cell: site.cell,
-        level: terrain.planet.essence.level[site.cell] ?? 0,
-        reference: terrain.planet.essence.budget / terrain.planet.essence.level.length,
-      },
+      qi: placeQiOf(terrain.planet, site.cell, content),
     });
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;

@@ -14,6 +14,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ABSORBED_EVENT,
   ATTENTION,
   attireLook,
   BELIEFS,
@@ -506,13 +507,40 @@ function thermalBlackout(w: LifeWorld, since: Tick): boolean {
 
 /** Si desde `since` le pasó al personaje un evento que cumple `pred` (del más nuevo hacia atrás). */
 function playerEventSince(w: LifeWorld, since: Tick, pred: (e: Event) => boolean): boolean {
+  return lastPlayerEventSince(w, since, pred) !== undefined;
+}
+
+/** El último evento del personaje desde `since` que cumple `pred`. */
+function lastPlayerEventSince(
+  w: LifeWorld,
+  since: Tick,
+  pred: (e: Event) => boolean,
+): Event | undefined {
   const events = w.log.all();
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
     if (!e || e.tick < since) break;
-    if (e.actors[0] === w.player && pred(e)) return true;
+    if (e.actors[0] === w.player && pred(e)) return e;
   }
-  return false;
+  return undefined;
+}
+
+/** Desde qué fracción del recipiente se siente la presión, y desde qué parecido el qi no se resiste. */
+const QI_PRESSURE_FILL = 0.8;
+const QI_RESIST_MATCH = 0.3;
+
+/**
+ * Cómo siente el cuerpo la última absorción (novel-cult-absorb), sin números: lleno si ya no entra
+ * nada, presión cerca del tope, el qi que se resiste si se parece poco a la raíz, y si no, que entra.
+ */
+function absorbCue(e: Event): SelfCue {
+  const d = (e.data ?? {}) as { drawn?: number; qi?: number; capacity?: number; match?: number };
+  const capacity = d.capacity ?? 0;
+  const qi = d.qi ?? 0;
+  if (capacity > 0 && qi >= capacity) return "qi_full";
+  if (capacity > 0 && qi >= QI_PRESSURE_FILL * capacity) return "qi_pressure";
+  if ((d.match ?? 1) < QI_RESIST_MATCH) return "qi_resists";
+  return "qi_flows";
 }
 
 export function playerView(
@@ -613,6 +641,11 @@ export function playerView(
     playerEventSince(w, options.heardSince, (e) => e.kind === SENSED_QI_EVENT)
   )
     cues.add("sensed_qi");
+  const absorbed =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === ABSORBED_EVENT);
+  if (absorbed) cues.add(absorbCue(absorbed));
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

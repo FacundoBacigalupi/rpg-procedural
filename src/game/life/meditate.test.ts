@@ -3,11 +3,15 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, HOUR, loadContent } from "../../core/index.ts";
 import {
+  ABSORBED_EVENT,
   type ActionPlan,
   BODY_STATE,
+  CULTIVATION_LAW,
   CULTIVATION_STATE,
+  QI_TAKEN,
   SENSED_QI_EVENT,
   TALENT,
+  vesselCapacity,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -44,7 +48,7 @@ function lifeWith(content: ReturnType<typeof loadContent>, rooted: boolean): Lif
   const t = w.truth.get(TALENT, me);
   if (!t) throw new Error("sin talento");
   const innate = rooted
-    ? { ...t.innate, spirit_root: 3, root_fire: 3, root_wood: -1, comprehension: 0.7 }
+    ? { ...t.innate, spirit_root: 3, root_wood: 3, root_fire: -1, comprehension: 0.7 }
     : { ...t.innate, spirit_root: -3 };
   w.truth.set(TALENT, me, { ...t, innate });
   const body = w.truth.get(BODY_STATE, me);
@@ -89,6 +93,39 @@ describe("meditar (novel-cult-meditate)", () => {
     expect(state?.sensitivity).toBe(0);
     expect(w.log.all().some((e) => e.kind === SENSED_QI_EVENT)).toBe(false);
   }, 240_000);
+
+  it("ya sintiéndolo, meditar llena el recipiente con qi de la celda, hasta la capacidad", () => {
+    const life = lifeWith(content, true);
+    const w = life.world;
+    const me = life.player;
+    let seq = 1;
+    for (; seq <= 8 && !w.truth.get(CULTIVATION_STATE, me)?.sensed; seq++) {
+      life.turn(meditate(me, 4), seq);
+    }
+    expect(w.truth.get(CULTIVATION_STATE, me)?.sensed).toBeDefined();
+    const plane = w.truth.ids(CULTIVATION_LAW)[0];
+    const law = plane ? w.truth.get(CULTIVATION_LAW, plane) : undefined;
+    if (!plane || !law) throw new Error("sin ley");
+    const capacity = vesselCapacity(law);
+    const from = life.now;
+    for (let i = 0; i < 12 && (w.truth.get(CULTIVATION_STATE, me)?.qi ?? 0) < capacity; i++) {
+      life.turn(meditate(me, 12), seq++);
+    }
+    const state = w.truth.get(CULTIVATION_STATE, me);
+    expect(state?.qi ?? 0).toBeGreaterThan(0);
+    expect(state?.qi ?? 0).toBeLessThanOrEqual(capacity);
+    expect(state?.purity ?? 0).toBeGreaterThan(0);
+    // Conservación: todo lo que hay en los recipientes salió de la celda.
+    const vessels = w.truth
+      .ids(CULTIVATION_STATE)
+      .reduce((s, id) => s + (w.truth.get(CULTIVATION_STATE, id)?.qi ?? 0), 0);
+    expect(w.truth.get(QI_TAKEN, plane)?.drawn).toBeCloseTo(vessels, 3);
+    const absorbed = w.log.all().filter((e) => e.kind === ABSORBED_EVENT && e.actors[0] === me);
+    expect(absorbed.length).toBeGreaterThan(0);
+    expect(absorbed[0]?.causes.some((c) => c.kind === "event")).toBe(true);
+    const cues = playerView(w, [], { heardSince: from }).self.cues;
+    expect(cues.some((c) => c.startsWith("qi_"))).toBe(true);
+  }, 480_000);
 
   it("es determinista: dos corridas iguales dan el mismo hash", () => {
     const run = () => {
