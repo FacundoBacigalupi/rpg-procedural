@@ -775,6 +775,19 @@
     }
   },
   {
+    "id": "breakthrough",
+    "text": "intento romper el umbral",
+    "scene": "Estás sentado en tu estera, de madrugada.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "breakthrough",
+        "args": []
+      }
+    }
+  },
+  {
     "id": "meditate-hours",
     "text": "me siento a sentir el qi un par de horas",
     "scene": "Estás en el patio de tu casa, a la tarde.",

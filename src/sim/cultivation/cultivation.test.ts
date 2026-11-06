@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, Rng } from "../../core/index.ts";
 import type { Trait } from "../family/index.ts";
 import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absorb.ts";
+import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
 import { aptitudeOf, talentOf } from "./talent.ts";
@@ -131,5 +132,50 @@ describe("absorber (novel-cult-absorb)", () => {
     expect(regrown(t, place, 100_000, 1000).drawn).toBe(60);
     expect(mixedPurity(10, 1, 10, 0)).toBe(0.5);
     expect(mixedPurity(0, 0, 5, 0.7)).toBe(0.7);
+  });
+});
+
+describe("la ruptura (novel-cult-break)", () => {
+  const apt = {
+    roots: [{ element: "wood", affinity: 1 }],
+    rootQuality: 0.8,
+    meridians: 0.5,
+    comprehension: 0.5,
+  };
+  const full = { qi: 100, capacity: 100, purity: 1, calm: 1, meridianDamage: 0, foundation: 0 };
+
+  it("la preparación sube con saturación, pureza y calma; los meridianos dañados la bajan", () => {
+    const p = breakPreparation(apt, full);
+    expect(breakPreparation(apt, { ...full, qi: 50 })).toBeLessThan(p);
+    expect(breakPreparation(apt, { ...full, purity: 0.2 })).toBeLessThan(p);
+    expect(breakPreparation(apt, { ...full, calm: 0.5 })).toBeLessThan(p);
+    expect(breakPreparation(apt, { ...full, meridianDamage: 0.5 })).toBeLessThan(p);
+    expect(breakPreparation({ ...apt, roots: [] }, full)).toBe(0);
+  });
+
+  it("la probabilidad es monótona en la preparación y en el cuello de botella", () => {
+    const xs = [0, 0.2, 0.4, 0.6, 0.8, 1].map((x) => breakChance(x, 0.3));
+    for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThanOrEqual(xs[i - 1] ?? 0);
+    expect(breakChance(0.5, 0.2)).toBeGreaterThan(breakChance(0.5, 0.6));
+  });
+
+  it("éxito con calidad por el margen; mal preparado, más retroceso y más duro", () => {
+    const ok = breakOutcome(0.9, 0.3, 0, 0);
+    expect(ok.kind).toBe("success");
+    if (ok.kind === "success") expect(ok.quality).toBeGreaterThan(0.5);
+    const backlashes = (prep: number) => {
+      let n = 0;
+      for (let i = 0; i < 100; i++) {
+        if (breakOutcome(prep, 0.6, 0.999, i / 100).kind === "backlash") n++;
+      }
+      return n;
+    };
+    expect(backlashes(0.1)).toBeGreaterThan(backlashes(0.5));
+    const hard = breakOutcome(0, 0.6, 0.999, 0);
+    const soft = breakOutcome(0.55, 0.6, 0.999, 0);
+    if (hard.kind === "backlash" && soft.kind === "backlash") {
+      expect(hard.lostShare).toBeGreaterThan(soft.lostShare);
+    } else throw new Error("se esperaban dos retrocesos");
+    expect(breakOutcome(0.55, 0.6, 0.999, 0.99).kind).toBe("stalled");
   });
 });
