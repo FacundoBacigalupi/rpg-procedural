@@ -2445,7 +2445,9 @@ export function lifeWorld(
         observeProcess({ clock: parts.clock, map: parts.map }),
         ponderProcess(),
         resolveGoalProcess(parts.goalSketches ?? []),
-        ...(parts.cultivation ? [meditateProcess({ bodyPlans: parts.plans })] : []),
+        ...(parts.cultivation
+          ? [meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year })]
+          : []),
         divinersProcess({
           methods: parts.divinations,
           concerns: parts.concerns,

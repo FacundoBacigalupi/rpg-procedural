@@ -45,7 +45,15 @@ export type SelfCue =
   /** Perdió el conocimiento por el frío o el calor y volvió en sí (`body.collapsed` por causa térmica). */
   | "blacked_out"
   /** Meditando sintió el qi por primera vez (`cultivation.sensed_qi`, novel-cult-meditate). */
-  | "sensed_qi";
+  | "sensed_qi"
+  /** Meditando, el qi entra al cuerpo (`cultivation.absorbed`, novel-cult-absorb). */
+  | "qi_flows"
+  /** El qi se resiste: se parece poco a su raíz. */
+  | "qi_resists"
+  /** El recipiente aprieta: cerca del tope. */
+  | "qi_pressure"
+  /** Lleno: no entra más. */
+  | "qi_full";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
