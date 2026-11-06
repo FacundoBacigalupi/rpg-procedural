@@ -31,7 +31,7 @@ import {
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const path = join(dir, e.name);
-    if (e.isDirectory()) return e.name === "llm" ? [] : sources(path, root);
+    if (e.isDirectory()) return e.name === "llm" || e.name === "goals" ? [] : sources(path, root);
     if (!e.name.endsWith(".json")) return [];
     const kind = relative(root, dir).split("\\").join("/");
     return [{ kind, file: path, data: JSON.parse(readFileSync(path, "utf8")) }];

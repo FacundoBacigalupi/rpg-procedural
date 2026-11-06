@@ -81,9 +81,10 @@ import {
   yieldFactor,
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
-import { type Decision, NPC_DECISION } from "./decide.ts";
+import { type Decision, NPC_DECISION, NPC_GOALS } from "./decide.ts";
 import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
+import { type GoalHour, goalHour } from "./goal-day.ts";
 import {
   fieldBoost,
   fieldIrrigationMm,
@@ -140,6 +141,18 @@ export function onlyWaits(plan: { readonly root: Parameters<typeof planLeaves>[0
 const MAX_DRINK_L = 1.5;
 
 /** Litros del odre con que el jugador sale a la espera (como `JourneyDrinkOptions.carryLiters` de los viajeros). */
+/**
+ * Si el plan en curso es un salto de tiempo delegado (novel-montage-live, player-loop §5): fuente
+ * `routine` y solo esperas. Mientras dura, el personaje vive la rutina del hogar como un NPC; lo
+ * arma solo la sesión cuando el jugador pide pasar días («paso el invierno»), nunca un NPC.
+ */
+export function delegatedPlan(state: {
+  readonly done: boolean;
+  readonly plan: { readonly source: string; readonly root: Parameters<typeof planLeaves>[0] };
+}): boolean {
+  return !state.done && state.plan.source === "routine" && onlyWaits(state.plan);
+}
+
 export const SKIN_CAPACITY_L = 3;
 
 /**
@@ -272,6 +285,9 @@ export interface FirewoodRoutine {
   readonly perHourG: number;
 }
 
+/** Una hora de un día delegado dada a una meta (novel-goals-truth-delegate). */
+export const GOAL_HOUR_EVENT = "routine.for_goal";
+
 /** Event de quien junta leña para la casa en la rutina. */
 export const GATHERED_WOOD_EVENT = "routine.gathered_wood";
 
@@ -401,6 +417,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PLAYER.name,
       PLAN_STATE.name,
       NPC_DECISION.name,
+      NPC_GOALS.name,
       SOIL.name,
       ENTITY.name,
       PERSON.name,
@@ -432,17 +449,21 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const truth = ctx.truth;
       // El personaje decide él; quien tiene un plan en curso lo sigue.
       const plan = truth.get(PLAN_STATE, me);
+      // El jugador que delegó sus días (novel-montage-live: un plan `routine` de solo esperas) vive
+      // la rutina entera como cualquiera: duerme, trabaja el campo, come y bebe.
+      const delegated = truth.has(PLAYER, me) && plan !== undefined && delegatedPlan(plan);
       // Quien espera (el jugador con un plan de solo `wait`) solo recibe lo chico: comer y beber.
       const tendOnly =
+        !delegated &&
         o.waitTend === true &&
         truth.has(PLAYER, me) &&
         plan !== undefined &&
         !plan.done &&
         onlyWaits(plan.plan);
-      if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly) return {};
+      if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly && !delegated) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};
-      if (plan && !plan.done && !tendOnly) return {};
+      if (plan && !plan.done && !tendOnly && !delegated) return {};
       const person = truth.get(PERSON, me);
       const body = truth.get(BODY_STATE, me);
       if (!person || !body || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
@@ -477,15 +498,43 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (tendOnly && !ROUTINE.meals.includes(hour) && !ROUTINE.drinkAlso.includes(hour)) {
         return {};
       }
-      const want: ReturnType<typeof planFor> = tendOnly
-        ? { activity: body.activity, at: "home", replaced: false }
-        : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
-            unwell,
-            larderLow,
-            hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
-            canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
-            canMove: o.npcMove === true,
-          });
+      // Los días delegados sirven a las metas que se propuso (novel-goals-truth-delegate): madrugar
+      // al campo o ir a la tarde a ver a la persona; agotado o dolorido manda el descanso.
+      const forGoal: GoalHour | undefined = delegated
+        ? goalHour(
+            truth.get(NPC_GOALS, me)?.items ?? [],
+            hour,
+            {
+              ageYears: age,
+              workAge: ROUTINE.workAge,
+              rested: !unwell,
+              able: (needs.pain ?? 0) < UNWELL_PAIN,
+            },
+            (w) => {
+              const b = truth.get(BODY_STATE, w);
+              return (
+                truth.get(PERSON, w) !== undefined &&
+                truth.get(ENTITY, w)?.endedAt === undefined &&
+                b !== undefined &&
+                !b.death
+              );
+            },
+          )
+        : undefined;
+      const want: ReturnType<typeof planFor> = forGoal
+        ? forGoal.kind === "work"
+          ? { activity: "moderate", at: "fields", replaced: true }
+          : { activity: "light", at: "home", replaced: true }
+        : tendOnly
+          ? { activity: body.activity, at: "home", replaced: false }
+          : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
+              unwell,
+              larderLow,
+              hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
+              canBoil:
+                o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
+              canMove: o.npcMove === true,
+            });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings = [];
@@ -505,6 +554,26 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (want.move && home) {
         const hexes = truth.get(PLACE, want.move as never)?.hexes ?? [];
         if (hexes.length > 0) there = { hex: nearestHex(o.map, here?.hex ?? home.hex, hexes) };
+      }
+      if (forGoal?.kind === "visit") {
+        const theirs = truth.get(PERSON, forGoal.whom)?.household;
+        const house = theirs && o.spaces.spaces.find((s) => s.key === houseKey(theirs));
+        if (house) there = { hex: house.hex, space: house.key };
+      }
+      if (forGoal) {
+        // La hora queda atada a la meta (regla 5): la crónica sabe cuánto le dio.
+        events.push({
+          kind: GOAL_HOUR_EVENT,
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: {
+            goal: forGoal.goal,
+            what: forGoal.kind,
+            ...(forGoal.kind === "visit" ? { whom: forGoal.whom } : {}),
+          },
+          emissions: {},
+          causes: [{ kind: "state", entity: me, key: "goals" }],
+        });
       }
       // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
       // adentro no se sale hasta que la arreglen (settlements �7).

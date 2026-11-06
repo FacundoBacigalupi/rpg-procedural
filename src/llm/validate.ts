@@ -233,7 +233,14 @@ export function validateNarration(
     view.tastes.length +
     view.dues.length +
     view.readings.length +
-    (view.stretch !== undefined ? view.stretch.did.length + 2 : 0);
+    (view.stretch !== undefined
+      ? view.stretch.did.length +
+        2 +
+        (view.stretch.kept?.length ?? 0) +
+        (view.stretch.meanwhile?.length ?? 0) +
+        (view.stretch.season !== undefined ? 1 : 0) +
+        (view.stretch.goals !== undefined && view.stretch.goals.length > 0 ? 1 : 0)
+      : 0);
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");
   if (n > max) problems.push(`the narration is too long (${n} characters, at most ${max})`);

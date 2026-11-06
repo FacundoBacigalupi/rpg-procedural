@@ -40,6 +40,7 @@ const VERB: Record<Suggestion["kind"], string> = {
   talk: "speak",
   look: "look",
   wait: "wait",
+  goal: "work",
 };
 
 function suggestion(kind: Suggestion["kind"], extra: Partial<Suggestion> = {}): Suggestion {

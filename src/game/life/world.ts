@@ -84,6 +84,7 @@ import {
   type WorldTruth,
   weatherAt,
 } from "../../sim/index.ts";
+import type { GoalSketch } from "../view/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess, type BoilOptions, type FilterOptions } from "./act.ts";
 import { adultGrowthProcess } from "./adultGrowth.ts";
@@ -225,6 +226,7 @@ import {
 } from "./rents.ts";
 import { RESERVOIR, type ReservoirHost, reservoirProcess, reservoirSeeds } from "./reservoirs.ts";
 import { type ResidueConfig, residueProcess } from "./residue.ts";
+import { resolveGoalProcess } from "./resolve-goal.ts";
 import { ROUTINE, routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -969,6 +971,8 @@ export interface LifeWorld {
   readonly lineages?: readonly LineageDef[];
   readonly trajectories?: readonly TrajectoryDef[];
   readonly divinations: readonly DivinationMethodDef[];
+  /** Los bosquejos de metas: qué objetivo es lo que alguien se propone (novel-goals-truth-act). */
+  readonly goalSketches?: readonly GoalSketch[];
   readonly concerns: readonly ConcernWords[];
   /** El catálogo de gustos: da nombre a lo que `TASTES_OF` guarda por id (npc-psychology §16). */
   readonly tastes: readonly TasteDef[];
@@ -2436,6 +2440,7 @@ export function lifeWorld(
         }),
         observeProcess({ clock: parts.clock, map: parts.map }),
         ponderProcess(),
+        resolveGoalProcess(parts.goalSketches ?? []),
         divinersProcess({
           methods: parts.divinations,
           concerns: parts.concerns,

@@ -22,6 +22,7 @@ import {
   AMBIENCE,
   aboutPanel,
   aboutTopicText,
+  addGoal,
   ambienceOf,
   beliefViewOf,
   believedConcepts,
@@ -30,10 +31,17 @@ import {
   characterPanel,
   characterVoiceData,
   claimOfText,
+  DEFAULT_ROUTINE_RULES,
   DEFAULT_SUGGESTIONS,
+  DELEGATION_LEVELS,
+  type DelegationLevel,
+  dropGoal,
   type EnvironmentItem,
   type EnvironmentMemory,
   environmentPanel,
+  GOAL_SKETCHES,
+  goalSketches,
+  goalWatch,
   hypothesesPanel,
   inventoryPanel,
   knownEntities,
@@ -46,16 +54,23 @@ import {
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
+  type PlayerGoal,
   panelOptionsOf,
+  parseSkip,
   peoplePanel,
+  playerGoalsOf,
   playerView,
   presenceKey,
   type ResumeAnchor,
+  type RoutineRules,
   recapOf,
   renderChronicle,
   renderEpilogue,
   runEpilogue,
   type Suggestion,
+  sketchOf,
+  skipPlan,
+  skipTicks,
   suggestions,
   type ThoughtInput,
   type TurnReport,
@@ -64,6 +79,9 @@ import {
   topicEntity,
   topicText,
   VERB_WORDS,
+  type WatchedEvent,
+  type WatchOn,
+  type WatchRule,
   WORLD_LEXICON,
   weatherPanel,
   withNarratedWords,
@@ -136,12 +154,15 @@ import {
   renderAbout,
   renderBook,
   renderCharacter,
+  renderGoals,
   renderHypotheses,
   renderInterrupt,
   renderInventory,
   renderJournal,
+  renderNotes,
   renderPeople,
   renderRecap,
+  renderRoutineRules,
   renderStatus,
   renderSuggestion,
   renderThinking,
@@ -174,6 +195,9 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
+  "Para que pase el tiempo viviendo tu rutina: paso el invierno · trabajo el campo un mes · sigo con mi vida hasta la primavera · dejo pasar tres semanas",
+  "Para proponerte algo de tu vida: quiero entrar a una secta · quiero vengar a mi padre · !metas · !abandonar 1 · ya no quiero …",
+  "  qué corta el salto: !delegar mínima|normal|amplia · !avisar mi madre · !anotar nacimientos · !no avisar X · !avisos",
   "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
 
@@ -217,6 +241,46 @@ const MEMORY_META = "narration_memory";
 /** La clave de `meta` con la postura de contenerse (skills §9), fuera del hash y del replay. */
 const HOLD_STANCE_META = "hold_stance";
 
+/**
+ * La clave de `meta` con las reglas de los saltos (player-loop §6-§7): delegación y avisos. Solo
+ * deciden dónde corta un turno; el replay sigue los planes guardados, así que van fuera del hash.
+ */
+const ROUTINE_RULES_META = "routine_rules";
+
+/** La clave de `meta` con las metas del personaje (player-loop §8, novel-goals-set), fuera del hash. */
+const PLAYER_GOALS_META = "player_goals";
+
+/** «!delegar amplia»: las palabras de cada nivel. */
+const DELEGATION_WORDS: Readonly<Record<string, DelegationLevel>> = {
+  minima: "minimal",
+  minimal: "minimal",
+  poca: "minimal",
+  normal: "normal",
+  amplia: "wide",
+  wide: "wide",
+  mucha: "wide",
+};
+
+/** «!avisar nacimientos»: los sucesos que se pueden vigilar, por sus palabras. */
+const WATCH_WORDS: readonly [RegExp, WatchedEvent][] = [
+  [/^(?:los |las )?(?:nacimientos?|nace\b|partos?)/u, "family.birth"],
+  [/^(?:los |las )?(?:muertes?|muere\b|muertos?)/u, "body.died"],
+  [/^(?:los |las )?(?:peleas?|pelea\b|combates?)/u, "combat.fight"],
+];
+
+/** Las reglas guardadas, o las de siempre si no hay (o si el guardado no tiene la forma). */
+function routineRulesOf(raw: unknown): RoutineRules {
+  const r = raw as Partial<RoutineRules> | undefined;
+  if (
+    r === undefined ||
+    r === null ||
+    !DELEGATION_LEVELS.includes(r.delegation as DelegationLevel) ||
+    !Array.isArray(r.watch)
+  )
+    return DEFAULT_ROUTINE_RULES;
+  return { delegation: r.delegation as DelegationLevel, watch: r.watch };
+}
+
 /** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
 const WARN_WEIGHT = 0.5;
 
@@ -244,6 +308,92 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
   // del hash, para retomarla con la misma postura.
   let holdStance = store.getMeta(HOLD_STANCE_META) === true;
+  // Delegación y avisos de los saltos (novel-montage-rules), guardados con la vida.
+  let routineRules = routineRulesOf(store.getMeta(ROUTINE_RULES_META));
+  // Las metas del personaje (novel-goals-set): el panel y el montaje las leen.
+  let goals: PlayerGoal[] = playerGoalsOf(store.getMeta(PLAYER_GOALS_META));
+  const setGoals = (next: PlayerGoal[]) => {
+    goals = next;
+    store.setMeta(PLAYER_GOALS_META, next);
+  };
+  const sketches = options.content.all(GOAL_SKETCHES);
+  /**
+   * Proponerse o dejar una meta es un acto de un minuto (novel-goals-truth-act): `resolve` deja la
+   * meta en la verdad con su evento de origen y el replay la rehace desde el plan. Se juega sin
+   * narrar: lo que se dice es la respuesta de la sesión. Si la persona no se deja nombrar, va sin
+   * ella.
+   */
+  const resolveAct = (goal: PlayerGoal, drop: boolean): void => {
+    const name =
+      goal.target !== undefined
+        ? knownNow().find((k) => k.ref === goal.target)?.names[0]
+        : undefined;
+    const draftOf = (withWhom: boolean): IntentDraft => ({
+      kind: "act",
+      plan: {
+        kind: "do",
+        verb: "resolve",
+        args: [
+          { role: "about", text: goal.text },
+          ...(withWhom && name !== undefined
+            ? [{ role: "whom", ref: { text: name, kind: "person" as const, features: [] } }]
+            : []),
+        ],
+        ...(drop ? { manner: ["drop"] } : {}),
+      },
+    });
+    const planOf = (d: IntentDraft) =>
+      planFromDraft(d, {
+        actor: life.player,
+        source: "player",
+        catalog: life.world.catalog,
+        known: knownNow(),
+        clock: life.world.clock,
+        causes: [{ kind: "state", entity: life.player, key: "intent" }],
+        here: life.world.truth.get(LOCATION, life.player)?.hex,
+      });
+    let made = planOf(draftOf(true));
+    if (made.kind !== "plan" && name !== undefined) made = planOf(draftOf(false));
+    if (made.kind !== "plan") return;
+    const tick = life.now;
+    const seq = store.nextPlanSeq();
+    if (lastSnapshot === undefined || tick - lastSnapshot >= life.world.clock.day) {
+      store.saveSnapshot(life.state());
+      lastSnapshot = tick;
+    }
+    life.turn(made.plan, seq, rulesNow());
+    openSkip = null;
+    store.saveTurn(life.state(), {
+      seq,
+      tick,
+      plan: made.plan,
+      sourceTextHash: sha256(`${drop ? "ya no quiero" : "quiero"} ${goal.text}`),
+    });
+  };
+  const sketchLabel = (id: string) => sketches.find((s) => s.id === id)?.label;
+  const goalText = (id: number) => goals.find((g) => g.id === id)?.text;
+  // Los avisos del próximo salto: los del usuario más los de sus metas (novel-goals-watch); con
+  // «hasta que pase algo» todo corta.
+  let openSkip: "any" | "goal" | null = null;
+  const rulesNow = (): RoutineRules => {
+    const mine =
+      openSkip === "any"
+        ? routineRules.watch.map((r) => ({ ...r, action: "stop" as const }))
+        : routineRules.watch;
+    return {
+      ...routineRules,
+      watch: [
+        ...(openSkip === "goal" ? [] : mine),
+        ...goalWatch(goals, sketches, openSkip !== null),
+      ],
+    };
+  };
+  const setRules = (next: RoutineRules) => {
+    routineRules = next;
+    store.setMeta(ROUTINE_RULES_META, next);
+  };
+  const nameOf = (who: AgentId): string =>
+    callName(life.world.truth.get(PERSON_NAME, who) ?? { language: "", parts: [] }) ?? "alguien";
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
   // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
@@ -304,6 +454,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(options.nickname ? { nickname: true } : {}),
       ...(thinking ? { thinking } : {}),
       ...(report ? { heardSince: report.from } : {}),
+      goals: goalSketches(goals),
       heardTrades: options.content.all(TRADE_RECIPES),
       onLabel: (localId, entity) => keys.set(localId, entity),
       onStranger: (localId, source) => strangers.set(localId, source),
@@ -455,6 +606,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     }
     warned = "";
     attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
+    return runTurn(plan, line);
+  };
+
+  /** Juega un plan ya validado: snapshot, turno, guardado y lo que pasó. */
+  const runTurn = async (plan: ActionPlan, line: string): Promise<Reply> => {
     const tick = life.now;
     const seq = store.nextPlanSeq();
     // El snapshot completo (verdad entera, comprimida y hasheada) es el 75 % del costo de un turno y
@@ -464,13 +620,17 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       store.saveSnapshot(life.state());
       lastSnapshot = tick;
     }
-    const report = life.turn(plan, seq);
+    const report = life.turn(plan, seq, rulesNow());
+    openSkip = null;
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
     recent.push(line.trim());
     if (recent.length > RECENT_INTENTS) recent.shift();
     const told = [
       await tell(report, report.to),
-      ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
+      ...(report.interrupt ? [renderInterrupt(report.interrupt, nameOf, goalText)] : []),
+      ...(report.notes !== undefined && renderNotes(report.notes, nameOf, goalText) !== ""
+        ? [renderNotes(report.notes, nameOf, goalText)]
+        : []),
     ].join("\n");
     store.appendNarration(report.to, told);
     const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
@@ -487,6 +647,33 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
     let draft: IntentDraft | null = parseCommand(line, catalog, parser.words);
+    // «Paso el invierno», «trabajo el campo un mes»: un salto delegado (novel-montage-parse), sin
+    // modelo; la fecha sale del calendario del personaje.
+    const skip = draft?.kind === "meta" ? null : parseSkip(line);
+    if (skip !== null) {
+      if (
+        skip.target.kind === "open" &&
+        skip.target.goal &&
+        goalWatch(goals, sketches).length === 0
+      )
+        return {
+          text: "No tenés una meta de la que pueda llegarte algo. Escribí «quiero …» o «sigo con mi vida hasta la primavera».",
+        };
+      openSkip = skip.target.kind === "open" ? (skip.target.goal ? "goal" : "any") : null;
+      pending = null;
+      warned = "";
+      attended = false;
+      const w = life.world;
+      const wait = w.catalog.verb("wait")?.duration;
+      const ticks = skipTicks(
+        skip.target,
+        w.clock,
+        life.now,
+        w.map.climate.latDeg,
+        wait?.kind === "arg" ? wait.max : undefined,
+      );
+      return runTurn(skipPlan(life.player, ticks), line);
+    }
     if (pending !== null && draft?.kind !== "meta") {
       // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
       const chosen = answerClarify(line, pending.options);
@@ -495,6 +682,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return play(again, first, [...dropped, ...options.filter((o) => o.ref !== chosen.ref)]);
       }
       pending = null;
+    }
+    // «Ya no quiero entrar a la secta»: deja una meta si nombra una de las activas.
+    const giveUp = draft?.kind === "meta" ? null : /^ya no quiero\s+(.+)$/iu.exec(line.trim());
+    if (giveUp) {
+      const out = dropGoal(goals, giveUp[1] as string, sketches);
+      if (out.dropped !== undefined) {
+        setGoals(out.goals);
+        resolveAct(out.dropped, true);
+        return { text: `Lo dejás: ${out.dropped.text}.` };
+      }
     }
     if (draft?.kind !== "meta") {
       const parsed = await parseIntentOrGrammar(
@@ -527,6 +724,62 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return { text: "Vas a pelear con todo lo que tenés." };
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
+      // Las metas del personaje (player-loop §8, novel-goals-set).
+      if (/^metas?$/iu.test(text.trim())) return { text: renderGoals(goals, sketchLabel, nameOf) };
+      const drop = /^(?:abandonar|dejar)(?: la)?(?: meta)?\s+(.+)$/iu.exec(text.trim());
+      if (drop) {
+        const out = dropGoal(goals, drop[1] as string, sketches);
+        if (out.dropped === undefined)
+          return { text: `No tenés esa meta.\n${renderGoals(goals, sketchLabel, nameOf)}` };
+        setGoals(out.goals);
+        resolveAct(out.dropped, true);
+        return { text: `Lo dejás: ${out.dropped.text}.` };
+      }
+      // Delegación y avisos de los saltos (player-loop §6-§7, novel-montage-rules).
+      const plain = text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+      if (/^avisos$/u.test(plain)) return { text: renderRoutineRules(routineRules, nameOf) };
+      const deleg = /^delega(?:r|cion)?\s*(\S*)/u.exec(plain);
+      if (deleg) {
+        const level = DELEGATION_WORDS[deleg[1] ?? ""];
+        if (level === undefined) {
+          return {
+            text: `${renderRoutineRules(routineRules, nameOf)}\nPara cambiarla: !delegar mínima, !delegar normal o !delegar amplia.`,
+          };
+        }
+        setRules({ ...routineRules, delegation: level });
+        return { text: renderRoutineRules(routineRules, nameOf) };
+      }
+      const unwatch = /^no (?:avisar|anotar)(?:me)?\s+(?:si |cuando |de )?(.+)$/u.exec(plain);
+      const watch = /^(avisar|avisame|anotar|anota)\s+(?:si |cuando |de )?(.+)$/u.exec(plain);
+      if (unwatch || watch) {
+        const target = ((unwatch ?? watch)?.at(-1) ?? "").trim();
+        let on: WatchOn | undefined;
+        const event = WATCH_WORDS.find(([re]) => re.test(target))?.[1];
+        if (event !== undefined) on = { kind: "event", event };
+        else if (!(unwatch && /^(?:nada|todo|nadie)$/u.test(target))) {
+          const fold = (n: string) => n.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          const ref = topicEntity(
+            target.replace(/^(?:a |al )?(?:el |la |los |las |mi |mis )?/u, ""),
+            knownNow().map((k) => ({ ref: k.ref, names: k.names.map(fold) })),
+          );
+          if (ref === undefined || !ref.startsWith("agent"))
+            return { text: "No sabés de quién hablás. Por ejemplo: !avisar mi madre." };
+          on = { kind: "person", who: ref as AgentId };
+        }
+        const same = (r: WatchRule) =>
+          on !== undefined && JSON.stringify(r.on) === JSON.stringify(on);
+        const rest = on === undefined ? [] : routineRules.watch.filter((r) => !same(r));
+        const action = watch?.[1]?.startsWith("anot") ? "note" : "stop";
+        setRules({
+          ...routineRules,
+          watch: unwatch || on === undefined ? rest : [...rest, { on, action }],
+        });
+        return { text: renderRoutineRules(routineRules, nameOf) };
+      }
       if (/^personaje/i.test(text)) {
         const panel = renderCharacter(
           characterPanel(life.world, {
@@ -604,6 +857,36 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       }
       return { text: HELP };
     }
+    // «Me propongo ser herrero» llega como el acto `resolve`: es lo mismo que «quiero».
+    if (draft.kind === "act" && draft.plan?.kind === "do" && draft.plan.verb === "resolve") {
+      const about = draft.plan.args.find((a) => a.role === "about");
+      if (about !== undefined && "text" in about) draft = { kind: "goal", text: about.text };
+    }
+    // «Quiero comer»: un deseo de ahora, no de la vida. Si no nombra un bosquejo y se lee como
+    // acción, se juega como acción.
+    if (draft.kind === "goal" && sketchOf(draft.text ?? "", sketches) === undefined) {
+      const now = parseCommand(draft.text ?? "", catalog, parser.words);
+      if (now !== null && (now.kind === "act" || now.kind === "plan")) draft = now;
+    }
+    if (draft.kind === "goal") {
+      const out = addGoal(goals, draft.text ?? line, sketches, knownNow(), life.now);
+      if (out.same) return { text: `Ya te lo habías propuesto: ${out.goal.text}.` };
+      setGoals(out.goals);
+      resolveAct(out.goal, false);
+      const sketch = sketches.find((s) => s.id === out.goal.sketch);
+      const who = out.goal.target !== undefined ? nameOf(out.goal.target) : undefined;
+      const unsure = sketch?.target === "required" && who === undefined;
+      return {
+        text: [
+          `Te lo proponés: ${out.goal.text}.`,
+          ...(sketch !== undefined
+            ? [`Lo vas a tener presente (${sketch.label}${who !== undefined ? `: ${who}` : ""}).`]
+            : []),
+          ...(unsure ? ["Todavía no tenés claro contra quién."] : []),
+          "Lo ves con !metas.",
+        ].join("\n"),
+      };
+    }
     if (draft.kind !== "act" && draft.kind !== "plan") {
       return { text: "Eso todavía no lo entiendo como algo que hace tu personaje." };
     }
@@ -622,10 +905,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     );
   };
 
-  const suggested = (all = false) => suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS);
+  const suggested = (all = false) =>
+    suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS, { goals, sketches });
   const choose = async (id: string): Promise<Reply> => {
     // Se vuelve a armar la lista: si el cuerpo o la hora cambiaron, la opción puede ya no estar.
-    const picked = suggestions(life.world).find((x) => x.id === id);
+    const picked = suggestions(life.world, undefined, { goals, sketches }).find((x) => x.id === id);
     pending = null;
     if (picked === undefined) return { text: "Esa opción ya no está." };
     return play(picked.draft, renderSuggestion(picked));

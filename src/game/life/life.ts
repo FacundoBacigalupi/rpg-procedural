@@ -39,11 +39,19 @@ import {
   resumeParts,
   withDeclaredExternals,
 } from "./create.ts";
-import { alarmingSigns, fixedInterrupt, type Interrupt } from "./interrupts.ts";
+import {
+  alarmingSigns,
+  DEFAULT_ROUTINE_RULES,
+  fixedInterrupt,
+  type Interrupt,
+  type RoutineRules,
+} from "./interrupts.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
 export const MAX_TURN_DAYS = 30;
+/** Tope de un salto de tiempo delegado (novel-montage-live): un año y un día. */
+export const MAX_ROUTINE_DAYS = 366;
 
 /** Lo que se elige antes de empezar y entra al replay como el seed (tooling §3). */
 export interface LifeSetup {
@@ -488,6 +496,8 @@ export interface TurnReport {
   readonly events: readonly Event[];
   /** El personaje ya no está. */
   readonly over: boolean;
+  /** En un salto delegado: lo que pasó sin cortarlo (le hablaron sin pedirle nada), para el montaje. */
+  readonly notes?: readonly Interrupt[];
 }
 
 /** Lo que hace falta para guardar o seguir la vida (la forma de `LifeState`). */
@@ -660,21 +670,29 @@ export class Life {
   }
 
   /** Un turno: el plan, el avance hasta que termina o algo lo corta, y lo que pasó. */
-  turn(plan: ActionPlan, seq: number): TurnReport {
+  turn(
+    plan: ActionPlan,
+    seq: number,
+    /** Las reglas del salto si el plan es `routine` (player-loop §6-§7); no tocan el estado. */
+    rules: RoutineRules = DEFAULT_ROUTINE_RULES,
+  ): TurnReport {
     const w = this.#w;
     const from = this.now;
     this.submit(plan, seq);
     const events: Event[] = [];
-    const cap = from + MAX_TURN_DAYS * w.clock.day;
+    const days = plan.source === "routine" ? MAX_ROUTINE_DAYS : MAX_TURN_DAYS;
+    const cap = from + days * w.clock.day;
     const known = alarmingSigns(w);
     let interrupt: Interrupt | null = null;
+    const routine = plan.source === "routine" ? rules : null;
+    const notes: Interrupt[] = [];
     const result = w.scheduler.advanceUntil(cap, (report) => {
       for (const e of report.events) {
         if (e.actors.includes(this.player)) events.push(e);
       }
       if (!this.alive) return true;
       if (w.truth.get(PLAN_STATE, this.player)?.done ?? true) return true;
-      interrupt = fixedInterrupt(w, report.events, known);
+      interrupt = fixedInterrupt(w, report.events, known, routine, notes);
       return interrupt !== null;
     });
     const state = w.truth.get(PLAN_STATE, this.player);
@@ -686,6 +704,7 @@ export class Life {
       steps: state?.steps ?? [],
       events,
       over: !this.alive,
+      ...(notes.length > 0 ? { notes } : {}),
     };
   }
 }

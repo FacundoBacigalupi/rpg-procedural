@@ -1,18 +1,21 @@
 // Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
+import { type AgentId, EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
 import {
   type AboutPanel,
   type BookLine,
   type BookPanel,
   type CharacterPanel,
+  type DelegationLevel,
   type EnvironmentItem,
   type HypothesesPanel,
   type Interrupt,
   type InventoryPanel,
   type PeoplePanel,
+  type PlayerGoal,
   type Recap,
+  type RoutineRules,
   type Suggestion,
   type ThinkResult,
   TONE_MARK,
@@ -506,10 +509,128 @@ const INTERRUPTS: Readonly<Record<Interrupt["kind"], string>> = {
   spoken_to: "Algo te saca de lo que hacías: te hablan.",
   body_alarm: "Dejás lo que hacías: algo en tu cuerpo no anda bien.",
   death_seen: "Dejás lo que hacías: alguien de los tuyos acaba de morir delante tuyo.",
+  watched: "Dejás lo que hacías: pasa algo que querías saber.",
 };
 
-export function renderInterrupt(i: Interrupt): string {
+/** Lo que mira cada clase de suceso de los avisos (player-loop §6), en presente y en el resumen. */
+const WATCHED_NOW: Readonly<Record<string, string>> = {
+  "body.died": "alguien acaba de morir",
+  "family.birth": "nació una criatura",
+  "combat.fight": "hay una pelea",
+};
+const WATCHED_NOTED: Readonly<Record<string, string>> = {
+  "body.died": "alguien murió",
+  "family.birth": "nació una criatura",
+  "combat.fight": "hubo una pelea",
+};
+
+/**
+ * `nameOf`: cómo llama el personaje a quien vigila (lo eligió él, así que lo conoce); `goalOf`, el
+ * texto de una meta por su número (novel-goals-watch).
+ */
+export function renderInterrupt(
+  i: Interrupt,
+  nameOf?: (who: AgentId) => string,
+  goalOf?: (goal: number) => string | undefined,
+): string {
+  if (i.kind === "watched" && i.rule !== undefined) {
+    const rule = i.rule;
+    if (rule.kind === "person")
+      return `Dejás lo que hacías: ves a ${nameOf?.(rule.who) ?? "quien esperabas"}.`;
+    if (rule.kind === "goal") {
+      const goal = goalOf?.(rule.goal);
+      const why = goal !== undefined ? ` (lo que querés: ${goal})` : "";
+      return rule.who !== undefined
+        ? `Dejás lo que hacías: ves a ${nameOf?.(rule.who) ?? "quien tenés en la cabeza"}${why}.`
+        : `Dejás lo que hacías: pasa algo que tiene que ver con lo que querés${goal !== undefined ? ` (${goal})` : ""}.`;
+    }
+    const what = WATCHED_NOW[rule.event];
+    if (what !== undefined) return `Dejás lo que hacías: ${what}.`;
+  }
   return INTERRUPTS[i.kind];
+}
+
+/**
+ * Lo anotado sin cortar en un salto (los avisos `note`, player-loop §6): una línea por persona o
+ * suceso, con en cuántos días pasó. Vacío si no hay nada.
+ */
+export function renderNotes(
+  notes: readonly Interrupt[],
+  nameOf: (who: AgentId) => string,
+  goalOf?: (goal: number) => string | undefined,
+): string {
+  const rows = new Map<string, { text: string; days: number }>();
+  for (const n of notes) {
+    if (n.kind !== "watched" || n.rule === undefined) continue;
+    const key = JSON.stringify(n.rule);
+    const rule = n.rule;
+    const goal = rule.kind === "goal" ? goalOf?.(rule.goal) : undefined;
+    const text =
+      rule.kind === "person"
+        ? `viste a ${nameOf(rule.who)}`
+        : rule.kind === "goal"
+          ? rule.who !== undefined
+            ? `viste a ${nameOf(rule.who)}${goal !== undefined ? ` (por «${goal}»)` : ""}`
+            : `algo que tiene que ver con ${goal !== undefined ? `«${goal}»` : "lo que querés"}`
+          : (WATCHED_NOTED[rule.event] ?? "pasó algo");
+    const row = rows.get(key) ?? { text, days: 0 };
+    rows.set(key, { text, days: row.days + 1 });
+  }
+  return [...rows.values()]
+    .map((r) => `Anotado: ${r.text}${r.days > 1 ? ` (en ${r.days} días distintos)` : ""}.`)
+    .join("\n");
+}
+
+const DELEGATION_TEXT: Readonly<Record<DelegationLevel, string>> = {
+  minimal: "mínima: te avisan en cuanto alguien te habla",
+  normal: "normal: te avisan si te piden o te prometen algo",
+  wide: "amplia: solo te avisan si te prometen algo",
+};
+
+/** Las reglas de los saltos: delegación y avisos. */
+export function renderRoutineRules(rules: RoutineRules, nameOf: (who: AgentId) => string): string {
+  const watch = rules.watch.map((r) => {
+    const on = r.on;
+    const what =
+      on.kind === "person"
+        ? nameOf(on.who)
+        : on.kind === "goal"
+          ? `la meta ${on.goal}`
+          : (WATCHED_NOTED[on.event] ?? on.event);
+    return `  ${r.action === "stop" ? "avisar" : "anotar"}: ${what}`;
+  });
+  return [
+    `Delegación ${DELEGATION_TEXT[rules.delegation]}.`,
+    ...(watch.length > 0 ? ["Avisos:", ...watch] : ["Sin avisos propios."]),
+  ].join("\n");
+}
+
+/**
+ * Las metas del personaje (player-loop §8): las activas con su número y, si las hay, las dejadas.
+ * `labelOf` dice cómo se entendió cada bosquejo; `nameOf`, cómo llama a la persona de la meta.
+ */
+export function renderGoals(
+  goals: readonly PlayerGoal[],
+  labelOf: (sketch: string) => string | undefined,
+  nameOf: (who: AgentId) => string,
+): string {
+  const line = (g: PlayerGoal): string => {
+    const label = g.sketch !== undefined ? labelOf(g.sketch) : undefined;
+    const who = g.target !== undefined ? nameOf(g.target) : undefined;
+    const how = [label, who].filter((x) => x !== undefined).join(": ");
+    return `${g.text}${how !== "" ? ` (${how})` : ""}`;
+  };
+  const active = goals.filter((g) => g.status === "active");
+  const left = goals.filter((g) => g.status === "abandoned");
+  if (active.length === 0 && left.length === 0)
+    return "No te propusiste nada todavía. Escribí «quiero …» (por ejemplo: quiero entrar a una secta).";
+  return [
+    ...(active.length > 0
+      ? ["Lo que querés:", ...active.map((g) => `  ${g.id}. ${line(g)}`)]
+      : ["Ahora no te proponés nada."]),
+    ...(left.length > 0 ? ["Lo que dejaste:", ...left.map((g) => `  ${line(g)}`)] : []),
+    "Para dejar una: !abandonar <número> o «ya no quiero …».",
+  ].join("\n");
 }
 
 export function renderJournal(
@@ -533,10 +654,15 @@ const SUGGESTION_LABELS: Readonly<Record<Suggestion["kind"], string>> = {
   talk: "Hablar con",
   look: "Mirar alrededor",
   wait: "Esperar una hora",
+  goal: "Por lo que querés",
 };
 
 export function renderSuggestion(s: Suggestion): string {
   const label = SUGGESTION_LABELS[s.kind];
+  if (s.goal !== undefined) {
+    const say = s.goal.say;
+    return `${say.charAt(0).toUpperCase()}${say.slice(1)} (por «${s.goal.text}»)`;
+  }
   return s.with === undefined ? label : `${label} tu ${s.with}`;
 }
 

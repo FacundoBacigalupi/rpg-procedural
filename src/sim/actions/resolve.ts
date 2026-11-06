@@ -759,6 +759,15 @@ export type VerbEffect =
       readonly about: string | null;
     }
   | {
+      /**
+       * Proponerse algo (o dejarlo, con el modo `drop`), en palabras del jugador: qué meta es lo
+       * decide `game` (`life.goals.player`, novel-goals-truth-act).
+       */
+      readonly kind: "resolve";
+      readonly about: string | null;
+      readonly whom: EntityRef | null;
+    }
+  | {
       /** Copiar la marca de otro en un lote propio: lo hace `game` (economy §6, `life.marks`). */
       readonly kind: "forge";
       readonly of: EntityRef | null;
@@ -1049,6 +1058,12 @@ const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal })
  */
 const ponder: Resolver = (c) => ({
   effect: { kind: "ponder", about: argText(c, "about") },
+  seconds: c.nominal,
+});
+
+/** Proponerse algo: deja las palabras y la persona, si la nombró; la meta la arma `game`. */
+const resolveGoal: Resolver = (c) => ({
+  effect: { kind: "resolve", about: argText(c, "about"), whom: argEntity(c, "whom") },
   seconds: c.nominal,
 });
 
@@ -2898,6 +2913,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   slaughter,
   milk,
   ponder,
+  resolve: resolveGoal,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

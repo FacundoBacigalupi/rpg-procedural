@@ -80,6 +80,7 @@ import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
+import { seasonOf } from "./weather-panel.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -249,6 +250,8 @@ export interface PlayerViewOptions {
   readonly intro?: boolean;
   /** Lo que se dijo cerca desde este tick (lo guardado por la fase `perceive`) entra en la escena. */
   readonly heardSince?: Tick;
+  /** Los bosquejos de las metas activas del personaje, para el montaje (player-loop §8). */
+  readonly goals?: readonly string[];
   /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
   /** De qué fuente salió cada etiqueta de desconocido (para resolver «la figura» que se narró). */
@@ -609,6 +612,7 @@ export function playerView(
             return typeof who === "string" ? [who as AgentId] : [];
           }),
           known: new Set<string>(acq.keys()),
+          delegated: livedByRoutine(w, options.heardSince),
         });
   const thoughtList = [...(options.thinking ?? []), ...(inner?.thoughts ?? [])];
   const digested = digest(percepts);
@@ -635,6 +639,14 @@ export function playerView(
             now,
             w.clock.day,
             signs.zones,
+            {
+              memories: w.truth.get(MEMORIES, w.player)?.items ?? [],
+              seasons: {
+                from: seasonOf(yearPhase(w.clock, options.heardSince), w.map.climate.latDeg),
+                to: seasonOf(yearPhase(w.clock, now), w.map.climate.latDeg),
+              },
+              ...(options.goals !== undefined ? { goals: options.goals } : {}),
+            },
           ),
         }
       : {}),
@@ -690,4 +702,20 @@ export function playerView(
         }
       : {}),
   });
+}
+
+/** Si la rutina del hogar hizo algo por el personaje desde `since` (un salto delegado). */
+function livedByRoutine(w: LifeWorld, since: Tick): boolean {
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) return false;
+    if (e.actors[0] === w.player && e.kind.startsWith("routine.")) return true;
+  }
+  return false;
+}
+
+/** La fase del año (0-1) en que cae el tick. */
+function yearPhase(clock: { readonly year: number }, t: number): number {
+  return (((t % clock.year) + clock.year) % clock.year) / clock.year;
 }

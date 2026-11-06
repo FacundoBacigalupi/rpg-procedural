@@ -209,12 +209,45 @@ export interface StretchView {
   readonly wounds?: readonly { readonly zone: string; readonly sign: string }[];
   /** Etiquetas locales de los conocidos con los que habló (a los extraños no se los nombra). */
   readonly spokeWith: readonly string[];
+  /**
+   * Lo que la rutina del hogar le hizo hacer en un salto delegado (novel-montage-while): la clase
+   * del evento `routine.*` sin el prefijo (`harvested`, `sown`, `ate`…) y cuántas veces, de más a menos.
+   */
+  readonly kept?: readonly { readonly kind: string; readonly times: number }[];
+  /**
+   * Qué pasó mientras: lo que el personaje vio o le contaron en el salto (sus memorias de esos días),
+   * de lo que más le pesó a lo que menos; `who` es el conocido de quien se trata y `by` quien se lo
+   * contó, si lo conoce.
+   */
+  readonly meanwhile?: readonly StretchHeardView[];
+  /** La estación en que termina el salto, si no es la misma en que empezó. */
+  readonly season?: string;
+  /**
+   * Los bosquejos de las metas activas del personaje (`cultivate`, `revenge`…, player-loop §8):
+   * en qué piensa entre una cosa y otra. Nunca un avance hacia ellas.
+   */
+  readonly goals?: readonly string[];
+}
+
+export interface StretchHeardView {
+  /** La clase del evento según lo recuerda (`body.died`, `family.birth`…). */
+  readonly kind: string;
+  readonly source: "witnessed" | "told" | "inferred";
+  readonly who?: string;
+  readonly by?: string;
 }
 
 /** Lo que arma quien tiene la verdad: igual que `StretchView`, con las personas en vez de etiquetas. */
-export interface StretchInput extends Omit<StretchView, "spokeWith"> {
+export interface StretchInput extends Omit<StretchView, "spokeWith" | "meanwhile"> {
   /** Con quién habló, en orden estable; el muro deja solo a los conocidos. */
   readonly metWith: readonly AgentId[];
+  /** Lo que recuerda de esos días, con las personas en vez de etiquetas. */
+  readonly meanwhile?: readonly {
+    readonly kind: string;
+    readonly source: "witnessed" | "told" | "inferred";
+    readonly with: readonly AgentId[];
+    readonly toldBy?: AgentId;
+  }[];
 }
 
 /** Cuántos conocidos como máximo se nombran en un salto. */
@@ -808,6 +841,30 @@ export function buildPlayerView(input: ViewInput): PlayerView {
               .filter((a) => input.acquaintances.has(a))
               .slice(0, STRETCH_NAMED)
               .map((a) => known(a, "sure")),
+            ...(input.stretch.kept !== undefined && input.stretch.kept.length > 0
+              ? { kept: input.stretch.kept.map((k) => ({ ...k })) }
+              : {}),
+            ...(input.stretch.meanwhile !== undefined && input.stretch.meanwhile.length > 0
+              ? {
+                  meanwhile: input.stretch.meanwhile.map((m) => {
+                    const who = m.with.find((a) => input.acquaintances.has(a));
+                    const by =
+                      m.toldBy !== undefined && input.acquaintances.has(m.toldBy)
+                        ? m.toldBy
+                        : undefined;
+                    return {
+                      kind: m.kind,
+                      source: m.source,
+                      ...(who !== undefined ? { who: known(who, "sure") } : {}),
+                      ...(by !== undefined ? { by: known(by, "sure") } : {}),
+                    };
+                  }),
+                }
+              : {}),
+            ...(input.stretch.season !== undefined ? { season: input.stretch.season } : {}),
+            ...(input.stretch.goals !== undefined && input.stretch.goals.length > 0
+              ? { goals: [...input.stretch.goals] }
+              : {}),
           },
         }
       : {}),
@@ -886,6 +943,7 @@ function effectView(
   switch (e.kind) {
     case "none":
     case "ponder":
+    case "resolve":
     case "forge":
     case "hire":
       return { kind: "none" };

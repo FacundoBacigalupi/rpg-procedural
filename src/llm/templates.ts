@@ -16,6 +16,11 @@ import type {
 } from "../game/index.ts";
 import type { LexiconView } from "./voice.ts";
 
+/** Cuántas cosas de «qué pasó mientras» cuenta la plantilla en un salto. */
+export const STRETCH_TOLD = 3;
+/** Cuántas ofensas cuenta la plantilla en un salto o un sueño. */
+export const MONTAGE_OFFENSES = 2;
+
 export class TemplateBook {
   readonly #lines: ReadonlyMap<string, readonly string[]>;
 
@@ -154,6 +159,26 @@ export function renderView(
     ) {
       say(`stretch.wound.${wound.sign}`, { zone: first(`stretch.zone.${wound.zone}`) });
     } else if (!stretch.fought && stretch.hurt) say("stretch.hurt");
+    // Lo que la rutina hizo por él y qué pasó mientras (novel-montage-while).
+    for (const k of stretch.kept ?? [])
+      if (book.has(`stretch.kept.${k.kind}`)) say(`stretch.kept.${k.kind}`);
+    let told = 0;
+    for (const m of stretch.meanwhile ?? []) {
+      if (told >= STRETCH_TOLD) break;
+      const base = `stretch.meanwhile.${m.kind}`;
+      const id = m.source === "witnessed" ? base : `${base}.told`;
+      if (!book.has(id)) continue;
+      say(id, {
+        who: m.who !== undefined ? ref(m.who) : first("who.vague"),
+        by: m.by !== undefined ? ref(m.by) : first("stretch.by.someone"),
+      });
+      told++;
+    }
+    if (stretch.season !== undefined && book.has(`stretch.season.${stretch.season}`))
+      say(`stretch.season.${stretch.season}`);
+    // En qué piensa entre una cosa y otra: la primera meta que tenga frase (novel-goals-set).
+    const goal = (stretch.goals ?? []).find((g) => book.has(`stretch.goal.${g}`));
+    if (goal !== undefined) say(`stretch.goal.${goal}`);
   }
   if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);
@@ -161,7 +186,10 @@ export function renderView(
   }
   for (const m of s.marks) say(`mark.${m.kind}.${m.age}`);
 
-  for (const o of view.outcomes) outcome(o, say, ref, good, book);
+  // En un salto delegado la espera es el salto mismo: lo cuenta lo que hizo la rutina.
+  const delegated = (stretch?.kept?.length ?? 0) > 0;
+  for (const o of view.outcomes)
+    if (!(delegated && o.verb === "wait")) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
   // Las cosas sueltas: la que miró a propósito siempre; las demás al mirar o al describir el lugar.
   const looking = view.outcomes.some((o) => o.effect.kind === "observe");
@@ -226,7 +254,12 @@ export function renderView(
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");
   }
+  // Lo mismo dicho dos veces no suma; en un salto, solo las primeras (novel-montage-while).
+  const offended = new Set<string>();
   for (const o of view.offenses) {
+    const key = `${o.role}.${o.response}.${o.who}`;
+    if (offended.has(key) || (inward && offended.size >= MONTAGE_OFFENSES)) continue;
+    offended.add(key);
     say(`offense.${o.role}.${o.response}`, { who: o.who });
     if (book.has(`offense.norm.${o.norm}`)) say(`offense.norm.${o.norm}`);
   }

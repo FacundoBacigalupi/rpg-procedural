@@ -907,7 +907,10 @@
     "tail": "la cabra",
     "forms": ["ordeño", "ordeñar"],
     "synonyms": [
-      { "as": "ordeño", "words": ["saco la leche", "sacar la leche", "saco leche", "sacar leche"] }
+      {
+        "as": "ordeño",
+        "words": ["saco la leche", "sacar la leche", "saco leche", "sacar leche"]
+      }
     ]
   },
   {
@@ -966,7 +969,10 @@
     "tail": "el pozo",
     "forms": ["uso", "usar", "utilizo", "utilizar", "me sirvo de"],
     "synonyms": [
-      { "as": "uso", "words": ["aprovecho", "aprovechar", "hago uso de", "me valgo de"] }
+      {
+        "as": "uso",
+        "words": ["aprovecho", "aprovechar", "hago uso de", "me valgo de"]
+      }
     ]
   },
   {
@@ -1134,6 +1140,24 @@
           "me da la sensación de",
           "me huelo",
           "conjeturo"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "resolve",
+    "example": "me propongo ser herrero",
+    "tail": "ser herrero",
+    "forms": ["me propongo", "me prometo", "me juro"],
+    "synonyms": [
+      {
+        "as": "me propongo",
+        "words": [
+          "me hago el propósito de",
+          "decido que voy a",
+          "me empeño en",
+          "me pongo como meta",
+          "tengo decidido"
         ]
       }
     ]

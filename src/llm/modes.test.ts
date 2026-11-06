@@ -85,6 +85,62 @@ describe("montage con lo vivido", () => {
   });
 });
 
+describe("montage de un salto delegado (novel-montage-while)", () => {
+  const stretch = {
+    days: 90,
+    did: [],
+    spoke: 0,
+    metWith: [],
+    hurt: false,
+    fought: false,
+    kept: [
+      { kind: "ate", times: 180 },
+      { kind: "harvested", times: 60 },
+      { kind: "boiled", times: 3 },
+    ],
+    meanwhile: [
+      { kind: "action.give", source: "witnessed" as const, with: [mother] },
+      { kind: "body.died", source: "told" as const, with: [mother], toldBy: makeId("agent", 9) },
+    ],
+    season: "spring",
+  };
+  const v = buildPlayerView({
+    player: me,
+    scene: {
+      placeKinds: ["village"],
+      space: "street",
+      indoor: false,
+      home: false,
+      familiar: true,
+      hour: 12,
+      light: 1,
+    },
+    percepts: [],
+    steps: [],
+    acquaintances,
+    thoughts: [],
+    mode: "montage",
+    stretch,
+  });
+
+  it("la vista nombra solo a los conocidos y lleva la rutina, lo que pasó y la estación", () => {
+    expect(v.stretch?.kept?.map((k) => k.kind)).toEqual(["ate", "harvested", "boiled"]);
+    const died = v.stretch?.meanwhile?.[1];
+    expect(died?.who).toBeDefined();
+    expect(died?.by).toBeUndefined();
+    expect(v.stretch?.season).toBe("spring");
+  });
+
+  it("las plantillas cuentan el campo, la muerte con fuente y la primavera, sin la espera", () => {
+    const text = renderView(v, book, Rng.root(7 as never).fork("narration", 0));
+    expect(text).toMatch(/campo|tierra/);
+    expect(text).toMatch(/Te enterás por alguien de que murió/);
+    expect(text).toMatch(/primavera/);
+    expect(text).not.toMatch(/inquieto/);
+    expect(validateNarration(text, narrationRequest(v, style))).toEqual([]);
+  });
+});
+
 describe("modos montage, sueño y secuela", () => {
   it("el modo sale de la sim y manda sobre los pensamientos", () => {
     for (const mode of ["montage", "dream", "aftermath"] as const) {
