@@ -22,6 +22,7 @@ import {
   type Percept,
   PLACE,
   PLACE_NAME,
+  SECT_LORE,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { ANIMAL_WORDS, animalsInSight } from "./animals.ts";
@@ -323,6 +324,20 @@ export function knownEntities(
       relations: [],
       present: here !== undefined && p.hexes.includes(here.hex),
       hexes: p.hexes,
+      via: [],
+    });
+  }
+  // La sede de la secta, si la tiene oída (novel-cult-sect-known): lejos, nombrable, no presente.
+  const lore = w.truth.get(SECT_LORE, w.player);
+  if (lore) {
+    const proper = w.truth.get(PLACE_NAME, lore.seat)?.form;
+    out.push({
+      ref: lore.seat,
+      kind: "place",
+      names: ["la secta", "la sede de la secta", ...(proper === undefined ? [] : [proper])],
+      features: [],
+      relations: [],
+      present: false,
       via: [],
     });
   }

@@ -6,7 +6,15 @@ import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absor
 import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
-import { bearingDeg, chooseSeat, generateSect, sectMaster } from "./sect.ts";
+import {
+  bearingDeg,
+  COMPASS8,
+  chooseSeat,
+  compassOf,
+  generateSect,
+  sectLoreOf,
+  sectMaster,
+} from "./sect.ts";
 import { aptitudeOf, talentOf } from "./talent.ts";
 
 const talents = JSON.parse(readFileSync("content/talents/human.json", "utf8")) as Trait[];
@@ -241,5 +249,50 @@ describe("la secta cercana (novel-cult-sect-place)", () => {
         expect(s.born).toBeLessThan(1_000_000 - 14 * 1000);
       }
     }
+  });
+});
+
+describe("lo que la aldea sabe de la secta (novel-cult-sect-known)", () => {
+  it("el rumbo en ocho puntos", () => {
+    expect(compassOf(0)).toBe("n");
+    expect(compassOf(350)).toBe("n");
+    expect(compassOf(44)).toBe("ne");
+    expect(compassOf(90)).toBe("e");
+    expect(compassOf(200)).toBe("s");
+    expect(compassOf(-90)).toBe("w");
+  });
+
+  it("cada uno con su error: casi siempre el rumbo cerca, jornadas alrededor de las reales", () => {
+    const sect = {
+      seatPlace: "place:9" as EntityRef,
+      seat: {
+        cell: 1,
+        hops: 2,
+        km: 200,
+        bearingDeg: 45,
+        qi: { cell: 1, level: 1, reference: 1, regenPerYear: 1, elements: {} },
+      },
+      founded: 0,
+      originEventId: E,
+      slots: [],
+    };
+    const lores = Array.from({ length: 400 }, (_, i) =>
+      sectLoreOf(Rng.root(5).fork("p", i), "org:1" as EntityRef, sect, 10),
+    );
+    expect(sectLoreOf(Rng.root(5).fork("p", 0), "org:1" as EntityRef, sect, 10)).toEqual(lores[0]);
+    const off = (b: string) => {
+      const d = Math.abs(COMPASS8.indexOf(b as never) - 1);
+      return Math.min(d, 8 - d);
+    };
+    expect(lores.filter((l) => l.bearing === "ne").length).toBeGreaterThan(200);
+    expect(lores.every((l) => off(l.bearing) <= 2)).toBe(true);
+    for (const l of lores) {
+      expect(l.seat).toBe("place:9");
+      expect(l.days).toBeGreaterThanOrEqual(5);
+      expect(l.days).toBeLessThanOrEqual(11);
+      expect(l.confidence).toBeGreaterThan(0);
+      expect(l.confidence).toBeLessThan(0.9);
+    }
+    expect(new Set(lores.map((l) => l.days)).size).toBeGreaterThan(3);
   });
 });
