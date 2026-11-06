@@ -12,6 +12,25 @@ import { type ApiHandler, apiHandler, readBody, send } from "./server.ts";
 export const NOVEL_SEXES = ["mujer", "hombre"] as const;
 export const NOVEL_FAMILIES = ["terrateniente", "campesina", "sirviente"] as const;
 
+/** Cómo se presenta cada grupo de opciones en la pantalla de inicio. */
+export const GROUP_LABELS: Readonly<Record<string, string>> = {
+  aldea: "La aldea: hambrunas, migraciones, cosas de cada casa",
+  gente: "La gente: metas, rumores, relaciones, nacimientos",
+  vecinos: "Los vecinos: andan, viajan, trabajan el campo",
+  economia: "Economía: deudas, estafas, préstamos, jornales",
+  cuerpo: "El cuerpo: agua, salud, ansias",
+  ganado: "El ganado: animales con dueño, cría, leche, lobos",
+  cultivo: "El cultivo: talento, sectas, meditar",
+  tecnica: "La técnica mortal: procesos y oficios nuevos",
+};
+
+/** Una lista de nombres de grupo; undefined si no es una lista de nombres conocidos. */
+function groupNames(v: unknown, info: SetupInfo): string[] | undefined {
+  const known = new Set(info.groups.map((g) => g.name));
+  if (!Array.isArray(v) || !v.every((n) => typeof n === "string" && known.has(n))) return undefined;
+  return v as string[];
+}
+
 /** Lee la elección del cliente; devuelve el texto del error si algo no vale. */
 export function parseSetupChoice(body: unknown, info: SetupInfo): SetupChoice | string {
   if (body === null || typeof body !== "object") return "cuerpo inválido";
@@ -22,6 +41,8 @@ export function parseSetupChoice(body: unknown, info: SetupInfo): SetupChoice | 
     sex?: unknown;
     familia?: unknown;
     age?: unknown;
+    con?: unknown;
+    sin?: unknown;
   };
   if (typeof b.world !== "string" || !info.families.includes(b.world))
     return `familia del mundo: ${info.families.join(", ")}`;
@@ -39,6 +60,10 @@ export function parseSetupChoice(body: unknown, info: SetupInfo): SetupChoice | 
   const age = b.age;
   if (age !== undefined && !(novel && typeof age === "number" && Number.isInteger(age) && age >= 0))
     return "la edad de entrada se elige en modo novela: un entero";
+  const con = b.con === undefined ? [] : groupNames(b.con, info);
+  const sin = b.sin === undefined ? [] : groupNames(b.sin, info);
+  if (con === undefined || sin === undefined)
+    return `grupos: ${info.groups.map((g) => g.name).join(", ")}`;
   return {
     world: b.world,
     mode: b.mode,
@@ -46,6 +71,8 @@ export function parseSetupChoice(body: unknown, info: SetupInfo): SetupChoice | 
     ...(sex !== undefined ? { sex: sex as NonNullable<SetupChoice["sex"]> } : {}),
     ...(familia !== undefined ? { familia: familia as NonNullable<SetupChoice["familia"]> } : {}),
     ...(age !== undefined ? { age: age as number } : {}),
+    ...(con.length > 0 ? { con } : {}),
+    ...(sin.length > 0 ? { sin } : {}),
   };
 }
 

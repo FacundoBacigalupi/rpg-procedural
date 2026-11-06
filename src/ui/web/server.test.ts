@@ -129,6 +129,10 @@ describe("pantalla de inicio", { timeout: 60_000 }, () => {
     modes: ["realista", "novela"],
     sexes: ["mujer", "hombre"],
     familias: ["terrateniente", "campesina", "sirviente"],
+    groups: [
+      { name: "ganado", label: "El ganado", profile: true },
+      { name: "cultivo", label: "El cultivo", profile: false },
+    ],
     defaults: { world: "xianxia", mode: "realista" },
   };
 
@@ -145,6 +149,16 @@ describe("pantalla de inicio", { timeout: 60_000 }, () => {
     expect(typeof parseSetupChoice({ world: "xianxia", mode: "realista", seed: -1 }, info)).toBe(
       "string",
     );
+    // Los grupos, por nombre conocido (novel-flags-groups-cli).
+    expect(
+      parseSetupChoice(
+        { world: "xianxia", mode: "realista", con: ["cultivo"], sin: ["ganado"] },
+        info,
+      ),
+    ).toEqual({ world: "xianxia", mode: "realista", con: ["cultivo"], sin: ["ganado"] });
+    expect(
+      typeof parseSetupChoice({ world: "xianxia", mode: "realista", sin: ["vacas"] }, info),
+    ).toBe("string");
     // Elegir al personaje es del modo novela.
     expect(
       typeof parseSetupChoice({ world: "xianxia", mode: "realista", sex: "mujer" }, info),

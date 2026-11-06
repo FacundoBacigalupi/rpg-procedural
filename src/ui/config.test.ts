@@ -1,6 +1,12 @@
 import { parseArgs } from "node:util";
 import { describe, expect, it } from "vitest";
-import { defaultGameSetup, FULL_PROFILE, optionsOf, worldFamilyOf } from "../game/index.ts";
+import {
+  defaultGameSetup,
+  FULL_PROFILE,
+  lifeGroupOptions,
+  optionsOf,
+  worldFamilyOf,
+} from "../game/index.ts";
 import { ScenarioLife } from "../sim/index.ts";
 import { LIFE_ARG_OPTIONS, lifeConfig } from "./config.ts";
 
@@ -41,6 +47,25 @@ describe("perfil de la CLI y la web", () => {
     expect(config(["--profile", "basic", "--cultivation"]).setup.life).toEqual({
       cultivation: true,
     });
+  });
+
+  it("por grupos: --sin saca, --con suma y el modo novela trae el cultivo (novel-flags-groups-cli)", () => {
+    const noLivestock = config(["--sin", "ganado"]).setup.life ?? {};
+    expect(Object.keys(noLivestock).some((k) => k.startsWith("livestock"))).toBe(false);
+    expect(noLivestock).toMatchObject({ npcMove: true, scam: true });
+    expect(config(["--con", "cultivo,tecnica"]).setup.life).toEqual({
+      ...FULL_PROFILE,
+      cultivation: true,
+      mortalTech: true,
+    });
+    expect(config(["--mode", "novela"]).setup.life).toEqual({ ...FULL_PROFILE, cultivation: true });
+    expect(config(["--mode", "novela", "--sin", "cultivo"]).setup.life).toEqual(FULL_PROFILE);
+    expect(config(["--profile", "basic", "--con", "cuerpo"]).setup.life).toEqual(
+      lifeGroupOptions(["body"]).options,
+    );
+    // Sacar un grupo que otro elegido necesita es un error, no un mundo roto.
+    expect(() => config(["--sin", "economia"])).toThrow("--sin economia");
+    expect(() => config(["--con", "vacas"])).toThrow("--con");
   });
 
   it("rechaza nombres de perfil desconocidos", () => {
