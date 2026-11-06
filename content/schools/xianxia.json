@@ -1,0 +1,23 @@
+[
+  {
+    "id": "xianxia",
+    "family": "xianxia",
+    "layer": "capa",
+    "realms": [
+      ["Refinamiento del Qi", "Templado del Aliento", "Reunión del Qi"],
+      ["Establecimiento de la Fundación", "Cimiento del Dao", "Base Firme"],
+      ["Núcleo Dorado", "Perla Interior", "Núcleo Condensado"],
+      ["Alma Naciente", "Infante del Espíritu", "Alma Primordial"],
+      ["Transformación del Espíritu", "Espíritu Mudado", "Forma Divina"],
+      ["Unión con el Vacío", "Vacío Refinado", "Retorno al Vacío"],
+      ["Gran Ascenso", "Cumbre del Mundo", "Umbral del Cielo"]
+    ],
+    "techniques": [
+      "el Método del Aliento Claro",
+      "la Respiración de las Nueve Vueltas",
+      "el Canon de la Fuente Quieta",
+      "el Sutra de la Corriente Lenta",
+      "el Método de la Raíz y la Copa"
+    ]
+  }
+]

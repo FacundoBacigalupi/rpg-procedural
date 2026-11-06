@@ -73,10 +73,19 @@ export type SelfCue =
   /** La piedra no brilló: sin raíz, según ella. */
   | "trial_dark"
   /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
-  | "sect_joined";
+  | "sect_joined"
+  /** Los de la secta le enseñaron su técnica de entrada (`self.technique` la nombra). */
+  | "technique_taught";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
+  /**
+   * El reino y la capa en que la escuela de su secta pone su tramo, solo el turno en que importa
+   * (rompió o entró): lo que el narrador nombra (novel-cult-school).
+   */
+  readonly realm?: { readonly name: string; readonly layer?: number; readonly word?: string };
+  /** El nombre de la técnica que le enseñaron, el turno en que se la enseñaron. */
+  readonly technique?: string;
 }
 
 /** Lo que el personaje piensa o siente este turno (narration §7, modo introspección). */
@@ -633,6 +642,9 @@ export interface ViewInput {
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
+  /** El reino y la técnica del turno, si los hay (`SelfView`). */
+  readonly selfRealm?: SelfView["realm"];
+  readonly selfTechnique?: string;
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
@@ -842,7 +854,11 @@ export function buildPlayerView(input: ViewInput): PlayerView {
 
   const things = thingViews(input.things ?? [], input.fixtures ?? [], input.steps);
   const view = {
-    self: { cues: [...(input.self ?? [])] },
+    self: {
+      cues: [...(input.self ?? [])],
+      ...(input.selfRealm ? { realm: input.selfRealm } : {}),
+      ...(input.selfTechnique !== undefined ? { technique: input.selfTechnique } : {}),
+    },
     scene: sceneView(input.scene),
     percepts,
     ...(things.length > 0 ? { things } : {}),

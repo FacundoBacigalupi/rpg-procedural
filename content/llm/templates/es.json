@@ -1194,6 +1194,60 @@
     ]
   },
   {
+    "id": "self.technique_taught",
+    "lines": [
+      "Antes de que te vayas, uno de ellos te hace respirar como respiran ellos, despacio, hasta que te sale: {technique}, dice que se llama.",
+      "Te enseñan ahí mismo una forma de respirar y te la hacen repetir: {technique}. Es lo primero que se aprende allá arriba, dicen."
+    ]
+  },
+  {
+    "id": "self.realm",
+    "lines": ["Para la secta, eso es {realm}.", "Los de la secta lo llaman {realm}."]
+  },
+  {
+    "id": "self.realm_layer",
+    "lines": [
+      "Para la secta, eso es la {ordinal} {word} de {realm}.",
+      "Los de la secta dirían que estás en la {ordinal} {word} de {realm}."
+    ]
+  },
+  {
+    "id": "ordinal.f.1",
+    "lines": ["primera"]
+  },
+  {
+    "id": "ordinal.f.2",
+    "lines": ["segunda"]
+  },
+  {
+    "id": "ordinal.f.3",
+    "lines": ["tercera"]
+  },
+  {
+    "id": "ordinal.f.4",
+    "lines": ["cuarta"]
+  },
+  {
+    "id": "ordinal.f.5",
+    "lines": ["quinta"]
+  },
+  {
+    "id": "ordinal.f.6",
+    "lines": ["sexta"]
+  },
+  {
+    "id": "ordinal.f.7",
+    "lines": ["séptima"]
+  },
+  {
+    "id": "ordinal.f.8",
+    "lines": ["octava"]
+  },
+  {
+    "id": "ordinal.f.9",
+    "lines": ["novena"]
+  },
+  {
     "id": "self.trial_rejected",
     "lines": [
       "La piedra brilla apenas, turbia, con varios colores mezclados. El de la secta niega con la cabeza: una raíz que no sirve.",

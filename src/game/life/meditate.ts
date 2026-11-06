@@ -14,6 +14,9 @@
 // retroceso devuelve parte del qi a la celda (baja `QI_TAKEN`: conservación) y daña los meridianos.
 // Deja `cultivation.breakthrough`, visible si pasó algo (el qi se arremolina, escupe sangre). En el
 // mismo proceso que meditar porque los dos escriben la fila de la celda.
+//
+// La técnica (novel-cult-school): quien aprendió la de entrada de una secta medita y absorbe con su
+// factor (lo que pide; la celda y la capacidad siguen acotando).
 
 import type { AgentId, Event, EventId, Rng } from "../../core/index.ts";
 import {
@@ -30,6 +33,7 @@ import {
   breakPreparation,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
+  CULTIVATION_TECHNIQUE,
   type CultivationLaw,
   type CultivationState,
   type EventDraft,
@@ -180,6 +184,7 @@ export function meditateProcess(o: {
       BODY_STATE.name,
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
+      CULTIVATION_TECHNIQUE.name,
     ],
     writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
     run(ctx) {
@@ -217,7 +222,8 @@ export function meditateProcess(o: {
         const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
         const capacity = vesselCapacity(law, before.stage ?? 0);
         const calm = calmOf(plans, ctx.truth.get(BODY_STATE, m.who));
-        const gain = meditationGain(apt, m.hours, calm, factor);
+        const method = ctx.truth.get(CULTIVATION_TECHNIQUE, m.who)?.factor ?? 1;
+        const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
           ...before,
           sensitivity: round4(before.sensitivity + gain),
@@ -227,7 +233,7 @@ export function meditateProcess(o: {
           const match = rootMatch(apt, place);
           const qi = before.qi ?? 0;
           const drawn = absorbDraw(
-            absorbWant(apt, m.hours, calm, factor, match),
+            absorbWant(apt, m.hours, calm, factor, match) * method,
             place,
             taken.taken,
             qi,

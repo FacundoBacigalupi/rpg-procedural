@@ -9,7 +9,9 @@ import {
   BREAKTHROUGH_EVENT,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
+  CULTIVATION_TECHNIQUE,
   QI_TAKEN,
+  SECT,
   SENSED_QI_EVENT,
   TALENT,
   vesselCapacity,
@@ -93,6 +95,25 @@ describe("meditar (novel-cult-meditate)", () => {
     // Seguir meditando no lo vuelve a sentir por primera vez.
     life.turn(meditate(me, 4), 99);
     expect(w.log.all().filter((e) => e.kind === SENSED_QI_EVENT)).toHaveLength(1);
+  }, 240_000);
+
+  it("con la técnica de una secta, la misma meditación rinde su factor (novel-cult-school)", () => {
+    const plain = lifeWith(content, true);
+    const taught = lifeWith(content, true);
+    const org = taught.world.truth.ids(SECT)[0];
+    if (!org) throw new Error("sin secta");
+    taught.world.truth.set(CULTIVATION_TECHNIQUE, taught.player, {
+      org,
+      name: "el método",
+      factor: 1.5,
+      learnedAt: taught.now,
+    });
+    plain.turn(meditate(plain.player, 2), 1);
+    taught.turn(meditate(taught.player, 2), 1);
+    const a = plain.world.truth.get(CULTIVATION_STATE, plain.player)?.sensitivity ?? 0;
+    const b = taught.world.truth.get(CULTIVATION_STATE, taught.player)?.sensitivity ?? 0;
+    expect(a).toBeGreaterThan(0);
+    expect(b / a).toBeCloseTo(1.5, 2);
   }, 240_000);
 
   it("sin raíz suma horas pero la sensibilidad no se mueve: no pasa nada", () => {

@@ -20,6 +20,7 @@ import { ENTITY, type WorldTruth } from "../world/index.ts";
 import { QI_TAKEN } from "./absorb.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
 import { PLACE_QI, type PlaceQi } from "./meditation.ts";
+import { generateSchool, type SchoolNames, SECT_SCHOOL } from "./school.ts";
 import {
   generateSect,
   SECT,
@@ -120,6 +121,8 @@ export interface SeedSectOptions {
   readonly seat: SectSeat;
   /** El día del año en que baja a la aldea (`sectVisitDay`); sin él, no baja. */
   readonly visitDay?: number;
+  /** Los nombres de la familia del mundo (`content/schools/`); sin ellos, la secta no tiene escuela. */
+  readonly school?: SchoolNames;
 }
 
 /**
@@ -178,6 +181,8 @@ export function seedSect(
   truth.set(ENTITY, org, { id: org, originEventId: event, createdAt: sect.founded });
   truth.set(ENTITY, seatPlace, { id: seatPlace, originEventId: event, createdAt: sect.founded });
   truth.set(SECT, org, sect);
+  // La escuela (novel-cult-school): sus reinos sobre los umbrales y la técnica de entrada.
+  if (o.school) truth.set(SECT_SCHOOL, org, generateSchool(rng.fork("school"), law, o.school));
   return { org, sect };
 }
 

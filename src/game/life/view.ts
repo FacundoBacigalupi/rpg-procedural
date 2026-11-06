@@ -26,6 +26,8 @@ import {
   bodySigns,
   bookOf,
   COPPER,
+  CULTIVATION_STATE,
+  CULTIVATION_TECHNIQUE,
   type Figure,
   houseKey,
   INFECTION,
@@ -45,9 +47,12 @@ import {
   presenceStimulus,
   type ReadonlyWorldTruth,
   rainBetween,
+  realmOf,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
   SECT_LORE,
+  SECT_MEMBER,
+  SECT_SCHOOL,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
   SENSED_QI_EVENT,
@@ -56,6 +61,7 @@ import {
   skyLight,
   spaceLight,
   TASTES_OF,
+  TECHNIQUE_TAUGHT_EVENT,
   TRACE,
   type TradeRecipeDef,
   thingStimulus,
@@ -719,6 +725,21 @@ export function playerView(
   ) {
     cues.add("sect_joined");
   }
+  // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
+  // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.
+  const taught =
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT) !==
+      undefined;
+  const technique = taught ? w.truth.get(CULTIVATION_TECHNIQUE, w.player)?.name : undefined;
+  if (technique !== undefined) cues.add("technique_taught");
+  const member = w.truth.get(SECT_MEMBER, w.player);
+  const school = member ? w.truth.get(SECT_SCHOOL, member.org) : undefined;
+  const named = cues.has("sect_joined") || cues.has("break_success");
+  const realm =
+    school && named
+      ? realmOf(school, w.truth.get(CULTIVATION_STATE, w.player)?.stage ?? 0)
+      : undefined;
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);
@@ -812,6 +833,10 @@ export function playerView(
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     ...(options.onStranger ? { onStranger: options.onStranger } : {}),
     self: [...cues],
+    ...(realm && school
+      ? { selfRealm: { ...realm, ...(realm.layer !== undefined ? { word: school.layer } : {}) } }
+      : {}),
+    ...(technique !== undefined ? { selfTechnique: technique } : {}),
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
     ...(options.heardTrades
