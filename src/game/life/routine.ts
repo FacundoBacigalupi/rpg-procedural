@@ -33,6 +33,8 @@ import {
   BUILDING,
   BURNED,
   believesSectHere,
+  CULTIVATION_LAW,
+  CULTIVATION_STATE,
   DRAFT_FATIGUE,
   dayOf,
   draftEvent,
@@ -79,6 +81,7 @@ import {
   TREATED_WATER,
   table,
   VILLAGE_SQUARE,
+  vesselCapacity,
   type WaterQuality,
   yieldFactor,
 } from "../../sim/index.ts";
@@ -96,6 +99,7 @@ import {
   wantsToWater,
 } from "./irrigation.ts";
 import { harvestSeasonOf } from "./map.ts";
+import { ROUTINE_BREAK_EVENT, ROUTINE_MEDITATE_EVENT } from "./meditate.ts";
 import { PLAYER } from "./player.ts";
 import { routineToolStep } from "./routine-tools.ts";
 import { SMITH } from "./smith.ts";
@@ -269,7 +273,8 @@ export interface RoutineOptions {
   readonly firewood?: FirewoodRoutine;
   /**
    * Con el cultivo encendido (novel-cult-sect-goals): el jugador que delegó y se propuso cultivar va
-   * a la plaza el día que cree que baja la secta (`SECT_LORE.visitAt`).
+   * a la plaza el día que cree que baja la secta (`SECT_LORE.visitAt`), y a la noche medita en casa
+   * o, lleno, intenta romper (novel-cult-delegate: `routine.meditate`, `routine.breakthrough`).
    */
   readonly sectLore?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
@@ -397,6 +402,16 @@ export function planFor(
   return { ...base, replaced: false };
 }
 
+/** Siente el qi y tiene el recipiente lleno (98 %): la noche de la meta de cultivar intenta romper. */
+function feelsFull(truth: ReadonlyWorldTruth, me: AgentId): boolean {
+  const s = truth.get(CULTIVATION_STATE, me);
+  const plane = truth.ids(CULTIVATION_LAW)[0];
+  const law = plane ? truth.get(CULTIVATION_LAW, plane) : undefined;
+  if (!s?.sensed || !law) return false;
+  const capacity = vesselCapacity(law, s.stage ?? 0);
+  return capacity > 0 && (s.qi ?? 0) >= 0.98 * capacity;
+}
+
 export function routineProcess(o: RoutineOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   const foods = o.foods
@@ -425,7 +440,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PLAN_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.sectLore ? [SECT_LORE.name] : []),
+      ...(o.sectLore ? [SECT_LORE.name, CULTIVATION_STATE.name, CULTIVATION_LAW.name] : []),
       SOIL.name,
       ENTITY.name,
       PERSON.name,
@@ -519,6 +534,8 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
               able: (needs.pain ?? 0) < UNWELL_PAIN,
               sectHere:
                 o.sectLore === true && believesSectHere(truth.get(SECT_LORE, me), ctx.now, o.clock),
+              canMeditate: o.sectLore === true,
+              qiFull: o.sectLore === true && feelsFull(truth, me),
             },
             (w) => {
               const b = truth.get(BODY_STATE, w);
@@ -534,7 +551,9 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const want: ReturnType<typeof planFor> = forGoal
         ? forGoal.kind === "work"
           ? { activity: "moderate", at: "fields", replaced: true }
-          : { activity: "light", at: "home", replaced: true }
+          : forGoal.kind === "meditate" || forGoal.kind === "break"
+            ? { activity: "rest", at: "home", replaced: true }
+            : { activity: "light", at: "home", replaced: true }
         : tendOnly
           ? { activity: body.activity, at: "home", replaced: false }
           : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
@@ -585,6 +604,17 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             what: forGoal.kind,
             ...(forGoal.kind === "visit" ? { whom: forGoal.whom } : {}),
           },
+          emissions: {},
+          causes: [{ kind: "state", entity: me, key: "goals" }],
+        });
+      }
+      if (forGoal?.kind === "meditate" || forGoal?.kind === "break") {
+        // La hora de meditar (o el intento) la resuelve `life.cultivation.meditate`, como la acción.
+        events.push({
+          kind: forGoal.kind === "break" ? ROUTINE_BREAK_EVENT : ROUTINE_MEDITATE_EVENT,
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: { goal: forGoal.goal, seconds: 3600 },
           emissions: {},
           causes: [{ kind: "state", entity: me, key: "goals" }],
         });
