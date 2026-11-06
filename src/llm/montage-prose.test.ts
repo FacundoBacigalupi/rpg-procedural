@@ -9,7 +9,7 @@ import {
   type SceneInput,
 } from "../game/index.ts";
 import type { Percept } from "../sim/index.ts";
-import { mustMentionOf, renderView, stripMarks, TemplateBook } from "./index.ts";
+import { mustMentionOf, narratorSystem, renderView, stripMarks, TemplateBook } from "./index.ts";
 
 function load<T extends { readonly id: string }>(kind: ContentKind<T>): T[] {
   const dir = join("content", kind.name);
@@ -100,5 +100,36 @@ describe("el montaje como prosa (novel-narr-montage)", () => {
     expect(
       texts.some((t) => /Ese aliento invisible que corre por las cosas de este lugar/u.test(t)),
     ).toBe(true);
+  });
+
+  it("voz por modo (novel-narr-voice): la novela abre y cierra el salto con su frase; realista, no", () => {
+    const view = buildPlayerView({
+      player,
+      scene,
+      percepts: [],
+      steps: [],
+      acquaintances,
+      mode: "montage",
+      stretch: { days: 14, did: [], spoke: 0, metWith: [], hurt: false, fought: false },
+    });
+    const opens = book.lines("novel.mode.montage");
+    const closes = book.lines("novel.close.montage");
+    for (let n = 0; n < 6; n++) {
+      const novel = stripMarks(renderView(view, book, Rng.root(n), undefined, { novel: true }));
+      expect(opens.some((l) => novel.startsWith(l))).toBe(true);
+      expect(closes.some((l) => novel.endsWith(l))).toBe(true);
+      const plain = stripMarks(renderView(view, book, Rng.root(n)));
+      expect(opens.some((l) => plain.includes(l))).toBe(false);
+      expect(closes.some((l) => plain.includes(l))).toBe(false);
+    }
+    const style = {
+      person: "second",
+      tense: "present",
+      voseo: true,
+      detail: "normal",
+      language: "es",
+    } as const;
+    expect(narratorSystem({ ...style, novel: true })).toMatch(/Novel mode/u);
+    expect(narratorSystem(style)).not.toMatch(/Novel mode/u);
   });
 });

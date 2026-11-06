@@ -116,6 +116,8 @@ export function renderView(
   book: TemplateBook,
   rng: Rng,
   vocabulary?: LexiconView,
+  /** El modo novela abre y cierra el salto con su frase (novel-narr-voice). */
+  style: { readonly novel?: boolean } = {},
 ): string {
   const labels = new Map(view.labels.map((l) => [l.localId, l]));
   const out: string[] = [];
@@ -152,7 +154,13 @@ export function renderView(
   const idle =
     view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
   const inward = view.mode === "dream" || view.mode === "montage";
-  if (view.mode !== undefined) say(`mode.${view.mode}`);
+  const novel = style.novel === true;
+  if (view.mode !== undefined)
+    say(
+      novel && book.has(`novel.mode.${view.mode}`)
+        ? `novel.mode.${view.mode}`
+        : `mode.${view.mode}`,
+    );
   const stretch = view.stretch;
   if (stretch !== undefined) {
     for (const d of stretch.did)
@@ -298,6 +306,8 @@ export function renderView(
     if (r.doubtful) say("reading.doubtful");
   }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
+  if (novel && view.mode !== undefined && book.has(`novel.close.${view.mode}`))
+    say(`novel.close.${view.mode}`);
   return out.join(" ");
 }
 
