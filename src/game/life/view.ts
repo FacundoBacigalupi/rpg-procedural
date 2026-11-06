@@ -540,7 +540,9 @@ function sectCue(w: LifeWorld, since: Tick): SelfCue | undefined {
   const events = w.log.all();
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
-    if (!e || e.tick < since) break;
+    // Estricto: un salto cortado por la bajada termina en su mismo tick y el turno que sigue no la
+    // vuelve a contar.
+    if (!e || e.tick <= since) break;
     const d = (e.data ?? {}) as { visitAt?: number; start?: number };
     if (e.kind === SECT_VISIT_EVENT) {
       const atSquare = w.truth.get(LOCATION, w.player)?.space === VILLAGE_SQUARE;

@@ -14,6 +14,7 @@ import {
   avoidance,
   avoided,
   BODY_STATE,
+  believesSectHere,
   bodySigns,
   type DraftArg,
   type IntentDraft,
@@ -24,7 +25,9 @@ import {
   PERSON,
   type PlanNode,
   planFromDraft,
+  SECT_LORE,
   SKILL_STATE,
+  VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import type { GoalSketch } from "../view/index.ts";
 import { activePlayerGoals, type PlayerGoal } from "./goals.ts";
@@ -205,7 +208,14 @@ function goalCandidates(w: LifeWorld, goals?: SuggestionGoals): Suggestion[] {
     if (s === undefined) continue;
     let draft: IntentDraft;
     let who: string | undefined;
-    if (s.person === true) {
+    if (s.when === "sect_visit") {
+      // Solo el día que cree que la secta está en la plaza, y si no está ya ahí.
+      if (!believesSectHere(w.truth.get(SECT_LORE, w.player), w.scheduler.now, w.clock)) continue;
+      if (w.truth.get(LOCATION, w.player)?.space === VILLAGE_SQUARE) continue;
+    }
+    if (s.place !== undefined) {
+      draft = act(s.verb, [{ role: "to", ref: { text: s.place, kind: "place", features: [] } }]);
+    } else if (s.person === true) {
       const e = known.find((k) => k.ref === g.target && k.present && k.kind === "person");
       who = e?.names[0];
       if (who === undefined) continue;
@@ -217,7 +227,7 @@ function goalCandidates(w: LifeWorld, goals?: SuggestionGoals): Suggestion[] {
     out.push({
       id: `goal:${g.id}`,
       kind: "goal",
-      salience: s.person === true ? 0.55 : 0.4,
+      salience: s.when !== undefined ? 0.6 : s.person === true ? 0.55 : 0.4,
       draft,
       tone: BASE_TONE.goal,
       confirm: false,

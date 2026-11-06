@@ -10,6 +10,7 @@ import {
   levelOf,
   MENTAL,
   type ReadonlyWorldTruth,
+  SECT_LORE,
   SKILL_STATE,
   type SkillCatalog,
   type SkillDef,
@@ -31,8 +32,9 @@ export function lexiconOf(entries: readonly LexiconEntry[], family: string): Lex
 
 /**
  * Los conceptos que el personaje cree: `skill.<id>` por cada habilidad que practicó de verdad y
- * `law.<fenómeno>` por cada regularidad de la que ya tiene creencias. Las palabras técnicas
- * entran al lexicón cuando entra su concepto.
+ * `law.<fenómeno>` por cada regularidad de la que ya tiene creencias, y `org.sect` si sabe de una
+ * secta (de oídas alcanza: novel-cult-sect-goals). Las palabras técnicas entran al lexicón cuando
+ * entra su concepto.
  */
 export function believedConcepts(truth: ReadonlyWorldTruth, who: AgentId): Set<string> {
   const out = new Set<string>();
@@ -45,6 +47,7 @@ export function believedConcepts(truth: ReadonlyWorldTruth, who: AgentId): Set<s
   for (const b of Object.values(laws?.beliefs ?? {})) {
     if (b.seen > 0) out.add(`law.${b.key.phenomenon}`);
   }
+  if (truth.get(SECT_LORE, who) !== undefined) out.add("org.sect");
   return out;
 }
 

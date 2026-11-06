@@ -32,6 +32,7 @@ import {
   type BodyPlanDef,
   BUILDING,
   BURNED,
+  believesSectHere,
   DRAFT_FATIGUE,
   dayOf,
   draftEvent,
@@ -67,6 +68,7 @@ import {
   type ProcessDef,
   planLeaves,
   type ReadonlyWorldTruth,
+  SECT_LORE,
   SOIL,
   SOIL_DAYS,
   type SpaceGraph,
@@ -265,6 +267,11 @@ export interface RoutineOptions {
    * `life.wild`), que pasa a la pila (evento `routine.gathered_wood`). Esa hora no cosecha.
    */
   readonly firewood?: FirewoodRoutine;
+  /**
+   * Con el cultivo encendido (novel-cult-sect-goals): el jugador que delegó y se propuso cultivar va
+   * a la plaza el día que cree que baja la secta (`SECT_LORE.visitAt`).
+   */
+  readonly sectLore?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -418,6 +425,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PLAN_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
+      ...(o.sectLore ? [SECT_LORE.name] : []),
       SOIL.name,
       ENTITY.name,
       PERSON.name,
@@ -509,6 +517,8 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
               workAge: ROUTINE.workAge,
               rested: !unwell,
               able: (needs.pain ?? 0) < UNWELL_PAIN,
+              sectHere:
+                o.sectLore === true && believesSectHere(truth.get(SECT_LORE, me), ctx.now, o.clock),
             },
             (w) => {
               const b = truth.get(BODY_STATE, w);
@@ -559,6 +569,10 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         const theirs = truth.get(PERSON, forGoal.whom)?.household;
         const house = theirs && o.spaces.spaces.find((s) => s.key === houseKey(theirs));
         if (house) there = { hex: house.hex, space: house.key };
+      }
+      if (forGoal?.kind === "square") {
+        const square = o.spaces.spaces.find((s) => s.key === VILLAGE_SQUARE);
+        if (square) there = { hex: square.hex, space: square.key };
       }
       if (forGoal) {
         // La hora queda atada a la meta (regla 5): la crónica sabe cuánto le dio.
