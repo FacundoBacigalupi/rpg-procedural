@@ -16,6 +16,7 @@ import {
   PERSON_NAME,
 } from "../../sim/index.ts";
 import type { LifeWorld } from "../life/index.ts";
+import { type ChronicleGoal, chronicleGoals } from "./goals.ts";
 import { type ImportantPerson, importantPeople, type NeverKnewEntry, neverKnew } from "./people.ts";
 
 /** Eventos del personaje que parten la vida en capítulos. */
@@ -85,6 +86,8 @@ export interface Chronicle {
   readonly neverKnew: readonly NeverKnewEntry[];
   /** Lo que cargó en la conciencia y qué hizo con ello, lo más pesado primero. */
   readonly guilt: readonly GuiltEntry[];
+  /** Lo que se propuso, con su origen y su final (novel-goals-truth-chronicle). */
+  readonly goals: readonly ChronicleGoal[];
   /** Todo lo que la crónica afirma apunta a estos eventos. */
   readonly sources: readonly EventId[];
 }
@@ -114,6 +117,7 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
   const people = importantPeople(w, me, died.tick);
   const unknown = neverKnew(w, me, people, died.tick);
   const guilt = guiltOf(w, me);
+  const goals = chronicleGoals(w, me, died.tick);
   const cited = new Set<EventId>([
     died.id,
     ...chain,
@@ -121,6 +125,11 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
     ...chapters.flatMap((c) => c.turningPoints),
     ...people.flatMap((p) => p.memories),
     ...unknown.map((u) => u.event),
+    ...goals.flatMap((g) => [
+      g.origin,
+      ...(g.endedBy !== undefined ? [g.endedBy] : []),
+      ...(g.achievedBelieved !== undefined ? [g.achievedBelieved.event] : []),
+    ]),
   ]);
   const nameData = w.truth.get(PERSON_NAME, me);
   return {
@@ -135,6 +144,7 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
     people,
     neverKnew: unknown,
     guilt,
+    goals,
     sources: [...cited].sort(byNumber),
   };
 }

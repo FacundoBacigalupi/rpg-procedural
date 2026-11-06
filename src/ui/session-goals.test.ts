@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { LifeSetup, Suggestion } from "../game/index.ts";
 import {
   addGoal,
+  buildChronicle,
   dropGoal,
   GAME_CONTENT_KINDS,
   GOAL_HOUR_EVENT,
@@ -12,10 +13,11 @@ import {
   goalWatch,
   NPC_GOALS,
   parseSkip,
+  renderChronicle,
   sketchOf,
 } from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
-import type { ActionPlan, Goal } from "../sim/index.ts";
+import { type ActionPlan, BODY_STATE, ENTITY, type Goal } from "../sim/index.ts";
 import { replayLifeAt } from "../tools/inspector/at.ts";
 import { type ReplayInput, replayInputFromStore } from "../tools/replay/index.ts";
 import { lifeConfig } from "./config.ts";
@@ -260,5 +262,59 @@ describe("metas del personaje (novel-goals-set)", () => {
           hours.some((h) => h.tick === e.tick),
       );
     expect(late.length).toBeGreaterThan(0);
+  }, 300_000);
+
+  it("seed 1 (novel-goals-truth-chronicle): la crónica cuenta lo que quiso y cómo terminó", async () => {
+    const config = lifeConfig({ ...base, seed: "1" });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    const life = session.life;
+    const w = life.world;
+    const entered = life.now;
+    await session.say("quiero hacerme rico");
+    await session.say("quiero vengar a mi madre");
+    await session.say("sigo con mi vida tres días");
+    await session.say("ya no quiero vengar a mi madre");
+    await session.say("quiero vengar a mi madre");
+    const target = (w.truth.get(NPC_GOALS, life.player)?.items ?? []).find((g) =>
+      g.id.startsWith("resolve:revenge:"),
+    )?.target;
+    expect(target).toBeDefined();
+    // Muere la persona de la venganza delante del personaje; después muere él.
+    const kill = (who: string, at: number) => {
+      const body = w.truth.get(BODY_STATE, who as never);
+      if (!body) throw new Error("sin cuerpo");
+      w.truth.set(BODY_STATE, who as never, { ...body, death: { cause: "disease", at } });
+    };
+    kill(target as string, w.scheduler.now + w.clock.day);
+    w.scheduler.advanceTo(w.scheduler.now + 2 * w.clock.day);
+    kill(life.player, w.scheduler.now + w.clock.day);
+    w.scheduler.advanceTo(w.scheduler.now + 2 * w.clock.day);
+
+    const c = buildChronicle(w, entered, { mode: "realista", inspected: false });
+    expect(c.goals.map((g) => [g.sketch, g.ending])).toEqual([
+      ["wealth", "died"],
+      ["revenge", "dropped"],
+      ["revenge", "died"],
+    ]);
+    const [rich, , revenge] = c.goals;
+    expect(rich?.about).toBe("hacerme rico");
+    expect(rich?.hours).toBeGreaterThan(0);
+    expect(w.log.get(rich?.origin as never)?.kind).toBe("action.resolve");
+    for (const id of c.sources) expect(w.log.has(id)).toBe(true);
+    const text = renderChronicle(
+      c,
+      w.clock,
+      (id) => w.log.get(id),
+      () => "alguien",
+    );
+    expect(text).toMatch(/Lo que quisiste:/);
+    expect(text).toMatch(
+      /«hacerme rico» \(desde el día 1\); lo seguías queriendo al morir; nunca lo lograste; le diste \d+ horas/,
+    );
+    expect(text).toMatch(/«vengar a mi madre» \(desde el día 1\); lo dejaste el día \d+[;.]/);
+    // La persona murió y el personaje lo vio: cree haberlo cumplido (aunque no fue obra suya).
+    expect(revenge?.achievedBelieved?.event).toBe(w.truth.get(ENTITY, target as never)?.endEventId);
+    expect(text).toMatch(/«vengar a mi madre» \(desde el día \d+\); creíste haberlo cumplido/);
   }, 300_000);
 });

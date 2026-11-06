@@ -118,6 +118,26 @@ export function renderChronicle(
     }
   }
 
+  if (c.goals.length > 0) {
+    out.push("", "Lo que quisiste:");
+    for (const g of c.goals) {
+      const parts = [`«${g.about}» (desde el día ${day(g.from)})`];
+      if (g.achievedBelieved !== undefined) {
+        parts.push(`creíste haberlo cumplido el día ${day(g.achievedBelieved.at)}`);
+      } else if (g.ending === "died")
+        parts.push("lo seguías queriendo al morir; nunca lo lograste");
+      else if (g.ending === "open") parts.push("lo seguías queriendo");
+      if (g.ending === "dropped" && g.to !== undefined)
+        parts.push(`lo dejaste el día ${day(g.to)}`);
+      if (g.hours > 0) {
+        parts.push(
+          `le diste ${g.hours} ${g.hours === 1 ? "hora" : "horas"} de los días que dejaste pasar`,
+        );
+      }
+      out.push(`  ${parts.join("; ")}.`);
+    }
+  }
+
   if (c.neverKnew.length > 0) {
     out.push("", "Lo que nunca supiste:");
     for (const u of c.neverKnew) {
