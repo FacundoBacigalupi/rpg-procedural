@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type EventId, Rng } from "../../core/index.ts";
+import { type AgentId, type EntityRef, type EventId, Rng } from "../../core/index.ts";
 import type { Trait } from "../family/index.ts";
 import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absorb.ts";
 import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
+import { bearingDeg, chooseSeat, generateSect, sectMaster } from "./sect.ts";
 import { aptitudeOf, talentOf } from "./talent.ts";
 
 const talents = JSON.parse(readFileSync("content/talents/human.json", "utf8")) as Trait[];
@@ -177,5 +178,68 @@ describe("la ruptura (novel-cult-break)", () => {
       expect(hard.lostShare).toBeGreaterThan(soft.lostShare);
     } else throw new Error("se esperaban dos retrocesos");
     expect(breakOutcome(0.55, 0.6, 0.999, 0.99).kind).toBe("stalled");
+  });
+});
+
+describe("la secta cercana (novel-cult-sect-place)", () => {
+  it("la sede: la tierra con más qi; empata la más cercana y después el menor id", () => {
+    const c = (cell: number, hops: number, level: number, land = true) => ({
+      cell,
+      hops,
+      level,
+      land,
+    });
+    expect(chooseSeat([c(1, 0, 5), c(2, 1, 9), c(3, 2, 99, false)])?.cell).toBe(2);
+    expect(chooseSeat([c(4, 2, 9), c(5, 1, 9)])?.cell).toBe(5);
+    expect(chooseSeat([c(7, 1, 9), c(6, 1, 9)])?.cell).toBe(6);
+    expect(chooseSeat([c(1, 0, 5, false)])).toBeUndefined();
+  });
+
+  it("el rumbo desde la aldea: norte 0, este 90, sur 180, oeste 270", () => {
+    const o = { lat: 10, lon: 20 };
+    expect(bearingDeg(o, { lat: 11, lon: 20 })).toBe(0);
+    expect(bearingDeg(o, { lat: 10, lon: 21 })).toBe(90);
+    expect(bearingDeg(o, { lat: 9, lon: 20 })).toBe(180);
+    expect(bearingDeg(o, { lat: 10, lon: 19 })).toBe(270);
+    expect(bearingDeg({ lat: 0, lon: 179 }, { lat: 0, lon: -179 })).toBe(90);
+  });
+
+  it("sus cultivadores: todos con raíz, en tramos de la ley, qi bajo la capacidad", () => {
+    const seat = {
+      cell: 1,
+      hops: 1,
+      km: 120,
+      bearingDeg: 45,
+      qi: { cell: 1, level: 1500, reference: 1000, regenPerYear: 100, elements: { wood: 900 } },
+    };
+    const sectOf = (seed: number) =>
+      generateSect({
+        rng: Rng.root(seed).fork("sect"),
+        law: lawOf(seed),
+        talents,
+        seat,
+        seatPlace: "place:9" as EntityRef,
+        now: 1_000_000,
+        yearTicks: 1000,
+        originEventId: E,
+        foundedYearsAgo: 200,
+      });
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const law = lawOf(seed);
+      const sect = sectOf(seed);
+      expect(sect).toEqual(sectOf(seed));
+      expect(sect.founded).toBe(800_000);
+      expect(sectMaster(sect)?.rank).toBe("master");
+      expect(sect.slots.length).toBeGreaterThanOrEqual(5);
+      const ts = law.paths[0]?.thresholds ?? [];
+      for (const s of sect.slots) {
+        expect(aptitudeOf(law, s.talent.innate).roots.length).toBeGreaterThan(0);
+        expect(s.stage).toBeLessThan(ts.length);
+        expect(s.qi).toBeLessThanOrEqual(ts[s.stage]?.capacity ?? 0);
+        expect(s.purity).toBeGreaterThanOrEqual(0);
+        expect(s.purity).toBeLessThanOrEqual(1);
+        expect(s.born).toBeLessThan(1_000_000 - 14 * 1000);
+      }
+    }
   });
 });

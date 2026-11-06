@@ -32,6 +32,7 @@ import {
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
+  bearingDeg,
   CARCASS_SOURCE,
   CHEESE_PRESS,
   type ChosenTaste,
@@ -44,6 +45,7 @@ import {
   type CurdRule,
   carcassUnits,
   cellElements,
+  chooseSeat,
   DEBRIS_SINK,
   DEMOGRAPHY,
   DIETS,
@@ -109,6 +111,8 @@ import {
   ROTTED,
   resolveTastes,
   SCHEMAS,
+  SEAT_REACH_HOPS,
+  type SectSeat,
   SKILLS,
   SkillCatalog,
   SMOKE_SINK,
@@ -131,6 +135,7 @@ import {
   seedPlaceNames,
   seedRelations,
   seedReligion,
+  seedSect,
   seedSettlement,
   seedSkills,
   seedStatus,
@@ -173,6 +178,7 @@ import {
   type LocalTerrain,
   type Planet,
   type PlanetOptions,
+  ring,
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
@@ -869,6 +875,31 @@ function placeQiOf(planet: Planet, cell: number, content: Content): PlaceQi {
     reference: e.budget / e.level.length,
     regenPerYear: e.regen[cell] ?? 0,
     elements: Object.fromEntries(system.elements.map((x, i) => [x.id, vector[i] ?? 0])),
+  };
+}
+
+/**
+ * La sede de la secta cercana (novel-cult-sect-place): la celda en tierra con más qi a
+ * `SEAT_REACH_HOPS` saltos o menos de la aldea, con su distancia, su rumbo y su qi.
+ */
+function sectSeatOf(planet: Planet, cell: number, content: Content): SectSeat | undefined {
+  const { grid, essence, tectonics, hydrology } = planet;
+  const best = chooseSeat(
+    ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
+      cell: c,
+      hops,
+      level: essence.level[c] ?? 0,
+      land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
+    })),
+  );
+  if (!best) return undefined;
+  const at = (c: number) => ({ lat: grid.lat[c] ?? 0, lon: grid.lon[c] ?? 0 });
+  return {
+    cell: best.cell,
+    hops: best.hops,
+    km: Math.round((best.hops === 0 ? 0.5 : best.hops) * planet.kmPerHop),
+    bearingDeg: bearingDeg(at(cell), at(best.cell)),
+    qi: placeQiOf(planet, best.cell, content),
   };
 }
 
@@ -2080,6 +2111,28 @@ export function createLife(
       talents: content.all(TALENTS),
       qi: placeQiOf(terrain.planet, site.cell, content),
     });
+    // La secta cercana (novel-cult-sect-place): su sede con nombre en la lengua de la aldea.
+    const seat = sectSeatOf(terrain.planet, site.cell, content);
+    const sect = seat
+      ? seedSect(truth, ids, log, {
+          seed,
+          now: pop.now,
+          yearTicks: clock.year,
+          place: terrain.village,
+          talents: content.all(TALENTS),
+          seat,
+        })
+      : undefined;
+    if (sect) {
+      const high = (terrain.planet.tectonics.elevation[sect.sect.seat.cell] ?? 0) > 600;
+      seedPlaceNames(truth, language, seed, [
+        {
+          id: sect.sect.seatPlace,
+          feature: high ? "mountain" : "forest",
+          event: sect.sect.originEventId,
+        },
+      ]);
+    }
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima

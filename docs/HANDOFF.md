@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **novel-cult-sect-place (2026-11-05)**: `sim/cultivation/sect.ts` (`chooseSeat`, `bearingDeg`, `generateSect`) y `seedSect` en `seed.ts`: con `cultivation`, una `org:N` con `cultivation.sect` (sede, ranuras de maestro/ancianos/discípulos sin cuerpo) y `cultivation.sect_founded` en el pasado; la sede es un `place:N` nombrado con el rasgo nuevo `mountain` (o `forest` si es baja). Partido: lo que sabe la aldea es `novel-cult-sect-known`. Sigue ese.
+
 - **novel-cult-law (2026-11-05)**: opción `cultivation`: la ley del seed (`sim/cultivation/law.ts`, escalera del qi con capacidad y cuello de botella) en una fila `plane:N` con `cultivation.law`, y el talento oculto y heredable en `TALENT` (`content/talents/`, aparte del genoma para no mover hashes); `aptitudeOf` lo lee. Sigue `novel-cult-meditate`.
 - **novel-cult-meditate (2026-11-05)**: verbo `meditate` con palabras, plantillas y señal `sensed_qi`; `CULTIVATION_STATE` y `PLACE_QI` (qi de la celda fijado al sembrar); `life.cultivation.meditate` sube la sensibilidad y emite `cultivation.sensed_qi` una vez (sin raíz nunca). Bandera `--cultivation`. Sigue `novel-cult-absorb`.
 - **novel-cult-absorb (2026-11-05)**: quien ya siente el qi y medita lo absorbe de la celda (`sim/cultivation/absorb.ts`); débito propio `QI_TAKEN` en la fila del plano (no `AMBIENT_TAKEN`, que tiene un único escritor) con regeneración y `drawn` para la conservación; pureza según la raíz contra los elementos de la celda; tope en la capacidad del primer umbral; evento `cultivation.absorbed` y señales `qi_flows/qi_resists/qi_pressure/qi_full`. Sigue `novel-cult-break`.
