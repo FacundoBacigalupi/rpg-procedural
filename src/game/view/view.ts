@@ -43,7 +43,9 @@ export type SelfCue =
   /** Le falta una parte del cuerpo (`Scar.lost`): lo sabe y lo ve. */
   | "maimed"
   /** Perdió el conocimiento por el frío o el calor y volvió en sí (`body.collapsed` por causa térmica). */
-  | "blacked_out";
+  | "blacked_out"
+  /** Meditando sintió el qi por primera vez (`cultivation.sensed_qi`, novel-cult-meditate). */
+  | "sensed_qi";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

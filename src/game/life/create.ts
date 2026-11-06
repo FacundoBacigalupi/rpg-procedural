@@ -2059,6 +2059,11 @@ export function createLife(
       place: terrain.village,
       elementSystem: elementSystemOf(content),
       talents: content.all(TALENTS),
+      qi: {
+        cell: site.cell,
+        level: terrain.planet.essence.level[site.cell] ?? 0,
+        reference: terrain.planet.essence.budget / terrain.planet.essence.level.length,
+      },
     });
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;

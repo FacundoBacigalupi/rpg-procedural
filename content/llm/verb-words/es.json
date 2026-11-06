@@ -322,16 +322,7 @@
     "id": "rest",
     "example": "descanso una hora",
     "tail": "una hora",
-    "forms": [
-      "descanso",
-      "descansar",
-      "duermo",
-      "dormir",
-      "reposo",
-      "me acuesto",
-      "medito",
-      "meditar"
-    ],
+    "forms": ["descanso", "descansar", "duermo", "dormir", "reposo", "me acuesto"],
     "synonyms": [
       {
         "as": "descanso",
@@ -358,10 +349,30 @@
       {
         "as": "duermo",
         "words": ["me duermo", "dormirme", "dormito", "dormitar", "pego un sueño"]
-      },
+      }
+    ]
+  },
+  {
+    "id": "meditate",
+    "example": "medito dos horas",
+    "tail": "dos horas",
+    "forms": ["medito", "meditar"],
+    "synonyms": [
       {
         "as": "medito",
-        "words": ["hago meditación", "entro en trance"]
+        "words": [
+          "hago meditación",
+          "entro en trance",
+          "trato de sentir el qi",
+          "intento sentir el qi",
+          "busco sentir el qi",
+          "respiro el qi",
+          "cultivo el qi",
+          "cultivar el qi",
+          "siento el qi",
+          "sentir el qi",
+          "me concentro en el qi"
+        ]
       }
     ]
   },

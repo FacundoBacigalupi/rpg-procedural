@@ -563,14 +563,18 @@ const VERBS: readonly {
     },
   },
   {
-    re: /^(?:descanso|descansar|duermo|dormir|reposo|me acuesto|medito|meditar)\b/i,
-    build: (rest, _ctx, all) => {
+    re: /^(?:descanso|descansar|duermo|dormir|reposo|me acuesto)\b/i,
+    build: (rest) => {
       const d = duration(rest);
-      const unmapped = /^(?:medito|meditar)\b/i.test(all) ? tidy(all) : undefined;
-      return {
-        node: act("rest", d ? [{ role: "for", duration: d.duration }] : []),
-        ...(unmapped ? { unmapped } : {}),
-      };
+      return { node: act("rest", d ? [{ role: "for", duration: d.duration }] : []) };
+    },
+  },
+  {
+    // Meditar (novel-cult-meditate): horas quieto tratando de sentir el qi.
+    re: /^(?:medito|meditar)\b/i,
+    build: (rest) => {
+      const d = duration(rest);
+      return { node: act("meditate", d ? [{ role: "for", duration: d.duration }] : []) };
     },
   },
   {

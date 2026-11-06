@@ -868,6 +868,43 @@
     "evidence": 1
   },
   {
+    "id": "meditate",
+    "name": "meditar",
+    "domain": "esoteric",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [],
+    "occupies": {
+      "legs": "full",
+      "mind": "full"
+    },
+    "duration": {
+      "kind": "arg",
+      "role": "for",
+      "default": 7200,
+      "max": 43200
+    },
+    "checkpoint": 1800,
+    "emissions": {
+      "sight": 0.2,
+      "sound": 0.02
+    },
+    "serves": {
+      "power": 0.6,
+      "meaning": 0.3
+    },
+    "resolver": "none",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 1
+  },
+  {
     "id": "wait",
     "name": "esperar",
     "domain": "time",

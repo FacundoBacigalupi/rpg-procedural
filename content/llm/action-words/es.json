@@ -276,9 +276,16 @@
   {
     "id": "ponder",
     "kind": "action",
-    "stems": ["pens", "piens", "medit", "reflexion", "cavil", "rumi"],
+    "stems": ["pens", "piens", "reflexion", "cavil", "rumi"],
     "forms": [],
     "weak": ["vuelta", "queda"]
+  },
+  {
+    "id": "meditate",
+    "kind": "action",
+    "stems": ["medit", "trance"],
+    "forms": [],
+    "weak": ["qi"]
   },
   {
     "id": "resolve",

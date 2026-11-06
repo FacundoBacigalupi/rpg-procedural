@@ -762,17 +762,29 @@
     }
   },
   {
-    "id": "meditate-unmapped",
+    "id": "meditate",
     "text": "medito para absorber el qi del cielo y la tierra",
     "scene": "Estás sentado en tu estera, de noche.",
     "expect": {
       "kind": "act",
       "plan": {
         "kind": "do",
-        "verb": "rest",
+        "verb": "meditate",
         "args": []
-      },
-      "unmapped": ["meditar para absorber el qi"]
+      }
+    }
+  },
+  {
+    "id": "meditate-hours",
+    "text": "me siento a sentir el qi un par de horas",
+    "scene": "Estás en el patio de tu casa, a la tarde.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "meditate",
+        "args": [{ "role": "for", "duration": { "amount": 2, "unit": "hour" } }]
+      }
     }
   },
   {

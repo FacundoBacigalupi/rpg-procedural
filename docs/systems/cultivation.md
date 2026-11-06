@@ -293,6 +293,7 @@ Todas las vías cuestan algo real y quedan registradas con sus causas:
 
 ## Implementación
 - **Hecho (2026-11-05, `novel-cult-law`, adelanto):** `src/sim/cultivation/`: `CultivationLaw` con un solo camino (qi) y solo umbrales de saturación (capacidad, cuello de botella, transgresión), `rootThreshold`/`rootSpread`; el talento (§3) en `content/talents/` y la tabla `cultivation.talent` (mismo modelo aditivo que el genoma, catálogo aparte), `aptitudeOf`. Opción de vida `cultivation`.
+- **Hecho (2026-11-05, `novel-cult-meditate`):** el verbo `meditate` y la sensibilidad al qi (`cultivation.state`): sube con las horas, la comprensión, la calma (dolor, hambre, sed), la calidad de la raíz y el qi del lugar (`cultivation.place_qi`, nivel de esencia de la celda contra la media, acotado); al cruzar 1 nace `cultivation.sensed_qi`. Sin raíz no sube. Tasa sin calibrar.
 - **Fase 4 (cultivo):** `CultivationLaw` con un camino (qi) y escalera generada; un `CultivationSystem` por cultura; raíces y talento; absorción con conservación desde la celda; refinamiento y pureza; rupturas con preparación, calidad y fundamento; técnicas y manuales con copias; tribulaciones básicas; percepción del cultivo ajeno.
 - **Fase 4b:** caminos de cuerpo y alma, insights, pruebas del corazón con demonios internos, cultivo dual, demoníaco.
 - **Fase 6 (organizaciones):** sectas con técnicas secretas, pruebas de ingreso, cuevas como recursos, maestros y discípulos.

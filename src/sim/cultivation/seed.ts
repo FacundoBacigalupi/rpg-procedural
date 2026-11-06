@@ -17,6 +17,7 @@ import {
 import { PERSON, type Trait } from "../family/index.ts";
 import { ENTITY, type WorldTruth } from "../world/index.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
+import { PLACE_QI, type PlaceQi } from "./meditation.ts";
 import { TALENT, type TalentRecord, talentOf } from "./talent.ts";
 
 export const CULTIVATION_LAW_EVENT = "cultivation.law";
@@ -27,6 +28,8 @@ export interface SeedCultivationOptions {
   readonly place: PlaceRef;
   readonly elementSystem: { readonly id: string; readonly elements: readonly string[] };
   readonly talents: readonly Trait[];
+  /** El qi de la celda de la aldea (novel-cult-meditate); sin él, un lugar común. */
+  readonly qi?: PlaceQi;
 }
 
 /** El rng del talento de una persona: el mismo al sembrar y al nacer. */
@@ -59,6 +62,7 @@ export function seedCultivation(
   });
   truth.set(ENTITY, plane, { id: plane, originEventId: event, createdAt: o.now });
   truth.set(CULTIVATION_LAW, plane, law);
+  if (o.qi) truth.set(PLACE_QI, plane, o.qi);
   const people = truth
     .ids(PERSON)
     .map((id) => id as AgentId)
