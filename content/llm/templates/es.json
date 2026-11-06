@@ -1180,6 +1180,27 @@
     ]
   },
   {
+    "id": "self.trial_accepted",
+    "lines": [
+      "Ponés la mano sobre la piedra y se enciende. El de la secta te mira un rato largo y asiente: te quieren.",
+      "La piedra brilla bajo tu palma, más de lo que esperabas. Te dicen que tenés raíz y que la secta te acepta."
+    ]
+  },
+  {
+    "id": "self.trial_rejected",
+    "lines": [
+      "La piedra brilla apenas, turbia, con varios colores mezclados. El de la secta niega con la cabeza: una raíz que no sirve.",
+      "Algo se enciende en la piedra, pero poco. Te dicen que no, sin mirarte mucho, y llaman al siguiente."
+    ]
+  },
+  {
+    "id": "self.trial_dark",
+    "lines": [
+      "Ponés la mano sobre la piedra y no pasa nada. Ni una luz. El de la secta ya está mirando al siguiente.",
+      "La piedra queda fría y oscura bajo tu palma. Sin raíz, dicen, y te apartan con un gesto."
+    ]
+  },
+  {
     "id": "self.qi_flows",
     "lines": [
       "Con cada respiración, algo tibio entra y se queda, como agua que encuentra su cauce.",
