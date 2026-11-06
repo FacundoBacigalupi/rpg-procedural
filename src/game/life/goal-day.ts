@@ -5,7 +5,8 @@
 // ya está agotado); las de una persona (venganza, cuidarla, familia) lo llevan a la tarde a la casa
 // de esa persona, donde la percepción hace el resto (avisos de `goalWatch`). Las de cultivar
 // (novel-cult-sect-goals) lo llevan a la plaza el día que cree que baja la secta, todo el día que
-// dure. Puro: lo usa
+// dure, y a la noche lo sientan a meditar en casa (novel-cult-delegate); lleno y sano, la primera hora
+// de la noche intenta romper. Puro: lo usa
 // `routineProcess` solo para el jugador con días delegados.
 
 import type { AgentId } from "../../core/index.ts";
@@ -15,6 +16,8 @@ import type { Goal } from "../../sim/index.ts";
 export const GOAL_WORK_HOURS = [6, 8] as const;
 /** Las horas de la tarde, después del campo y antes de acostarse, para ir hacia una persona. */
 export const GOAL_VISIT_HOURS = [18, 21] as const;
+/** Las horas de la noche que la meta de cultivar se sienta a meditar (sin calibrar). */
+export const GOAL_MEDITATE_HOURS = [19, 22] as const;
 
 /** Bosquejos cuyas metas se sirven trabajando de más (`content/goals/`). */
 const WORK_SKETCHES: readonly string[] = ["wealth", "land", "craft"];
@@ -30,6 +33,8 @@ const sketchOfGoal = (g: Goal): string =>
 export type GoalHour =
   | { readonly kind: "work"; readonly goal: string }
   | { readonly kind: "square"; readonly goal: string }
+  | { readonly kind: "meditate"; readonly goal: string }
+  | { readonly kind: "break"; readonly goal: string }
   | { readonly kind: "visit"; readonly goal: string; readonly whom: AgentId };
 
 const within = (h: number, [a, b]: readonly [number, number]) => h >= a && h < b;
@@ -50,6 +55,10 @@ export function goalHour(
     readonly able: boolean;
     /** Cree que la secta está ahora en la plaza (`believesSectHere`). */
     readonly sectHere?: boolean;
+    /** Puede meditar (el cultivo está encendido). */
+    readonly canMeditate?: boolean;
+    /** Lo siente lleno: el qi llegó al borde del tramo (lo que se narra como `qi_full`). */
+    readonly qiFull?: boolean;
   },
   alive: (who: AgentId) => boolean,
 ): GoalHour | undefined {
@@ -72,9 +81,14 @@ export function goalHour(
     const person = best(
       (g) => PERSON_SKETCHES.includes(sketchOfGoal(g)) && g.target !== undefined && alive(g.target),
     );
-    return person?.target !== undefined
-      ? { kind: "visit", goal: person.id, whom: person.target }
-      : undefined;
+    if (person?.target !== undefined)
+      return { kind: "visit", goal: person.id, whom: person.target };
+  }
+  if (within(h, GOAL_MEDITATE_HOURS) && state.canMeditate === true && state.able) {
+    const cultivate = best((g) => SECT_SKETCHES.includes(sketchOfGoal(g)));
+    if (cultivate === undefined) return undefined;
+    const breaks = state.qiFull === true && h === GOAL_MEDITATE_HOURS[0];
+    return { kind: breaks ? "break" : "meditate", goal: cultivate.id };
   }
   return undefined;
 }

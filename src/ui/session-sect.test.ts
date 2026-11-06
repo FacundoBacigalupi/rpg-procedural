@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { GAME_CONTENT_KINDS, GOAL_HOUR_EVENT, goalHour } from "../game/index.ts";
+import {
+  GAME_CONTENT_KINDS,
+  GOAL_HOUR_EVENT,
+  goalHour,
+  ROUTINE_BREAK_EVENT,
+  ROUTINE_MEDITATE_EVENT,
+} from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
 import {
+  CULTIVATION_STATE,
   type Goal,
   LOCATION,
   SECT,
@@ -86,5 +93,65 @@ describe("las metas de cultivar toman la bajada de la secta (novel-cult-sect-goa
     expect(go?.goal?.say).toBe("ir a la plaza, que bajó la secta");
     await session.choose("goal:1");
     expect(w.truth.get(LOCATION, life.player)?.space).toBe(VILLAGE_SQUARE);
+  }, 300_000);
+});
+
+describe("la delegación de cultivar medita (novel-cult-delegate)", () => {
+  const g = (id: string): Goal =>
+    ({
+      id,
+      layer: "long",
+      kind: "pursue",
+      weight: 0.5,
+      originEventId: "event:1",
+      since: 0,
+    }) as unknown as Goal;
+  const ok = { ageYears: 12, workAge: 10, rested: true, able: true, canMeditate: true };
+  const alive = () => true;
+
+  it("puro: a la noche la meta de cultivar medita, y lleno rompe en la primera hora", () => {
+    const cult = g("resolve:cultivate");
+    const rich = g("resolve:wealth");
+    expect(goalHour([cult], 20, ok, alive)).toEqual({ kind: "meditate", goal: cult.id });
+    expect(goalHour([cult], 19, { ...ok, qiFull: true }, alive)).toEqual({
+      kind: "break",
+      goal: cult.id,
+    });
+    expect(goalHour([cult], 20, { ...ok, qiFull: true }, alive)).toEqual({
+      kind: "meditate",
+      goal: cult.id,
+    });
+    expect(goalHour([cult], 20, { ...ok, canMeditate: false }, alive)).toBeUndefined();
+    expect(goalHour([cult], 20, { ...ok, able: false }, alive)).toBeUndefined();
+    expect(goalHour([rich], 20, ok, alive)).toBeUndefined();
+    expect(goalHour([cult], 23, ok, alive)).toBeUndefined();
+  });
+
+  it("seed 1: dejar pasar días con la meta de cultivar suma horas de meditación", async () => {
+    const config = lifeConfig({ ...base, seed: "1", cultivation: true });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    const life = session.life;
+    const w = life.world;
+    await session.say("quiero entrar a una secta");
+    // La secta lejos en el año, así el salto no se corta por el aviso.
+    const org = w.truth.ids(SECT)[0];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !sect) throw new Error("sin secta");
+    const offset = Math.round((w.map.lonDeg / 360) * w.clock.day);
+    const yearDays = Math.round(w.clock.year / w.clock.day);
+    const today = Math.floor((life.now + offset) / w.clock.day) % yearDays;
+    w.truth.set(SECT, org, { ...sect, visitDay: (today + 120) % yearDays });
+    const before = w.truth.get(CULTIVATION_STATE, life.player)?.hours ?? 0;
+    const from = life.now;
+    await session.say("sigo con mi vida tres días");
+    const sat = w.log.all().filter((e) => e.tick >= from && e.kind === ROUTINE_MEDITATE_EVENT);
+    expect(sat.length).toBeGreaterThan(0);
+    expect(sat.every((e) => e.actors[0] === life.player)).toBe(true);
+    const after = w.truth.get(CULTIVATION_STATE, life.player);
+    expect(after?.hours ?? 0).toBeGreaterThan(before);
+    expect(after?.sensitivity ?? 0).toBeGreaterThanOrEqual(0);
+    const breaks = w.log.all().filter((e) => e.tick >= from && e.kind === ROUTINE_BREAK_EVENT);
+    expect(breaks.length).toBe(0);
   }, 300_000);
 });

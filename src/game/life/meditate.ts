@@ -58,21 +58,24 @@ import {
 } from "../../sim/index.ts";
 
 export const MEDITATE_PROCESS = "life.cultivation.meditate";
+/** Una hora de meditar o un intento de romper de la rutina delegada (novel-cult-delegate). */
+export const ROUTINE_MEDITATE_EVENT = "routine.meditate";
+export const ROUTINE_BREAK_EVENT = "routine.breakthrough";
 
 const round4 = (x: number) => Math.round(x * 10_000) / 10_000;
 
-/** Quién meditó y cuántas horas, de un `action.meditate`. */
+/** Quién meditó y cuántas horas, de un `action.meditate` o de una hora de la rutina delegada. */
 export function meditation(e: Event): { who: AgentId; hours: number } | undefined {
-  if (e.kind !== "action.meditate") return undefined;
+  if (e.kind !== "action.meditate" && e.kind !== ROUTINE_MEDITATE_EVENT) return undefined;
   const who = e.actors[0] as AgentId | undefined;
   const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
   if (!who || typeof seconds !== "number" || seconds <= 0) return undefined;
   return { who, hours: seconds / 3600 };
 }
 
-/** Quién intentó romper, de un `action.breakthrough`. */
+/** Quién intentó romper, de un `action.breakthrough` o de la rutina delegada. */
 export function breakAttempt(e: Event): AgentId | undefined {
-  if (e.kind !== "action.breakthrough") return undefined;
+  if (e.kind !== "action.breakthrough" && e.kind !== ROUTINE_BREAK_EVENT) return undefined;
   return e.actors[0] as AgentId | undefined;
 }
 
