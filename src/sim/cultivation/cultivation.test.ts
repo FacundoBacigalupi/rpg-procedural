@@ -6,6 +6,7 @@ import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absor
 import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
+import { generateSchool, realmOf, type SchoolNames } from "./school.ts";
 import {
   bearingDeg,
   COMPASS8,
@@ -334,5 +335,46 @@ describe("la piedra de prueba (novel-cult-sect-trial)", () => {
       if (r.elements.length > 0) expect(r.quality).toBeGreaterThan(0);
       expect(trialAccepts(r)).toBe(r.elements.length > 0 && r.quality >= TRIAL_ACCEPT_QUALITY);
     }
+  });
+});
+
+describe("la escuela (novel-cult-school)", () => {
+  const names = JSON.parse(
+    readFileSync(new URL("../../../content/schools/xianxia.json", import.meta.url), "utf8"),
+  )[0] as SchoolNames;
+
+  it("reparte los umbrales de la ley en reinos contiguos, sin huecos, igual con el mismo seed", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const law = lawOf(seed);
+      const n = law.paths[0]?.thresholds.length ?? 0;
+      const school = generateSchool(Rng.root(seed), law, names);
+      expect(generateSchool(Rng.root(seed), law, names)).toEqual(school);
+      expect(school.realms[0]?.from).toBe(0);
+      expect(school.realms.at(-1)?.to).toBe(n - 1);
+      for (const [i, r] of school.realms.entries()) {
+        expect(r.to).toBeGreaterThanOrEqual(r.from);
+        if (i > 0) expect(r.from).toBe((school.realms[i - 1]?.to ?? 0) + 1);
+        expect(names.realms[i]).toContain(r.name);
+      }
+      expect(school.realms[0]?.to).toBeGreaterThanOrEqual(1);
+      expect(school.technique.factor).toBeGreaterThanOrEqual(1.2);
+      expect(school.technique.factor).toBeLessThanOrEqual(1.6);
+      expect(names.techniques).toContain(school.technique.name);
+    }
+  });
+
+  it("el reino de un tramo: capa dentro del reino, la cima del último pasado el final", () => {
+    const school = {
+      layer: "capa",
+      technique: { name: "t", factor: 1.3 },
+      realms: [
+        { name: "A", from: 0, to: 2 },
+        { name: "B", from: 3, to: 3 },
+      ],
+    };
+    expect(realmOf(school, 0)).toEqual({ name: "A", layer: 1 });
+    expect(realmOf(school, 2)).toEqual({ name: "A", layer: 3 });
+    expect(realmOf(school, 3)).toEqual({ name: "B" });
+    expect(realmOf(school, 9)).toEqual({ name: "B" });
   });
 });

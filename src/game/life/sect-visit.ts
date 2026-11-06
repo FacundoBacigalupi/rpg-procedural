@@ -17,10 +17,14 @@
 // `cultivation.sect_joined` causado por su prueba) con la citación a la sede (`summonedLore`: rumbo
 // y jornadas exactos, `SECT_REPORT_DAYS` para presentarse). El que ya era de la secta no se vuelve a
 // sumar. Subir a la sede queda para `novel-sect-seat`.
+//
+// La escuela (novel-cult-school): si la secta tiene, al aceptado le enseñan ahí la técnica de entrada
+// (`CULTIVATION_TECHNIQUE`, `cultivation.technique_taught`), que rinde al meditar y absorber.
 
 import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
   CULTIVATION_LAW,
+  CULTIVATION_TECHNIQUE,
   type EventDraft,
   LOCATION,
   PERSON,
@@ -33,6 +37,7 @@ import {
   SECT_LORE,
   SECT_MEMBER,
   SECT_REPORT_DAYS,
+  SECT_SCHOOL,
   SECT_TRIAL,
   SECT_TRIAL_EVENT,
   SECT_VISIT,
@@ -42,6 +47,7 @@ import {
   setComponent,
   summonedLore,
   TALENT,
+  TECHNIQUE_TAUGHT_EVENT,
   TRIAL_BROUGHT_CHANCE,
   TRIAL_MAX_YEARS,
   TRIAL_MIN_YEARS,
@@ -82,8 +88,15 @@ export function sectVisitProcess(o: {
       LOCATION.name,
       SECT_TRIAL.name,
       SECT_MEMBER.name,
+      SECT_SCHOOL.name,
     ],
-    writes: [SECT_VISIT.name, SECT_LORE.name, SECT_TRIAL.name, SECT_MEMBER.name],
+    writes: [
+      SECT_VISIT.name,
+      SECT_LORE.name,
+      SECT_TRIAL.name,
+      SECT_MEMBER.name,
+      CULTIVATION_TECHNIQUE.name,
+    ],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -191,6 +204,28 @@ export function sectVisitProcess(o: {
               causes: [
                 { kind: "state", entity: id, key: SECT_TRIAL.name },
                 { kind: "state", entity: org, key: SECT.name },
+              ],
+            });
+            // La técnica de entrada (novel-cult-school): se la enseñan ahí mismo, antes de irse.
+            const school = ctx.truth.get(SECT_SCHOOL, org);
+            if (!school) continue;
+            changes.push(
+              setComponent(CULTIVATION_TECHNIQUE, id, {
+                org,
+                name: school.technique.name,
+                factor: school.technique.factor,
+                learnedAt: ctx.now,
+              }),
+            );
+            events.push({
+              kind: TECHNIQUE_TAUGHT_EVENT,
+              actors: [id],
+              place: o.village,
+              data: { org, technique: school.technique.name },
+              emissions: {},
+              causes: [
+                { kind: "state", entity: id, key: SECT_MEMBER.name },
+                { kind: "state", entity: org, key: SECT_SCHOOL.name },
               ],
             });
           }

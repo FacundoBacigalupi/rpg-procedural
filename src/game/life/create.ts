@@ -111,6 +111,7 @@ import {
   ROTTED,
   resolveTastes,
   SCHEMAS,
+  SCHOOLS,
   SEAT_REACH_HOPS,
   type SectSeat,
   SKILLS,
@@ -2115,6 +2116,7 @@ export function createLife(
     });
     // La secta cercana (novel-cult-sect-place): su sede con nombre en la lengua de la aldea.
     const seat = sectSeatOf(terrain.planet, site.cell, content);
+    const schoolNames = content.all(SCHOOLS).find((n) => n.family === "xianxia");
     const sect = seat
       ? seedSect(truth, ids, log, {
           seed,
@@ -2123,6 +2125,8 @@ export function createLife(
           place: terrain.village,
           talents: content.all(TALENTS),
           seat,
+          // Sus reinos y su técnica, con los nombres de la familia del mundo (novel-cult-school).
+          ...(schoolNames ? { school: schoolNames } : {}),
           // Baja a buscar discípulos unos días después del pico de la cosecha.
           visitDay: sectVisitDay(
             harvestSeasonOf(map, clock, seed),

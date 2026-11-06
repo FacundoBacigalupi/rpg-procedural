@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  CULTIVATION_TECHNIQUE,
   compassOf,
   LOCATION,
   PERSON,
@@ -13,6 +14,7 @@ import {
   SECT_LORE,
   SECT_MEMBER,
   SECT_REPORT_DAYS,
+  SECT_SCHOOL,
   SECT_TRIAL,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
@@ -207,6 +209,18 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
     const cues = playerView(w, [], { heardSince: before }).self.cues;
     expect(cues).toContain("trial_accepted");
     expect(cues).toContain("sect_joined");
+    // La escuela: le enseñan la técnica de entrada y le nombran el reino (novel-cult-school).
+    const school = w.truth.get(SECT_SCHOOL, org);
+    expect(school).toBeDefined();
+    expect(w.truth.get(CULTIVATION_TECHNIQUE, w.player)).toMatchObject({
+      org,
+      name: school?.technique.name,
+      factor: school?.technique.factor,
+    });
+    const self = playerView(w, [], { heardSince: before }).self;
+    expect(self.cues).toContain("technique_taught");
+    expect(self.technique).toBe(school?.technique.name);
+    expect(self.realm).toEqual({ name: school?.realms[0]?.name, layer: 1, word: "capa" });
 
     // Todo aceptado es miembro y nadie se suma dos veces.
     for (const e of w.log.all().filter((x) => x.kind === SECT_TRIAL_EVENT)) {
