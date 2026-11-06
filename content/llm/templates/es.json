@@ -155,6 +155,10 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.meditate",
+    "lines": ["{who} medita, quieto, con los ojos cerrados.", "Ves a {who} meditando, con la respiración lenta."]
+  },
+  {
     "id": "percept.action.wait",
     "lines": ["{who} espera, quieto.", "Ves a {who} esperando."]
   },
@@ -404,6 +408,25 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.meditate.success",
+    "lines": [
+      "Te quedás quieto, respirando despacio. No pasa nada que puedas nombrar.",
+      "Cerrás los ojos y seguís el aire que entra y sale. El tiempo se estira."
+    ]
+  },
+  {
+    "id": "outcome.meditate.partial",
+    "lines": ["Te sentás a meditar, pero la cabeza se te va a otras cosas."]
+  },
+  {
+    "id": "outcome.meditate.failure",
+    "lines": ["Intentás aquietarte, pero no hay caso: el cuerpo no se queda quieto."]
+  },
+  {
+    "id": "outcome.meditate.unsure",
+    "lines": ["Meditás un rato."]
   },
   {
     "id": "outcome.wait.success",
@@ -1072,6 +1095,13 @@
     "lines": [
       "Se te fue el conocimiento, y volvés en vos sin saber cuánto pasó.",
       "Te desmayaste por el clima y recién ahora volvés en vos."
+    ]
+  },
+  {
+    "id": "self.sensed_qi",
+    "lines": [
+      "En la quietud, algo se mueve: una corriente tibia, apenas, entre vos y el aire. No es el viento.",
+      "Por primera vez sentís algo que no sabías que estaba: un hilo de calor que va y viene con la respiración."
     ]
   },
   {

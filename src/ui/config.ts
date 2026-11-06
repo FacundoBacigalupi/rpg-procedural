@@ -40,6 +40,7 @@ export const LIFE_ARG_OPTIONS = {
   nickname: { type: "boolean", default: false },
   epilogue: { type: "boolean", default: false },
   tech: { type: "boolean", default: false },
+  cultivation: { type: "boolean", default: false },
 } as const;
 
 /** `full` (por defecto desde life-3) o `basic` (sin las opciones opt-in del perfil). */
@@ -63,6 +64,7 @@ export interface LifeArgs {
   nickname?: boolean | undefined;
   epilogue?: boolean | undefined;
   tech?: boolean | undefined;
+  cultivation?: boolean | undefined;
 }
 
 export interface LifeConfig {
@@ -102,7 +104,9 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
       game: withWorld(gameSetup(values, mode), values.world),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
-      ...(full || values.tech ? { life: lifeOptions(full, values.tech === true) } : {}),
+      ...(full || values.tech || values.cultivation
+        ? { life: lifeOptions(full, values.tech === true, values.cultivation === true) }
+        : {}),
     },
   };
 }
@@ -168,7 +172,19 @@ function llmJobs(model: string, runtime: keyof typeof LOCAL_BASE_URLS, values: L
   return new LlmJobs({ config, clientFor: openAiClientFactory({ timeoutMs: 60_000 }) });
 }
 
-/** Las opciones de vida de una vida nueva: el perfil completo si no es `basic`, más `--tech` (procesos mortales, technology §1-§2) que queda en `setup.life`. */
-function lifeOptions(full: boolean, tech: boolean): NonNullable<LifeSetup["life"]> {
-  return { ...(full ? structuredClone(FULL_PROFILE) : {}), ...(tech ? { mortalTech: true } : {}) };
+/**
+ * Las opciones de vida de una vida nueva: el perfil completo si no es `basic`, más `--tech` (procesos
+ * mortales, technology §1-§2) y `--cultivation` (la ley del cultivo, el talento y meditar,
+ * novel-cult-*), que quedan en `setup.life`.
+ */
+function lifeOptions(
+  full: boolean,
+  tech: boolean,
+  cultivation: boolean,
+): NonNullable<LifeSetup["life"]> {
+  return {
+    ...(full ? structuredClone(FULL_PROFILE) : {}),
+    ...(tech ? { mortalTech: true } : {}),
+    ...(cultivation ? { cultivation: true } : {}),
+  };
 }

@@ -177,6 +177,7 @@ import {
   type RemedyDose,
   type RemedyDosing,
 } from "./medicine.ts";
+import { meditateProcess } from "./meditate.ts";
 import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import { ableToMilk, MILKER_AWAY_READS, MILKER_READS } from "./milkers.ts";
@@ -2444,6 +2445,7 @@ export function lifeWorld(
         observeProcess({ clock: parts.clock, map: parts.map }),
         ponderProcess(),
         resolveGoalProcess(parts.goalSketches ?? []),
+        ...(parts.cultivation ? [meditateProcess({ bodyPlans: parts.plans })] : []),
         divinersProcess({
           methods: parts.divinations,
           concerns: parts.concerns,

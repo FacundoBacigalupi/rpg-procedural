@@ -6,6 +6,7 @@
 import {
   type AgentId,
   type EntityRef,
+  type Event,
   type ItemId,
   ledgerUnit,
   MINUTE,
@@ -42,6 +43,7 @@ import {
   presenceStimulus,
   type ReadonlyWorldTruth,
   rainBetween,
+  SENSED_QI_EVENT,
   STATUS,
   sameValue,
   skyLight,
@@ -493,12 +495,22 @@ export function lexiconWords(w: LifeWorld, withNickname: boolean): string[] {
 
 /** Si el personaje se desmayó por el frío o el calor desde `since` (lo que él nota: perdió el rato). */
 function thermalBlackout(w: LifeWorld, since: Tick): boolean {
+  return playerEventSince(
+    w,
+    since,
+    (e) =>
+      e.kind === "body.collapsed" &&
+      e.causes.some((c) => c.kind === "state" && c.key === "body.thermal"),
+  );
+}
+
+/** Si desde `since` le pasó al personaje un evento que cumple `pred` (del más nuevo hacia atrás). */
+function playerEventSince(w: LifeWorld, since: Tick, pred: (e: Event) => boolean): boolean {
   const events = w.log.all();
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
     if (!e || e.tick < since) break;
-    if (e.kind !== "body.collapsed" || e.actors[0] !== w.player) continue;
-    if (e.causes.some((c) => c.kind === "state" && c.key === "body.thermal")) return true;
+    if (e.actors[0] === w.player && pred(e)) return true;
   }
   return false;
 }
@@ -596,6 +608,11 @@ export function playerView(
   if (body.scars.some((sc) => sc.lost)) cues.add("maimed");
   if (options.heardSince !== undefined && thermalBlackout(w, options.heardSince))
     cues.add("blacked_out");
+  if (
+    options.heardSince !== undefined &&
+    playerEventSince(w, options.heardSince, (e) => e.kind === SENSED_QI_EVENT)
+  )
+    cues.add("sensed_qi");
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);
