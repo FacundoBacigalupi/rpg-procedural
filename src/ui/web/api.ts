@@ -175,6 +175,15 @@ export interface SetupInfo {
   readonly modes: readonly ("realista" | "novela")[];
   readonly sexes: readonly string[];
   readonly familias: readonly string[];
+  /**
+   * Los grupos de opciones del mundo (novel-flags-groups-cli), por su nombre de `--con`/`--sin`:
+   * `profile` dice si vienen puestos (el cultivo además viene puesto en modo novela).
+   */
+  readonly groups: readonly {
+    readonly name: string;
+    readonly label: string;
+    readonly profile: boolean;
+  }[];
   /** Lo que vino por argumentos, para dejarlo elegido. */
   readonly defaults: {
     readonly world: string;
@@ -192,4 +201,7 @@ export interface SetupChoice {
   readonly sex?: "mujer" | "hombre";
   readonly familia?: "terrateniente" | "campesina" | "sirviente";
   readonly age?: number;
+  /** Grupos que se suman o se sacan respecto de los que vienen puestos. */
+  readonly con?: readonly string[];
+  readonly sin?: readonly string[];
 }

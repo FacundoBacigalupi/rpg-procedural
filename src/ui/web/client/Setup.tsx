@@ -1,5 +1,6 @@
 // La pantalla de inicio de una vida nueva: familia del mundo, modo, seed y, en modo novela, el
-// personaje. Solo arma la elección; el servidor la valida y genera el mundo.
+// personaje, y qué grupos de sistemas lleva el mundo. Solo arma la elección; el servidor la valida
+// y genera el mundo.
 
 import { type FormEvent, useState } from "react";
 import type { SetupChoice, SetupInfo } from "../api.ts";
@@ -21,6 +22,12 @@ export function Setup({ info, onStarted }: { info: SetupInfo; onStarted: () => v
   const [sex, setSex] = useState("");
   const [familia, setFamilia] = useState("");
   const [age, setAge] = useState("");
+  // Lo que el jugador cambió de cada grupo; sin tocar, vale lo que viene puesto.
+  const [groupPick, setGroupPick] = useState<Readonly<Record<string, boolean>>>({});
+  const groupDefault = (name: string, profile: boolean) =>
+    profile || (name === "cultivo" && mode === "novela");
+  const groupOn = (name: string, profile: boolean) =>
+    groupPick[name] ?? groupDefault(name, profile);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +35,12 @@ export function Setup({ info, onStarted }: { info: SetupInfo; onStarted: () => v
     e.preventDefault();
     if (busy) return;
     const novel = mode === "novela";
+    const con = info.groups
+      .filter((g) => groupOn(g.name, g.profile) && !groupDefault(g.name, g.profile))
+      .map((g) => g.name);
+    const sin = info.groups
+      .filter((g) => !groupOn(g.name, g.profile) && groupDefault(g.name, g.profile))
+      .map((g) => g.name);
     const choice: SetupChoice = {
       world,
       mode,
@@ -37,6 +50,8 @@ export function Setup({ info, onStarted }: { info: SetupInfo; onStarted: () => v
         ? { familia: familia as NonNullable<SetupChoice["familia"]> }
         : {}),
       ...(novel && age.trim() !== "" ? { age: Number(age) } : {}),
+      ...(con.length > 0 ? { con } : {}),
+      ...(sin.length > 0 ? { sin } : {}),
     };
     setBusy(true);
     setError(null);
@@ -128,6 +143,20 @@ export function Setup({ info, onStarted }: { info: SetupInfo; onStarted: () => v
             </label>
           </fieldset>
         )}
+        <fieldset disabled={busy}>
+          <legend>El mundo trae</legend>
+          {info.groups.map((g) => (
+            <label key={g.name} className="choice">
+              <input
+                type="checkbox"
+                checked={groupOn(g.name, g.profile)}
+                onChange={(e) => setGroupPick({ ...groupPick, [g.name]: e.target.checked })}
+              />
+              {g.label}
+            </label>
+          ))}
+          <p className="hint">Si sacás uno que otro necesita, te avisa al empezar.</p>
+        </fieldset>
         <fieldset disabled={busy}>
           <legend>Seed</legend>
           <input

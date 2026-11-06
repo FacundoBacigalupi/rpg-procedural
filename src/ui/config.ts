@@ -5,10 +5,12 @@ import { randomInt } from "node:crypto";
 import {
   assertLifeDependencies,
   defaultGameSetup,
-  FULL_PROFILE,
   type GameMode,
   type GameSetup,
+  type LifeGroup,
   type LifeSetup,
+  lifeGroupOptions,
+  PROFILE_GROUPS,
   parseGameSetup,
   WORLD_FAMILIES,
 } from "../game/index.ts";
@@ -20,6 +22,7 @@ import {
   offlineLlmConfig,
   openAiClientFactory,
 } from "../llm/index.ts";
+import { ScenarioLife } from "../sim/index.ts";
 
 /** Las opciones de `parseArgs` que entiende `lifeConfig`. */
 export const LIFE_ARG_OPTIONS = {
@@ -41,7 +44,21 @@ export const LIFE_ARG_OPTIONS = {
   epilogue: { type: "boolean", default: false },
   tech: { type: "boolean", default: false },
   cultivation: { type: "boolean", default: false },
+  con: { type: "string" },
+  sin: { type: "string" },
 } as const;
+
+/** Los grupos de opciones por su nombre en castellano (`--con`, `--sin`, novel-flags-groups-cli). */
+export const GROUP_NAMES: Readonly<Record<string, LifeGroup>> = {
+  aldea: "village",
+  gente: "people",
+  vecinos: "npcs",
+  economia: "economy",
+  cuerpo: "body",
+  ganado: "livestock",
+  cultivo: "cultivation",
+  tecnica: "tech",
+};
 
 /** `full` (por defecto desde life-3) o `basic` (sin las opciones opt-in del perfil). */
 const PROFILES: readonly string[] = ["full", "basic"];
@@ -65,6 +82,10 @@ export interface LifeArgs {
   epilogue?: boolean | undefined;
   tech?: boolean | undefined;
   cultivation?: boolean | undefined;
+  /** Grupos que se suman, separados por coma (`cultivo,tecnica`). */
+  con?: string | undefined;
+  /** Grupos que se sacan, separados por coma (`ganado,economia`). */
+  sin?: string | undefined;
 }
 
 export interface LifeConfig {
@@ -93,7 +114,10 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
   // Una vida nueva nace con el perfil completo (motor life-3, ROADMAP perfil4); `basic` es el mundo
   // mínimo anterior. Queda en el setup guardado: una vida ya empezada conserva el suyo, con o sin perfil.
   const full = values.profile !== "basic";
-  if (full) assertLifeDependencies(FULL_PROFILE);
+  const options = lifeGroupOptions(lifeGroups(values, full, mode)).options;
+  assertLifeDependencies(options);
+  // El mismo esquema con que se lee al retomar (`setup.life`).
+  const life = ScenarioLife.parse(options);
   return {
     seed,
     save: values.save,
@@ -104,9 +128,7 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
       game: withWorld(gameSetup(values, mode), values.world),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
-      ...(full || values.tech || values.cultivation
-        ? { life: lifeOptions(full, values.tech === true, values.cultivation === true) }
-        : {}),
+      ...(Object.keys(life).length > 0 ? { life } : {}),
     },
   };
 }
@@ -172,19 +194,37 @@ function llmJobs(model: string, runtime: keyof typeof LOCAL_BASE_URLS, values: L
   return new LlmJobs({ config, clientFor: openAiClientFactory({ timeoutMs: 60_000 }) });
 }
 
+/** Los nombres de una lista `a,b` de grupos; error si alguno no existe. */
+function groupList(flag: string, list: string | undefined): LifeGroup[] {
+  if (list === undefined) return [];
+  return list
+    .split(",")
+    .map((n) => n.trim().toLowerCase())
+    .filter((n) => n !== "")
+    .map((n) => {
+      const g = GROUP_NAMES[n];
+      if (!g) throw new Error(`--${flag}: ${Object.keys(GROUP_NAMES).join(", ")} (${n})`);
+      return g;
+    });
+}
+
 /**
- * Las opciones de vida de una vida nueva: el perfil completo si no es `basic`, más `--tech` (procesos
- * mortales, technology §1-§2) y `--cultivation` (la ley del cultivo, el talento y meditar,
- * novel-cult-*), que quedan en `setup.life`.
+ * Los grupos de una vida nueva (novel-flags-groups-cli): los del perfil si no es `basic`; el modo
+ * novela trae el cultivo; `--tech` y `--cultivation` son atajos de `--con tecnica` y `--con cultivo`;
+ * `--sin` saca al final. Si una dependencia vuelve a pedir un grupo sacado, es un error.
  */
-function lifeOptions(
-  full: boolean,
-  tech: boolean,
-  cultivation: boolean,
-): NonNullable<LifeSetup["life"]> {
-  return {
-    ...(full ? structuredClone(FULL_PROFILE) : {}),
-    ...(tech ? { mortalTech: true } : {}),
-    ...(cultivation ? { cultivation: true } : {}),
-  };
+export function lifeGroups(values: LifeArgs, full: boolean, mode: GameMode): LifeGroup[] {
+  const groups = new Set<LifeGroup>(full ? PROFILE_GROUPS : []);
+  if (mode === "novel" || values.cultivation === true) groups.add("cultivation");
+  if (values.tech === true) groups.add("tech");
+  for (const g of groupList("con", values.con)) groups.add(g);
+  const without = groupList("sin", values.sin);
+  for (const g of without) groups.delete(g);
+  const resolved = lifeGroupOptions([...groups]).groups;
+  const back = without.filter((g) => resolved.includes(g));
+  if (back.length > 0) {
+    const name = (g: LifeGroup) => Object.keys(GROUP_NAMES).find((n) => GROUP_NAMES[n] === g);
+    throw new Error(`--sin ${back.map(name).join(",")}: lo piden otros grupos elegidos`);
+  }
+  return [...resolved];
 }

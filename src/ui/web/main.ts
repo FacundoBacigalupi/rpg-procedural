@@ -6,13 +6,19 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { GAME_CONTENT_KINDS, WORLD_FAMILIES } from "../../game/index.ts";
+import { GAME_CONTENT_KINDS, PROFILE_GROUPS, WORLD_FAMILIES } from "../../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../../persistence/index.ts";
-import { LIFE_ARG_OPTIONS, type LifeConfig, lifeConfig } from "../config.ts";
+import { GROUP_NAMES, LIFE_ARG_OPTIONS, type LifeConfig, lifeConfig } from "../config.ts";
 import { openSession } from "../session.ts";
 import type { SetupInfo } from "./api.ts";
 import { startWeb } from "./server.ts";
-import { NOVEL_FAMILIES, NOVEL_SEXES, setupHandler, startedHandler } from "./setup.ts";
+import {
+  GROUP_LABELS,
+  NOVEL_FAMILIES,
+  NOVEL_SEXES,
+  setupHandler,
+  startedHandler,
+} from "./setup.ts";
 
 const { values } = parseArgs({
   options: { ...LIFE_ARG_OPTIONS, port: { type: "string", default: "5173" } },
@@ -41,6 +47,11 @@ const info: SetupInfo = {
   modes: ["realista", "novela"],
   sexes: NOVEL_SEXES,
   familias: NOVEL_FAMILIES,
+  groups: Object.entries(GROUP_NAMES).map(([name, group]) => ({
+    name,
+    label: GROUP_LABELS[name] ?? name,
+    profile: PROFILE_GROUPS.includes(group),
+  })),
   defaults: {
     world: values.world ?? WORLD_FAMILIES[0] ?? "xianxia",
     mode: values.mode === "novela" ? "novela" : "realista",
@@ -60,6 +71,8 @@ const api = fresh
           sex: choice.sex,
           familia: choice.familia,
           age: choice.age === undefined ? undefined : String(choice.age),
+          con: [values.con, ...(choice.con ?? [])].filter((x) => x).join(",") || undefined,
+          sin: [values.sin, ...(choice.sin ?? [])].filter((x) => x).join(",") || undefined,
         }),
       );
     })
