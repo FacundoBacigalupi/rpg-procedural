@@ -7,8 +7,10 @@ import {
   BELIEFS,
   beliefConfidenceAt,
   believed,
+  type Compass8,
   LOCATION,
   type PurposeId,
+  SECT_LORE,
 } from "../../sim/index.ts";
 import { knownEntities, whereaboutsFromBeliefs } from "./known.ts";
 import { type BookLine, bookLinesOf } from "./panels.ts";
@@ -37,6 +39,13 @@ export interface AboutPanel {
    * tiene. Puede estar errada y el panel no lo sabe; la verdad del porqué no sale de acá.
    */
   readonly purpose?: { readonly motive: PurposeId; readonly surety: AboutSurety };
+  /** Lo que oyó de un lugar lejano (la sede de una secta): rumbo y jornadas como los cree. */
+  readonly hearsay?: {
+    readonly what: "sect";
+    readonly bearing: Compass8;
+    readonly days: number;
+    readonly surety: AboutSurety;
+  };
 }
 
 function suretyOf(confidence: number): AboutSurety {
@@ -92,6 +101,7 @@ export function peoplePanel(w: LifeWorld): PeoplePanel {
 export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel {
   const entity = knownEntities(w).find((k) => k.ref === ref);
   if (entity?.kind !== "person") {
+    const lore = w.truth.get(SECT_LORE, w.player);
     return {
       kind: "place",
       name,
@@ -99,6 +109,16 @@ export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel 
       aliveSurety: "vague",
       where: entity?.present ? { state: "here" } : { state: "unknown" },
       book: [],
+      ...(lore && lore.seat === ref
+        ? {
+            hearsay: {
+              what: "sect" as const,
+              bearing: lore.bearing,
+              days: lore.days,
+              surety: suretyOf(lore.confidence),
+            },
+          }
+        : {}),
     };
   }
   const id = ref as AgentId;

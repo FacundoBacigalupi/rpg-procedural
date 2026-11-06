@@ -15,6 +15,7 @@ import {
 } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
 import { RECIPES } from "./crafts/index.ts";
+import { SCHOOLS, TALENTS } from "./cultivation/index.ts";
 import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
 import { SPEECH_LINES } from "./dialogue/index.ts";
 import { DIVINATION_CONCERNS, DIVINATION_METHODS } from "./divination/index.ts";
@@ -51,6 +52,8 @@ import { SCENARIOS, TUNING_TARGETS } from "./tuning/index.ts";
 export const CONTENT_KINDS: readonly ContentKind[] = [
   BIOMES,
   TRAITS,
+  TALENTS,
+  SCHOOLS,
   DEMOGRAPHY,
   SKILLS,
   BODY_PLANS,

@@ -32,6 +32,7 @@ import {
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
+  bearingDeg,
   CARCASS_SOURCE,
   CHEESE_PRESS,
   type ChosenTaste,
@@ -43,6 +44,8 @@ import {
   type CultureDef,
   type CurdRule,
   carcassUnits,
+  cellElements,
+  chooseSeat,
   DEBRIS_SINK,
   DEMOGRAPHY,
   DIETS,
@@ -53,6 +56,7 @@ import {
   dayOf,
   EATEN,
   ECOLOGY,
+  ELEMENT_SYSTEMS,
   ENTITY,
   ETIQUETTE,
   EXCRETED,
@@ -94,6 +98,7 @@ import {
   PLACE,
   PLANS,
   type PlaceFeature,
+  type PlaceQi,
   type PlaceToName,
   PRESSURE_CURVES,
   pickTrajectory,
@@ -106,6 +111,9 @@ import {
   ROTTED,
   resolveTastes,
   SCHEMAS,
+  SCHOOLS,
+  SEAT_REACH_HOPS,
+  type SectSeat,
   SKILLS,
   SkillCatalog,
   SMOKE_SINK,
@@ -114,8 +122,10 @@ import {
   SPEECH_LINES,
   STATUSES,
   type StatusDef,
+  sectVisitDay,
   seedBodies,
   seedCommunityAccent,
+  seedCultivation,
   seedCulture,
   seedHouseholdTools,
   seedLivestock,
@@ -127,6 +137,8 @@ import {
   seedPlaceNames,
   seedRelations,
   seedReligion,
+  seedSect,
+  seedSectLore,
   seedSettlement,
   seedSkills,
   seedStatus,
@@ -135,6 +147,7 @@ import {
   settlementUnits,
   startingParcel,
   TABOOS,
+  TALENTS,
   TAN_VAT,
   TASTES,
   type TanRule,
@@ -168,6 +181,7 @@ import {
   type LocalTerrain,
   type Planet,
   type PlanetOptions,
+  ring,
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
@@ -477,6 +491,8 @@ export interface LifeOptions {
   readonly offerings?: boolean;
   /** Opt-in: procesos mortales (technology §1-§2): al materializar la aldea se siembra el saber tácito de los procesos que la geografía permite (`tech.seeded`), en el hogar se enseña de a poco (`life.tech-teach`, `teachProcess`) y la cosecha de la rutina lee `yieldFactor` (`LifeParts.mortalTech`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly mortalTech?: boolean;
+  /** Opt-in: cultivo mínimo (novel-cultivation-min, cultivation §1-§3): la ley del seed en la fila del plano (`cultivation.law`) y el talento heredable y oculto de cada persona (`cultivation.talent`, `content/talents/`), también de los que nacen; apagado, hashes idénticos. */
+  readonly cultivation?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
@@ -834,6 +850,62 @@ export function derivedLoanUsury(
  * Lo que está encendido por defecto desde `life-2` y se apaga con `false`: por ahora las capas de
  * objetivos persistidas. Va antes de `optInParts`, que solo lleva lo que se pidió.
  */
+/** El catálogo del talento si `cultivation` está encendido (cableado opt-in, novel-cult-law). */
+export function cultivationParts(
+  options: LifeOptions,
+  content: Content,
+): Pick<LifeParts, "cultivation"> {
+  return options.cultivation ? { cultivation: { talents: content.all(TALENTS) } } : {};
+}
+
+/** El sistema elemental del mundo xianxia para la ley del cultivo (`content/elements/`). */
+function elementSystemOf(content: Content): { id: string; elements: string[] } {
+  const s = required(content.get(ELEMENT_SYSTEMS, "five_phases"), "elements five_phases");
+  return { id: s.id, elements: s.elements.map((e) => e.id) };
+}
+
+/**
+ * El qi de la celda de la aldea, fijado al sembrar el cultivo (al retomar no hay planeta): su nivel,
+ * la media del planeta, lo que nace por año y de qué elementos está hecho.
+ */
+function placeQiOf(planet: Planet, cell: number, content: Content): PlaceQi {
+  const e = planet.essence;
+  const system = required(content.get(ELEMENT_SYSTEMS, "five_phases"), "elements five_phases");
+  const vector = cellElements(e, cell, system);
+  return {
+    cell,
+    level: e.level[cell] ?? 0,
+    reference: e.budget / e.level.length,
+    regenPerYear: e.regen[cell] ?? 0,
+    elements: Object.fromEntries(system.elements.map((x, i) => [x.id, vector[i] ?? 0])),
+  };
+}
+
+/**
+ * La sede de la secta cercana (novel-cult-sect-place): la celda en tierra con más qi a
+ * `SEAT_REACH_HOPS` saltos o menos de la aldea, con su distancia, su rumbo y su qi.
+ */
+function sectSeatOf(planet: Planet, cell: number, content: Content): SectSeat | undefined {
+  const { grid, essence, tectonics, hydrology } = planet;
+  const best = chooseSeat(
+    ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
+      cell: c,
+      hops,
+      level: essence.level[c] ?? 0,
+      land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
+    })),
+  );
+  if (!best) return undefined;
+  const at = (c: number) => ({ lat: grid.lat[c] ?? 0, lon: grid.lon[c] ?? 0 });
+  return {
+    cell: best.cell,
+    hops: best.hops,
+    km: Math.round((best.hops === 0 ? 0.5 : best.hops) * planet.kmPerHop),
+    bearingDeg: bearingDeg(at(cell), at(best.cell)),
+    qi: placeQiOf(planet, best.cell, content),
+  };
+}
+
 /** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
 export function mortalTechParts(
   options: LifeOptions,
@@ -2032,6 +2104,58 @@ export function createLife(
     tenures: content.all(TENURES),
     standing,
   });
+  // Opt-in: la ley del cultivo y el talento de cada uno (novel-cult-law).
+  if (options.cultivation) {
+    seedCultivation(truth, ids, log, {
+      seed,
+      now: pop.now,
+      place: terrain.village,
+      elementSystem: elementSystemOf(content),
+      talents: content.all(TALENTS),
+      qi: placeQiOf(terrain.planet, site.cell, content),
+    });
+    // La secta cercana (novel-cult-sect-place): su sede con nombre en la lengua de la aldea.
+    const seat = sectSeatOf(terrain.planet, site.cell, content);
+    const schoolNames = content.all(SCHOOLS).find((n) => n.family === "xianxia");
+    const sect = seat
+      ? seedSect(truth, ids, log, {
+          seed,
+          now: pop.now,
+          yearTicks: clock.year,
+          place: terrain.village,
+          talents: content.all(TALENTS),
+          seat,
+          // Sus reinos y su técnica, con los nombres de la familia del mundo (novel-cult-school).
+          ...(schoolNames ? { school: schoolNames } : {}),
+          // Baja a buscar discípulos unos días después del pico de la cosecha.
+          visitDay: sectVisitDay(
+            harvestSeasonOf(map, clock, seed),
+            Math.round(clock.year / clock.day),
+          ),
+        })
+      : undefined;
+    if (sect) {
+      const high = (terrain.planet.tectonics.elevation[sect.sect.seat.cell] ?? 0) > 600;
+      seedPlaceNames(truth, language, seed, [
+        {
+          id: sect.sect.seatPlace,
+          feature: high ? "mountain" : "forest",
+          event: sect.sect.originEventId,
+        },
+      ]);
+    }
+    // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.
+    if (sect) {
+      seedSectLore(truth, {
+        seed,
+        now: pop.now,
+        yearTicks: clock.year,
+        org: sect.org,
+        sect: sect.sect,
+        people: pop.people.filter((p) => p.end === null).map((p) => p.id),
+      });
+    }
+  }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
   // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
@@ -2308,6 +2432,7 @@ export function createLife(
           }
         : {}),
       ...mortalTechParts(options, content),
+      ...cultivationParts(options, content),
       ...conditionLabelParts(options, content),
       ...(options.medicalSchools
         ? (() => {

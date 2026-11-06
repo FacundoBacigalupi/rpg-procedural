@@ -1,7 +1,7 @@
 // Quién es el personaje para la percepción (perception §2): su gente y sus sentidos. Aparte de
 // `view` y `world` para que la fase `perceive`, que `world` registra, pueda usarlo sin ciclos.
 
-import type { AgentId, PlanetClock, Tick } from "../../core/index.ts";
+import type { AgentId, EntityRef, PlanetClock, Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   callName,
@@ -13,6 +13,8 @@ import {
   PERSON_NAME,
   PLACE_NAME,
   type ReadonlyWorldTruth,
+  SECT,
+  SECT_LORE,
   sensorAcuity,
 } from "../../sim/index.ts";
 import type { Acquaintance } from "../view/index.ts";
@@ -61,9 +63,12 @@ export function knownWords(w: Pick<Witness, "truth" | "player">): string[] {
   }
   const mine = familyName(w.truth.get(PERSON_NAME, w.player) ?? { language: "", parts: [] });
   if (mine !== undefined) words.add(mine);
+  // Los lugares de la aldea; la sede de una secta, solo si la tiene oída (novel-cult-sect-known).
+  const heard = w.truth.get(SECT_LORE, w.player)?.seat;
+  const seats = new Set(w.truth.ids(SECT).map((o) => w.truth.get(SECT, o)?.seatPlace));
   for (const id of w.truth.ids(PLACE_NAME)) {
     const n = w.truth.get(PLACE_NAME, id);
-    if (n) words.add(n.form);
+    if (n && (!seats.has(id as EntityRef) || id === heard)) words.add(n.form);
   }
   for (const x of w.truth.get(HEARD_WORDS, w.player)?.words ?? []) words.add(x);
   return [...words];

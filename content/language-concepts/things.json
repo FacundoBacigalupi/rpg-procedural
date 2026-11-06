@@ -70,7 +70,8 @@
       "female": 1,
       "family": 2,
       "place": 1
-    }
+    },
+    "feature": "mountain"
   },
   {
     "id": "hill",

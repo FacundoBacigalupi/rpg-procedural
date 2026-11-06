@@ -6,6 +6,7 @@
 import {
   type AgentId,
   type EntityRef,
+  type Event,
   type ItemId,
   ledgerUnit,
   MINUTE,
@@ -13,16 +14,20 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ABSORBED_EVENT,
   ATTENTION,
   attireLook,
   BELIEFS,
   type Beliefs,
   BODY_STATE,
+  BREAKTHROUGH_EVENT,
   beliefConfidenceAt,
   believed,
   bodySigns,
   bookOf,
   COPPER,
+  CULTIVATION_STATE,
+  CULTIVATION_TECHNIQUE,
   type Figure,
   houseKey,
   INFECTION,
@@ -42,16 +47,27 @@ import {
   presenceStimulus,
   type ReadonlyWorldTruth,
   rainBetween,
+  realmOf,
+  SECT_HERALD_EVENT,
+  SECT_JOINED_EVENT,
+  SECT_LORE,
+  SECT_MEMBER,
+  SECT_SCHOOL,
+  SECT_TRIAL_EVENT,
+  SECT_VISIT_EVENT,
+  SENSED_QI_EVENT,
   STATUS,
   sameValue,
   skyLight,
   spaceLight,
   TASTES_OF,
+  TECHNIQUE_TAUGHT_EVENT,
   TRACE,
   type TradeRecipeDef,
   thingStimulus,
   traceStrength,
   traceVisible,
+  VILLAGE_SQUARE,
   watching,
 } from "../../sim/index.ts";
 import {
@@ -493,14 +509,86 @@ export function lexiconWords(w: LifeWorld, withNickname: boolean): string[] {
 
 /** Si el personaje se desmayó por el frío o el calor desde `since` (lo que él nota: perdió el rato). */
 function thermalBlackout(w: LifeWorld, since: Tick): boolean {
+  return playerEventSince(
+    w,
+    since,
+    (e) =>
+      e.kind === "body.collapsed" &&
+      e.causes.some((c) => c.kind === "state" && c.key === "body.thermal"),
+  );
+}
+
+/** Si desde `since` le pasó al personaje un evento que cumple `pred` (del más nuevo hacia atrás). */
+function playerEventSince(w: LifeWorld, since: Tick, pred: (e: Event) => boolean): boolean {
+  return lastPlayerEventSince(w, since, pred) !== undefined;
+}
+
+/** El último evento del personaje desde `since` que cumple `pred`. */
+function lastPlayerEventSince(
+  w: LifeWorld,
+  since: Tick,
+  pred: (e: Event) => boolean,
+): Event | undefined {
   const events = w.log.all();
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
     if (!e || e.tick < since) break;
-    if (e.kind !== "body.collapsed" || e.actors[0] !== w.player) continue;
-    if (e.causes.some((c) => c.kind === "state" && c.key === "body.thermal")) return true;
+    if (e.actors[0] === w.player && pred(e)) return e;
   }
-  return false;
+  return undefined;
+}
+
+/**
+ * La secta (novel-cult-sect-visit): si desde `since` llegó el aviso y lo oyó (cree cuándo bajan), o
+ * si bajaron y lo sabe (lo esperaba o está en la plaza). Lo último que pasó manda.
+ */
+function sectCue(w: LifeWorld, since: Tick): SelfCue | undefined {
+  const lore = w.truth.get(SECT_LORE, w.player);
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    // Estricto: un salto cortado por la bajada termina en su mismo tick y el turno que sigue no la
+    // vuelve a contar.
+    if (!e || e.tick <= since) break;
+    const d = (e.data ?? {}) as { visitAt?: number; start?: number };
+    if (e.kind === SECT_VISIT_EVENT) {
+      const atSquare = w.truth.get(LOCATION, w.player)?.space === VILLAGE_SQUARE;
+      if (atSquare || (lore?.visitAt !== undefined && lore.visitAt === d.start)) return "sect_here";
+    }
+    if (e.kind === SECT_HERALD_EVENT && lore?.visitAt !== undefined && lore.visitAt === d.visitAt)
+      return "sect_coming";
+  }
+  return undefined;
+}
+
+/**
+ * Cómo siente la ruptura (novel-cult-break): lo dice el resultado; si el último es el intento y no
+ * el resultado, es que no sentía el qi y no hubo nada que empujar.
+ */
+function breakCue(e: Event): SelfCue {
+  if (e.kind !== BREAKTHROUGH_EVENT) return "break_nothing";
+  const outcome = (e.data as { outcome?: string } | null)?.outcome;
+  if (outcome === "success") return "break_success";
+  if (outcome === "backlash") return "break_backlash";
+  return "break_stalled";
+}
+
+/** Desde qué fracción del recipiente se siente la presión, y desde qué parecido el qi no se resiste. */
+const QI_PRESSURE_FILL = 0.8;
+const QI_RESIST_MATCH = 0.3;
+
+/**
+ * Cómo siente el cuerpo la última absorción (novel-cult-absorb), sin números: lleno si ya no entra
+ * nada, presión cerca del tope, el qi que se resiste si se parece poco a la raíz, y si no, que entra.
+ */
+function absorbCue(e: Event): SelfCue {
+  const d = (e.data ?? {}) as { drawn?: number; qi?: number; capacity?: number; match?: number };
+  const capacity = d.capacity ?? 0;
+  const qi = d.qi ?? 0;
+  if (capacity > 0 && qi >= capacity) return "qi_full";
+  if (capacity > 0 && qi >= QI_PRESSURE_FILL * capacity) return "qi_pressure";
+  if ((d.match ?? 1) < QI_RESIST_MATCH) return "qi_resists";
+  return "qi_flows";
 }
 
 export function playerView(
@@ -596,6 +684,62 @@ export function playerView(
   if (body.scars.some((sc) => sc.lost)) cues.add("maimed");
   if (options.heardSince !== undefined && thermalBlackout(w, options.heardSince))
     cues.add("blacked_out");
+  if (
+    options.heardSince !== undefined &&
+    playerEventSince(w, options.heardSince, (e) => e.kind === SENSED_QI_EVENT)
+  )
+    cues.add("sensed_qi");
+  const absorbed =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === ABSORBED_EVENT);
+  if (absorbed) cues.add(absorbCue(absorbed));
+  const broke =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
+        );
+  if (broke) cues.add(breakCue(broke));
+  const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
+  if (sect) cues.add(sect);
+  const trial =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_TRIAL_EVENT);
+  if (trial) {
+    const d = (trial.data ?? {}) as { accepted?: boolean; elements?: readonly string[] };
+    cues.add(
+      d.accepted
+        ? "trial_accepted"
+        : (d.elements?.length ?? 0) > 0
+          ? "trial_rejected"
+          : "trial_dark",
+    );
+  }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT)
+  ) {
+    cues.add("sect_joined");
+  }
+  // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
+  // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.
+  const taught =
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT) !==
+      undefined;
+  const technique = taught ? w.truth.get(CULTIVATION_TECHNIQUE, w.player)?.name : undefined;
+  if (technique !== undefined) cues.add("technique_taught");
+  const member = w.truth.get(SECT_MEMBER, w.player);
+  const school = member ? w.truth.get(SECT_SCHOOL, member.org) : undefined;
+  const named = cues.has("sect_joined") || cues.has("break_success");
+  const realm =
+    school && named
+      ? realmOf(school, w.truth.get(CULTIVATION_STATE, w.player)?.stage ?? 0)
+      : undefined;
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);
@@ -689,6 +833,10 @@ export function playerView(
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     ...(options.onStranger ? { onStranger: options.onStranger } : {}),
     self: [...cues],
+    ...(realm && school
+      ? { selfRealm: { ...realm, ...(realm.layer !== undefined ? { word: school.layer } : {}) } }
+      : {}),
+    ...(technique !== undefined ? { selfTechnique: technique } : {}),
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
     ...(options.heardTrades

@@ -177,6 +177,7 @@ import {
   type RemedyDose,
   type RemedyDosing,
 } from "./medicine.ts";
+import { meditateProcess } from "./meditate.ts";
 import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import { ableToMilk, MILKER_AWAY_READS, MILKER_READS } from "./milkers.ts";
@@ -232,6 +233,7 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
+import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
   ASLEEP,
@@ -824,6 +826,8 @@ export interface LifeWorld {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in (novel-cult-law): el talento para cultivar; los que nacen lo heredan (`cultivation.talent`). */
+  readonly cultivation?: { readonly talents: readonly Trait[] };
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
   /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
@@ -2089,6 +2093,7 @@ export function lifeWorld(
               birthProcess({
                 clock: parts.clock,
                 traits: parts.traits,
+                ...(parts.cultivation ? { talents: parts.cultivation.talents } : {}),
                 bodyPlans: parts.plans,
                 ...(parts.form
                   ? {
@@ -2441,6 +2446,12 @@ export function lifeWorld(
         observeProcess({ clock: parts.clock, map: parts.map }),
         ponderProcess(),
         resolveGoalProcess(parts.goalSketches ?? []),
+        ...(parts.cultivation
+          ? [
+              meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year }),
+              sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
+            ]
+          : []),
         divinersProcess({
           methods: parts.divinations,
           concerns: parts.concerns,
@@ -2821,6 +2832,7 @@ export function lifeWorld(
           : []),
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
+          ...(parts.cultivation ? { sectLore: true } : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
             : {}),
