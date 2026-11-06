@@ -126,12 +126,16 @@ export const GoalSketch = z.strictObject({
     .optional(),
   /**
    * La opción sugerida que ofrece esta meta (novel-goals-hooks): con `person`, solo si la persona de
-   * la meta está delante; `say` es cómo se lee la opción (`{who}`, su nombre).
+   * la meta está delante; `say` es cómo se lee la opción (`{who}`, su nombre). Con `place`, ir ahí
+   * (`move`); con `when: "sect_visit"`, solo mientras cree que la secta está en la plaza
+   * (novel-cult-sect-goals).
    */
   suggest: z
     .strictObject({
-      verb: z.enum(["speak", "look", "work"]),
+      verb: z.enum(["speak", "look", "work", "move"]),
       person: z.boolean().optional(),
+      place: phrase.optional(),
+      when: z.enum(["sect_visit"]).optional(),
       hours: z.number().int().min(1).max(12).optional(),
       say: phrase,
     })

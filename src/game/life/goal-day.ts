@@ -3,7 +3,9 @@
 // horas libres salen de los objetivos que se propuso (`resolve:*` en `NPC_GOALS`): las metas de
 // riqueza, tierra u oficio lo hacen madrugar al campo (a la tarde, después de diez horas de campo,
 // ya está agotado); las de una persona (venganza, cuidarla, familia) lo llevan a la tarde a la casa
-// de esa persona, donde la percepción hace el resto (avisos de `goalWatch`). Puro: lo usa
+// de esa persona, donde la percepción hace el resto (avisos de `goalWatch`). Las de cultivar
+// (novel-cult-sect-goals) lo llevan a la plaza el día que cree que baja la secta, todo el día que
+// dure. Puro: lo usa
 // `routineProcess` solo para el jugador con días delegados.
 
 import type { AgentId } from "../../core/index.ts";
@@ -16,6 +18,8 @@ export const GOAL_VISIT_HOURS = [18, 21] as const;
 
 /** Bosquejos cuyas metas se sirven trabajando de más (`content/goals/`). */
 const WORK_SKETCHES: readonly string[] = ["wealth", "land", "craft"];
+/** Bosquejos cuyas metas se sirven yendo a la plaza cuando baja la secta. */
+const SECT_SKETCHES: readonly string[] = ["cultivate"];
 /** Bosquejos cuyas metas se sirven yendo hacia la persona. */
 const PERSON_SKETCHES: readonly string[] = ["revenge", "protect", "family"];
 
@@ -25,6 +29,7 @@ const sketchOfGoal = (g: Goal): string =>
 /** Lo que una hora hace por una meta, o nada si la hora es de la rutina. */
 export type GoalHour =
   | { readonly kind: "work"; readonly goal: string }
+  | { readonly kind: "square"; readonly goal: string }
   | { readonly kind: "visit"; readonly goal: string; readonly whom: AgentId };
 
 const within = (h: number, [a, b]: readonly [number, number]) => h >= a && h < b;
@@ -43,6 +48,8 @@ export function goalHour(
     readonly workAge: number;
     readonly rested: boolean;
     readonly able: boolean;
+    /** Cree que la secta está ahora en la plaza (`believesSectHere`). */
+    readonly sectHere?: boolean;
   },
   alive: (who: AgentId) => boolean,
 ): GoalHour | undefined {
@@ -51,6 +58,10 @@ export function goalHour(
     goals
       .filter(pick)
       .sort((a, b) => b.weight - a.weight || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+  if (state.sectHere === true && state.able) {
+    const sect = best((g) => SECT_SKETCHES.includes(sketchOfGoal(g)));
+    if (sect !== undefined) return { kind: "square", goal: sect.id };
+  }
   if (within(h, GOAL_WORK_HOURS)) {
     if (state.ageYears < state.workAge || !state.rested) return undefined;
     const work = best((g) => WORK_SKETCHES.includes(sketchOfGoal(g)));

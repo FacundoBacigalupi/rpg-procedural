@@ -2832,6 +2832,7 @@ export function lifeWorld(
           : []),
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
+          ...(parts.cultivation ? { sectLore: true } : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
             : {}),

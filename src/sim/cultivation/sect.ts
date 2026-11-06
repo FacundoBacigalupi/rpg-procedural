@@ -289,3 +289,18 @@ export function upcomingVisit(
   const here = at(year);
   return now < here.end ? here : at(year + 1);
 }
+
+/**
+ * Si quien cree esto cree que la secta está ahora en la plaza (novel-cult-sect-goals): lo anunció
+ * el heraldo y es la hora; lo que de verdad pase en la plaza no entra.
+ */
+export function believesSectHere(
+  lore: SectLore | undefined,
+  now: Tick,
+  clock: { readonly day: number },
+): boolean {
+  if (lore?.visitAt === undefined) return false;
+  return (
+    now >= lore.visitAt && now < lore.visitAt + Math.round((SECT_VISIT_HOURS / 24) * clock.day)
+  );
+}
