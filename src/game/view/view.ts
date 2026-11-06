@@ -65,7 +65,13 @@ export type SelfCue =
   /** Oyó el aviso: en unos días baja la secta a la plaza a buscar discípulos (novel-cult-sect-visit). */
   | "sect_coming"
   /** La gente de la secta está en la plaza. */
-  | "sect_here";
+  | "sect_here"
+  /** Lo midieron con la piedra y lo aceptan (`cultivation.sect_trial`, novel-cult-sect-trial). */
+  | "trial_accepted"
+  /** La piedra brilló poco: una raíz que la secta no quiere. */
+  | "trial_rejected"
+  /** La piedra no brilló: sin raíz, según ella. */
+  | "trial_dark";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

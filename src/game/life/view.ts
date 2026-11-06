@@ -47,6 +47,7 @@ import {
   rainBetween,
   SECT_HERALD_EVENT,
   SECT_LORE,
+  SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
   SENSED_QI_EVENT,
   STATUS,
@@ -695,6 +696,20 @@ export function playerView(
   if (broke) cues.add(breakCue(broke));
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
+  const trial =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_TRIAL_EVENT);
+  if (trial) {
+    const d = (trial.data ?? {}) as { accepted?: boolean; elements?: readonly string[] };
+    cues.add(
+      d.accepted
+        ? "trial_accepted"
+        : (d.elements?.length ?? 0) > 0
+          ? "trial_rejected"
+          : "trial_dark",
+    );
+  }
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

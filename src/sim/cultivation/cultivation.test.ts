@@ -16,6 +16,7 @@ import {
   sectMaster,
 } from "./sect.ts";
 import { aptitudeOf, talentOf } from "./talent.ts";
+import { readRoots, TRIAL_ACCEPT_QUALITY, trialAccepts } from "./trial.ts";
 
 const talents = JSON.parse(readFileSync("content/talents/human.json", "utf8")) as Trait[];
 const FIVE = { id: "five_phases", elements: ["wood", "fire", "earth", "metal", "water"] };
@@ -294,5 +295,44 @@ describe("lo que la aldea sabe de la secta (novel-cult-sect-known)", () => {
       expect(l.confidence).toBeLessThan(0.9);
     }
     expect(new Set(lores.map((l) => l.days)).size).toBeGreaterThan(3);
+  });
+});
+
+describe("la piedra de prueba (novel-cult-sect-trial)", () => {
+  const law = lawOf(3);
+  const strong = {
+    spirit_root: 3.5,
+    root_fire: 2,
+    root_wood: 0,
+    root_earth: 0,
+    root_metal: 0,
+    root_water: 0,
+  };
+  const none = { spirit_root: law.rootThreshold - 2, root_fire: 0 };
+  const reads = (innate: Record<string, number>, n = 200) =>
+    Array.from({ length: n }, (_, i) => readRoots(law, innate, Rng.root(5).fork("trial", i)));
+
+  it("es determinista y lee con la misma ley", () => {
+    const r = readRoots(law, strong, Rng.root(1));
+    expect(readRoots(law, strong, Rng.root(1))).toEqual(r);
+    expect(r.elements[0]).toBe("fire");
+    expect(trialAccepts(r)).toBe(true);
+  });
+
+  it("sin raíz casi nunca brilla; con una raíz fuerte casi siempre acepta", () => {
+    expect(reads(none).filter((r) => r.elements.length > 0).length).toBe(0);
+    const ok = reads(strong).filter(trialAccepts).length;
+    expect(ok).toBeGreaterThan(190);
+  });
+
+  it("se equivoca cerca del borde: la misma raíz a veces brilla y a veces no", () => {
+    const edge = { ...strong, spirit_root: law.rootThreshold + 0.05 };
+    const lit = reads(edge).filter((r) => r.elements.length > 0).length;
+    expect(lit).toBeGreaterThan(40);
+    expect(lit).toBeLessThan(180);
+    for (const r of reads(edge)) {
+      if (r.elements.length > 0) expect(r.quality).toBeGreaterThan(0);
+      expect(trialAccepts(r)).toBe(r.elements.length > 0 && r.quality >= TRIAL_ACCEPT_QUALITY);
+    }
   });
 });

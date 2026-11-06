@@ -3,14 +3,21 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  LOCATION,
   PERSON,
   SECT,
   SECT_ANNOUNCE_DAYS,
   SECT_HERALD_EVENT,
   SECT_LORE,
+  SECT_TRIAL,
+  SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
   sectVisitDay,
+  TALENT,
+  TRIAL_MAX_YEARS,
+  TRIAL_MIN_YEARS,
   upcomingVisit,
+  VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -87,5 +94,60 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
     expect(w.log.all().filter((e) => e.kind === SECT_HERALD_EVENT)).toHaveLength(1);
     // El personaje (de siete o más) lo esperaba: sabe que están en la plaza.
     expect(playerView(w, [], { heardSince: announced }).self.cues).toContain("sect_here");
+  });
+
+  it("en la plaza miden a los chicos con la piedra: el personaje si fue, los demás si los llevan", () => {
+    const life = Life.create(3, content, { cultivation: true });
+    const w = life.world;
+    const org = w.truth.ids(SECT)[0];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !sect) throw new Error("sin secta");
+    const offset = Math.round((w.map.lonDeg / 360) * w.clock.day);
+    const yearDays = Math.round(w.clock.year / w.clock.day);
+    const today = Math.floor((life.now + offset) / w.clock.day) % yearDays;
+    w.truth.set(SECT, org, { ...sect, visitDay: (today + 2) % yearDays });
+    const visit = upcomingVisit(life.now, (today + 2) % yearDays, w.clock, offset);
+    // El personaje tiene doce años y está en la plaza cuando llegan.
+    const me = w.truth.get(PERSON, w.player);
+    if (!me) throw new Error("sin personaje");
+    w.scheduler.advanceTo(visit.start - 3600);
+    w.truth.set(PERSON, w.player, { ...me, born: life.now - 12 * w.clock.year });
+    const at = w.truth.get(LOCATION, w.player);
+    if (!at) throw new Error("sin lugar");
+    w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    const before = life.now;
+    w.scheduler.advanceTo(visit.start + 3 * 3600);
+
+    const trials = w.log.all().filter((e) => e.kind === SECT_TRIAL_EVENT);
+    const mine = trials.filter((e) => e.actors[0] === w.player);
+    expect(mine).toHaveLength(1);
+    const row = w.truth.get(SECT_TRIAL, w.player);
+    expect(row?.org).toBe(org);
+    expect(mine[0]?.data).toMatchObject({
+      accepted: row?.accepted,
+      elements: row?.reading.elements,
+    });
+    expect(mine[0]?.causes).toContainEqual({ kind: "state", entity: w.player, key: TALENT.name });
+    const cue = row?.accepted
+      ? "trial_accepted"
+      : (row?.reading.elements.length ?? 0) > 0
+        ? "trial_rejected"
+        : "trial_dark";
+    expect(playerView(w, [], { heardSince: before }).self.cues).toContain(cue);
+
+    // Nadie se mide dos veces el mismo año, y solo los de 8 a 16.
+    const who = trials.map((e) => e.actors[0]);
+    expect(new Set(who).size).toBe(who.length);
+    for (const e of trials) {
+      const born = w.truth.get(PERSON, e.actors[0] as never)?.born ?? 0;
+      const age = (e.tick - born) / w.clock.year;
+      expect(age).toBeGreaterThanOrEqual(TRIAL_MIN_YEARS);
+      expect(age).toBeLessThan(TRIAL_MAX_YEARS);
+    }
+    const kids = living(w.truth).filter((id) => {
+      const age = (life.now - (w.truth.get(PERSON, id)?.born ?? 0)) / w.clock.year;
+      return id !== w.player && age >= TRIAL_MIN_YEARS + 0.1 && age < TRIAL_MAX_YEARS - 0.1;
+    });
+    if (kids.length >= 3) expect(trials.length).toBeGreaterThan(1);
   });
 });

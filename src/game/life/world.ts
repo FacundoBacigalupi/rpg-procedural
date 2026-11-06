@@ -2449,7 +2449,7 @@ export function lifeWorld(
         ...(parts.cultivation
           ? [
               meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year }),
-              sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village }),
+              sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
             ]
           : []),
         divinersProcess({
