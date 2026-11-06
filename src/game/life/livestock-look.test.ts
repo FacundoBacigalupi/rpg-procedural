@@ -15,6 +15,12 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import {
+  PREGNANT_LOOK_EARLIEST,
+  PREGNANT_LOOK_LATEST,
+  pregnantLookShareFor,
+  pregnantLookShareOf,
+} from "./animal-marks.ts";
+import {
   ANIMAL_WORDS,
   animalsInSight,
   OLD_LOOK_SHARE,
@@ -25,6 +31,7 @@ import {
 } from "./animals.ts";
 import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
+import { FULL_PROFILE } from "./profile.ts";
 import { itemsSeen, playerView } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
 
@@ -201,4 +208,47 @@ describe("la preñez que se nota (livestock-look-pregnant)", () => {
     at(now - Math.ceil(PREGNANT_LOOK_SHARE * span));
     expect(animalsInSight(w).find((s) => s.ref === ox)?.marks).toContain("pregnant");
   }, 300_000);
+});
+
+describe("la panza según quien mira (livestock-look-pregnant-skill)", () => {
+  it("pura: el que no sabe la nota tarde y el maestro temprano", () => {
+    expect(pregnantLookShareOf(0)).toBeCloseTo(PREGNANT_LOOK_LATEST);
+    expect(pregnantLookShareOf(1)).toBeCloseTo(PREGNANT_LOOK_EARLIEST);
+    expect(pregnantLookShareOf(0.5)).toBeCloseTo(PREGNANT_LOOK_SHARE);
+    expect(pregnantLookShareOf(2)).toBeCloseTo(PREGNANT_LOOK_EARLIEST);
+  });
+
+  it("encendido: la panza se ve desde la parte que da la habilidad del jugador; apagado, desde la mitad", () => {
+    const make = (skill: boolean) =>
+      Life.create(7, content, {
+        frequency: 8,
+        villageLivestock: true,
+        livestockLife: true,
+        livestockDraft: true,
+        livestockDraftFatigue: true,
+        livestockGestation: true,
+        livestockLookSkill: skill,
+      });
+    for (const skill of [true, false]) {
+      const l = make(skill);
+      const w = l.world;
+      const ox = oxInSight(l);
+      const a = w.truth.get(ANIMAL, ox);
+      if (!a) throw new Error("sin buey");
+      w.truth.set(ANIMAL, ox, { ...a, bornAt: w.scheduler.now - 3 * w.clock.year });
+      const share = skill
+        ? pregnantLookShareFor(w.truth, w.skills, w.player as never)
+        : PREGNANT_LOOK_SHARE;
+      if (skill) expect(share).not.toBeCloseTo(PREGNANT_LOOK_SHARE, 2);
+      const now = w.scheduler.now;
+      const span = 150 * 86_400;
+      const at = (since: number) =>
+        w.truth.set(PREGNANT, ox, { since: since as never, due: (since + span) as never, size: 1 });
+      at(now - Math.floor(share * span) + 86_400);
+      expect(animalsInSight(w).find((s) => s.ref === ox)?.marks ?? []).not.toContain("pregnant");
+      at(now - Math.ceil(share * span));
+      expect(animalsInSight(w).find((s) => s.ref === ox)?.marks).toContain("pregnant");
+    }
+    expect(FULL_PROFILE).toMatchObject({ livestockLookSkill: true });
+  }, 600_000);
 });

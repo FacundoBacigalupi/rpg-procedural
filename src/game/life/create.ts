@@ -666,6 +666,8 @@ export interface LifeOptions {
   readonly livestockFosterHelp?: boolean;
   /** Opt-in (livestock-gestation, con `livestockLife`): la hembra cubierta queda preñada y pare a los días de su especie (`breeding.gestationDays`: la cabra 150, la vaca 283); con mucha hambre pierde la cría. */
   readonly livestockGestation?: boolean;
+  /** Opt-in (livestock-look-pregnant-skill, con `livestockGestation`): la panza de la preñada se nota según la habilidad de cuidar animales de quien mira (`farming`): el que no sabe, al 70 % de la preñez; el maestro, al 30 %; en la vista y en «la preñada» al nombrarla. */
+  readonly livestockLookSkill?: boolean;
   /** Opt-in (livestock-gestation-heat, con `livestockGestation`): la especie con `breeding.heat` (cabra y oveja) entra en celo solo con pocas horas de luz (otoño e invierno lejos del ecuador; cerca, todo el año) y en celo queda preñada con `heat.perDay`. */
   readonly livestockHeat?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
@@ -2207,6 +2209,9 @@ export function createLife(
               ? { livestockFosterHelp: true }
               : {}),
             ...(options.livestockGestation ? { livestockGestation: true } : {}),
+            ...(options.livestockGestation && options.livestockLookSkill
+              ? { livestockLookSkill: true }
+              : {}),
             ...(options.livestockGestation && options.livestockHeat ? { livestockHeat: true } : {}),
             ...(options.livestockSlaughter
               ? {

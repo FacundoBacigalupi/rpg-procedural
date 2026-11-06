@@ -44,10 +44,11 @@ import {
   PREGNANT,
   type ReadonlyWorldTruth,
   type ResolveInput,
+  type SkillCatalog,
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
-import { type AnimalMark, animalMarksOf } from "./animal-marks.ts";
+import { type AnimalMark, animalMarksOf, pregnantLookShareFor } from "./animal-marks.ts";
 
 export interface SlaughterOptions {
   readonly species: readonly LivestockDef[];
@@ -71,6 +72,11 @@ export interface SlaughterOptions {
   readonly sellBarter?: boolean;
   /** Opt-in (livestock-milk-hand): `milk` ordeña la hembra de la casa que hoy quedó sin ordeñar. */
   readonly milk?: boolean;
+  /**
+   * Opt-in (livestock-look-pregnant-skill, con `refs`): «la preñada» se le nota según la habilidad
+   * de quien habla (`pregnantLookShareFor`), como en la vista.
+   */
+  readonly lookSkill?: SkillCatalog;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -192,6 +198,7 @@ function animalOf(
   // Nombró algo que no es una especie de la casa («el cerdo»): no hay a cuál.
   const vague = [...words].every((w) => VAGUE.has(w) || (o.refs === true && w in QUALIFIERS));
   if (!anyNamed && (!vague || mustName)) return undefined;
+  const share = o.lookSkill ? pregnantLookShareFor(truth, o.lookSkill, me as never) : undefined;
   for (const id of [...truth.ids(ANIMAL)].sort(compareStrings) as AnimalId[]) {
     const a = truth.get(ANIMAL, id);
     if (!a) continue;
@@ -204,7 +211,7 @@ function animalOf(
     if (def === undefined || (anyNamed && !named(def))) continue;
     if (!accept(id)) continue;
     if (wanted.length > 0) {
-      const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year);
+      const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year, share);
       if (!wanted.every((q) => fits(q, a.sex, marks))) continue;
     }
     return { id, def, bornAt: a.bornAt, household: a.owner };

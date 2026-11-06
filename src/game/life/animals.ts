@@ -14,7 +14,7 @@ import {
   skyLight,
   spaceLight,
 } from "../../sim/index.ts";
-import { type AnimalMark, animalMarksOf } from "./animal-marks.ts";
+import { type AnimalMark, animalMarksOf, pregnantLookShareFor } from "./animal-marks.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** La luz a grandes rasgos, como la barra (`Hud.light`). */
@@ -118,13 +118,17 @@ function seenAnimalRows(
 export function animalRows(w: LifeWorld): AnimalRow[] {
   const out: AnimalRow[] = [];
   const defs = new Map((w.livestockLife ?? []).map((d) => [d.id, d]));
+  const share =
+    w.livestockLookSkill === true
+      ? pregnantLookShareFor(w.truth, w.skills, w.player as unknown as EntityRef)
+      : undefined;
   for (const id of [...w.truth.ids(ANIMAL)].sort()) {
     const a = w.truth.get(ANIMAL, id);
     if (!a || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const house = w.truth.get(BUILDING, a.home);
     if (!house) continue;
     const level = w.truth.get(DRAFT_FATIGUE, id)?.level ?? 0;
-    const marks = animalMarks(w, id as EntityRef, a.bornAt, defs.get(a.species));
+    const marks = animalMarks(w, id as EntityRef, a.bornAt, defs.get(a.species), share);
     out.push({
       id,
       species: a.species,
@@ -146,8 +150,9 @@ function animalMarks(
   id: EntityRef,
   bornAt: number,
   def: LivestockDef | undefined,
+  pregnantShare?: number,
 ): AnimalMark[] {
-  return animalMarksOf(w.truth, id, bornAt, def, w.scheduler.now, w.clock.year);
+  return animalMarksOf(w.truth, id, bornAt, def, w.scheduler.now, w.clock.year, pregnantShare);
 }
 
 /** Hasta dónde se nota el cansancio según la luz: de día `TIRED_SIGHT_M`, la mitad en penumbra. */

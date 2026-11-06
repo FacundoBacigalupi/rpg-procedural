@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **Novela jugable primero (2026-11-05)**: el usuario quiere jugar una novela (decidir y avanzar). Se congela el detalle fino de ganado y economía (queda opt-in, materia prima del montaje). Orden en ROADMAP «Ahora»: `novel-montage` → `novel-goals` → `novel-cultivation-min` → `novel-narration` → `novel-flags-group` → `novel-full-profile-default`. Empezar por `novel-montage` (player-loop §4-§7; base: `game/life/stretch.ts`, `interrupts.ts`, nodo `until` de `sim/actions/plan.ts`).
+- **livestock-look-pregnant-skill (2026-11-04)**: opt-in `livestockLookSkill`; la panza se nota según `farming` de quien mira (`pregnantLookShareFor` en `animal-marks.ts`). Sigue `livestock-look-pregnant-more` (la panza que confunde, con `livestock-body`; el NPC que la nota).
 - **livestock-gestation-heat (2026-11-04)**: opt-in `livestockHeat`; cabra y oveja quedan preñadas solo con menos de `breeding.heat.daylightBelow` horas de luz. Sigue `livestock-gestation-more` (preñez que se pierde por enfermedad o golpe, parto difícil, la casa que decide cuándo echar el macho).
 - **livestock-milk-foster-help (2026-11-03)**: opt-in `livestockFosterHelp`; con alguien del hogar que puede, la adopción del huérfano sube `suckle.fosterHelp` veces (`helpedBy` en el evento). Sigue `livestock-milk-foster-help-more` (horas reales, verbo del jugador, entre casas).
 - **livestock-milk-self (2026-11-03)**: opt-in `livestockMilkSelf`; el jugador no ordeña solo a la mañana (`ableToMilk({ except })`); ordeña a mano con `milk`. Sigue `livestock-milk-hours-day` (la hora sale del día y delegar «que ordeñe mi hermana»).

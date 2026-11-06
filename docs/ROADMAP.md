@@ -8,7 +8,20 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**Prioridad vigente (2026-10-26):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
+### Novela jugable primero (2026-11-05, pedido del usuario)
+El usuario quiere **jugar una novela: tomar decisiones y avanzar** (años, reinos, secta), no
+administrar la aldea día por día. Se **congela** el detalle fino de ganado y economía (las líneas
+`livestock-*`, herramientas, despensa): no se borra, queda opt-in y pasa a ser **materia prima del
+montaje** («qué pasó mientras»: la cabra parió, el buey se cansó, se vendió el cuero). Sus `-more`
+quedan abiertos pero no se toman hasta terminar esta lista. Orden:
+- [ ] (novel-montage) Saltos de tiempo jugables: «trabajo el campo hasta la cosecha», «paso el invierno», «entreno un mes» con rutina y `until` ([player-loop.md](systems/player-loop.md) §4-§7): la sim corre, se corta con interrupciones (fijas y configurables) y vuelve un montaje de «qué pasó mientras» con lo que el personaje percibió (gente, cuerpo, casa, animales, estación). Se parte en sub-ítems antes de codear.
+- [ ] (novel-goals) Metas del jugador y ganchos: `PlayerGoal` (§8) que el narrador recuerda y los saltos respetan («hasta que pase algo con mi meta»); ganchos que ya existen en la sim (rumores, gente que pide, sectas que reclutan) traídos al frente cuando el personaje los percibe.
+- [ ] (novel-cultivation-min) Cultivo mínimo jugable (adelanto de Fase 4): sentir el qi, meditar con absorción que respeta el ledger, primera ruptura con riesgo, y una secta cercana con prueba de ingreso que te puede aceptar o no. Lo justo para que «quiero cultivar» tenga un camino.
+- [ ] (novel-narration) Narración de novela: capítulos por salto, voz por modo, recapitulación al retomar, que el montaje se lea como prosa y no como lista.
+- [ ] (novel-flags-group) Agrupar los opt-in en pocos interruptores (`village`, `livestock`, `economy`, `body`…) con dependencias resueltas, en vez de decenas de flags sueltos.
+- [ ] (novel-full-profile-default) El perfil completo por defecto para una vida nueva, cuando el lote de `sim:batch --scenario full-profile` dé invariantes limpias y tiempos aceptables.
+
+**Prioridad anterior (2026-10-26, congelada el 2026-11-05 por la de arriba):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
 están cerradas, ya se afila con la piedra de la casa, el herrero de la aldea repara y vende
 herramientas nuevas, las usadas se compran y venden entre personas y los NPC cuidan la herramienta
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
@@ -456,6 +469,7 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
               - [x] (livestock-gestation-heat) El celo por estación: la cabra y la oveja con los días cortos. Hecho (2026-11-04): opt-in `livestockHeat` (con `livestockGestation`): `BreedingDef.heat` (cabra y oveja: menos de 12,5 h de luz, 0,035 por día en celo, sin calibrar) con las horas de luz de la aldea (`sunAt`); fuera de estación no queda preñada y `living.animal_conceived` lleva `daylight` y la causa `heat`. Cerca del ecuador, todo el año.
               - [ ] (livestock-gestation-more) Celo por estación (`breedingSeason` de living-world: la oveja en otoño, la cabra con días cortos), la preñez que se pierde por enfermedad o golpe, el parto difícil que mata a la madre o la cría (con `livestock-body`), y que la casa decida cuándo echarle el macho.
             - [x] (livestock-look-pregnant) La preñez que se nota al mirarla (`PREGNANT` desde `livestock-gestation`): la panza en la segunda mitad, de cerca y con luz. Hecho (2026-11-03), sin flag propio (`PREGNANT` solo existe con `livestockGestation`): `animalMarksOf` da `pregnant` desde `PREGNANT_LOOK_SHARE` (0,5) de la preñez; vista, plantilla `thing.mark.pregnant`, prompt del narrador y «la preñada» al carnear.
+              - [x] (livestock-look-pregnant-skill) Que el que sabe de animales la note antes y el que no, más tarde. Hecho (2026-11-04): opt-in `livestockLookSkill` (con `livestockGestation`): la parte de la preñez desde la que se ve la panza sale de `farming` de quien mira (`pregnantLookShareOf`: 0,7 sin saber, 0,3 el maestro, 0,5 a media habilidad), en la vista del jugador y en «la preñada» al nombrarla (con `livestockSlaughterRefs`).
               - [ ] (livestock-look-pregnant-more) Que el que sabe de animales (habilidad de cuidar ganado) la note antes y el que no, más tarde o nunca, y que la panza confunda (gorda o hinchada por enfermedad, con `livestock-body`).
             - [ ] (livestock-look-wounds) Heridas y renguera al mirarlo, con `livestock-body`.
     - [x] (livestock-herd-ages, 2026-10-27) Edades por función: `herdAgeYears` en `content/livestock` (buey: entre 3 y 10 años; las demás especies siguen entre 0 y 0,6 de su vida), con la misma tirada. Cambia la creación con `villageLivestock`: bump a `life-57`, compatibilidad `legacyLivestockHerdAges`. Hecho.
