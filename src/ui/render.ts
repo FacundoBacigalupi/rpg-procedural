@@ -1,7 +1,7 @@
 // Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { type AgentId, EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
+import { type AgentId, EARTHLIKE_CLOCK, formatTick, type Tick, toCalendar } from "../core/index.ts";
 import {
   type AboutPanel,
   type BookLine,
@@ -17,6 +17,7 @@ import {
   type Recap,
   type RoutineRules,
   type Suggestion,
+  seasonAt,
   type ThinkResult,
   TONE_MARK,
   type WeatherPanel,
@@ -49,6 +50,34 @@ export function renderStatus(now: Tick, lonDeg = 0): string {
   // La hora del lugar (la del sol), no la del reloj absoluto del mundo.
   const local = now + Math.round((lonDeg / 360) * EARTHLIKE_CLOCK.day);
   return `— ${formatTick(EARTHLIKE_CLOCK, local)}`;
+}
+
+/** Un salto de al menos tantos días abre capítulo (novel-narr-chapters; sin calibrar). */
+export const CHAPTER_MIN_DAYS = 7;
+/** Cómo empieza la línea de un capítulo: la bitácora los cuenta por esto. */
+export const CHAPTER_MARK = "Capítulo ";
+
+const SEASON_NAMES: Readonly<Record<string, string>> = {
+  spring: "Primavera",
+  summer: "Verano",
+  autumn: "Otoño",
+  winter: "Invierno",
+};
+
+/**
+ * «Capítulo 3 · Otoño del año 70»: la estación del lugar (por su hemisferio) y el año del mismo
+ * calendario que la línea de estado, al terminar el salto.
+ */
+export function chapterHeading(n: number, at: Tick, lonDeg = 0, latDeg = 0): string {
+  const local = at + Math.round((lonDeg / 360) * EARTHLIKE_CLOCK.day);
+  const season = SEASON_NAMES[seasonAt(EARTHLIKE_CLOCK, local, latDeg)] ?? "";
+  const { year } = toCalendar(EARTHLIKE_CLOCK, local);
+  return `${CHAPTER_MARK}${n} · ${season} del año ${year}`;
+}
+
+/** Cuántos capítulos hay ya en lo narrado. */
+export function chaptersIn(entries: readonly { readonly text: string }[]): number {
+  return entries.filter((e) => e.text.startsWith(CHAPTER_MARK)).length;
 }
 
 /** Quita las marcas `{{e1|tu madre}}` de la narración: queda el texto que se lee. */

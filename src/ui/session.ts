@@ -150,6 +150,9 @@ import {
 } from "../tools/index.ts";
 import { type Hint, hintOf } from "./hints.ts";
 import {
+  CHAPTER_MIN_DAYS,
+  chapterHeading,
+  chaptersIn,
   elapsed,
   renderAbout,
   renderBook,
@@ -632,8 +635,20 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         ? [renderNotes(report.notes, nameOf, goalText)]
         : []),
     ].join("\n");
-    store.appendNarration(report.to, told);
-    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
+    // Un salto largo abre capítulo (novel-narr-chapters): la línea queda en la bitácora.
+    const map = life.world.map;
+    const heading =
+      report.to - report.from >= CHAPTER_MIN_DAYS * life.world.clock.day
+        ? chapterHeading(
+            chaptersIn(store.narrations()) + 1,
+            report.to,
+            map.lonDeg,
+            map.climate.latDeg,
+          )
+        : undefined;
+    const chapter = heading === undefined ? told : `${heading}\n\n${told}`;
+    store.appendNarration(report.to, chapter);
+    const text = `${chapter}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
     if (report.over) {
       return {
         text: `${text}\nTu vida terminó.\n\n${endingOf(life, store, options.epilogue === true)}`,
