@@ -6,7 +6,8 @@
 // factible según lo que cree, la opción no aparece.
 //
 // La cantidad no es fija: hasta `limit` (por defecto `DEFAULT_SUGGESTIONS`), ordenadas por
-// saliencia. Cuando existan metas, deberes y utilidad de NPC (Fase 2/3) entran como fuentes nuevas.
+// saliencia. Las metas del personaje suman una opción cada una (novel-goals-hooks: `goal`); deberes
+// y utilidad de NPC (Fase 2/3) entran como fuentes nuevas.
 
 import type { AgentId, Tick } from "../../core/index.ts";
 import {
@@ -25,6 +26,8 @@ import {
   planFromDraft,
   SKILL_STATE,
 } from "../../sim/index.ts";
+import type { GoalSketch } from "../view/index.ts";
+import { activePlayerGoals, type PlayerGoal } from "./goals.ts";
 import { knownEntities } from "./known.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
 import { needsConfirmation, type SuggestionTone, suggestionTone } from "./tone.ts";
@@ -39,7 +42,8 @@ export type SuggestionKind =
   | "work"
   | "talk"
   | "look"
-  | "wait";
+  | "wait"
+  | "goal";
 
 export interface Suggestion {
   /** Estable entre turnos mientras la opción siga siendo la misma ("talk:madre"). */
@@ -54,6 +58,14 @@ export interface Suggestion {
   readonly tone: SuggestionTone;
   /** Las graves piden un segundo toque antes de jugarse. */
   readonly confirm: boolean;
+  /** Para `goal`: qué meta la propone y cómo se lee la opción («observar a Langdang…»). */
+  readonly goal?: { readonly id: number; readonly text: string; readonly say: string };
+}
+
+/** Las metas del personaje y su catálogo, para las opciones que proponen (novel-goals-hooks). */
+export interface SuggestionGoals {
+  readonly goals: readonly PlayerGoal[];
+  readonly sketches: readonly GoalSketch[];
 }
 
 /** El tono base de cada clase de opción, antes de mirar el catálogo. */
@@ -67,6 +79,7 @@ const BASE_TONE: Readonly<Record<SuggestionKind, SuggestionTone>> = {
   talk: "social",
   look: "routine",
   wait: "routine",
+  goal: "routine",
 };
 
 function verbsOf(node: PlanNode): string[] {
@@ -106,7 +119,7 @@ function feelings(w: LifeWorld): ReadonlySet<string> {
 }
 
 /** Las candidatas, sin validar. */
-function candidates(w: LifeWorld, now: Tick): Suggestion[] {
+function candidates(w: LifeWorld, now: Tick, goals?: SuggestionGoals): Suggestion[] {
   const felt = feelings(w);
   const has = (...signs: string[]) => signs.some((s) => felt.has(s));
   const hour = localHour(w.clock, now, w.map.lonDeg);
@@ -175,6 +188,42 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
   }
   add("look", 0.15, act("look"));
   add("wait", 0.05, act("wait", [{ role: "for", duration: hours(1) }]));
+  for (const s of goalCandidates(w, goals)) out.push(s);
+  return out;
+}
+
+/**
+ * Una opción por meta activa con `suggest` en su bosquejo (novel-goals-hooks): la de una persona
+ * solo si el personaje la tiene delante; el resto, trabajar de más. Solo con lo que sabe (regla 4).
+ */
+function goalCandidates(w: LifeWorld, goals?: SuggestionGoals): Suggestion[] {
+  if (goals === undefined) return [];
+  const known = knownEntities(w);
+  const out: Suggestion[] = [];
+  for (const g of activePlayerGoals(goals.goals)) {
+    const s = goals.sketches.find((k) => k.id === g.sketch)?.suggest;
+    if (s === undefined) continue;
+    let draft: IntentDraft;
+    let who: string | undefined;
+    if (s.person === true) {
+      const e = known.find((k) => k.ref === g.target && k.present && k.kind === "person");
+      who = e?.names[0];
+      if (who === undefined) continue;
+      const ref = { text: who, kind: "person" as const, features: [] };
+      draft = act(s.verb, [{ role: s.verb === "speak" ? "to" : "target", ref }]);
+    } else {
+      draft = act(s.verb, [{ role: "for", duration: hours(s.hours ?? 4) }]);
+    }
+    out.push({
+      id: `goal:${g.id}`,
+      kind: "goal",
+      salience: s.person === true ? 0.55 : 0.4,
+      draft,
+      tone: BASE_TONE.goal,
+      confirm: false,
+      goal: { id: g.id, text: g.text, say: s.say.replace("{who}", who ?? "") },
+    });
+  }
   return out;
 }
 
@@ -182,13 +231,13 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
  * Las opciones de ahora, ordenadas por saliencia y recortadas a `limit`; las que el plan no
  * valida con lo que el personaje sabe quedan afuera. Sin `limit` salen todas (para «ver más»).
  */
-export function suggestions(w: LifeWorld, limit?: number): Suggestion[] {
+export function suggestions(w: LifeWorld, limit?: number, goals?: SuggestionGoals): Suggestion[] {
   const here = w.truth.get(LOCATION, w.player)?.hex;
   const me = w.truth.get(PERSON, w.player);
   if (!me) return [];
   const known = knownEntities(w);
   const skills = w.truth.get(SKILL_STATE, w.player);
-  const toned = candidates(w, w.scheduler.now).flatMap((s): Suggestion[] => {
+  const toned = candidates(w, w.scheduler.now, goals).flatMap((s): Suggestion[] => {
     const made = planFromDraft(s.draft, {
       actor: w.player,
       source: "player",

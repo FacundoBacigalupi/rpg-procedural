@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Suggestion } from "../game/index.ts";
 import {
   addGoal,
   dropGoal,
@@ -12,6 +13,8 @@ import {
 } from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
 import { lifeConfig } from "./config.ts";
+import { suggestionPhrase } from "./hints.ts";
+import { renderSuggestion } from "./render.ts";
 import { openSession } from "./session.ts";
 
 const base = { mode: "realista", save: "x", runtime: "ollama", think: false } as const;
@@ -123,5 +126,39 @@ describe("metas del personaje (novel-goals-set)", () => {
     const reply = await session.say("sigo con mi vida hasta que pase algo con mi meta");
     expect((life.now - from) / life.world.clock.day).toBeLessThan(14);
     expect(reply.text).toMatch(/ves a Langdang \(lo que querés: vengar a mi madre\)/);
+  }, 300_000);
+
+  it("seed 1 (novel-goals-hooks): las metas proponen opciones y se juegan", async () => {
+    const config = lifeConfig({ ...base, seed: "1" });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    expect(session.suggested(true).some((s) => s.kind === "goal")).toBe(false);
+    const talk = session.suggested(true).find((s) => s.kind === "talk");
+    await session.say("quiero hacerme rico");
+    if (talk?.with !== undefined) await session.say(`quiero cuidar a mi ${talk.with}`);
+    const all = session.suggested(true);
+    const goals = all.filter((s) => s.kind === "goal");
+    expect(talk?.with).toBeDefined();
+    if (talk?.with !== undefined) {
+      const kin = goals.find((s) => s.goal?.id === 2);
+      expect(kin?.goal?.say).toMatch(/^ir a hablar con /);
+      expect(renderSuggestion(kin as Suggestion)).toMatch(/\(por «cuidar a mi /);
+      expect(suggestionPhrase(kin as Suggestion)).toMatch(/^hablo con /);
+    }
+    // Trabajar de más solo se ofrece de día, como trabajar: si es de noche, se espera la mañana.
+    if (!all.some((s) => s.kind === "work")) {
+      await session.say("duermo hasta que amanezca");
+      await session.say("espero dos horas");
+    }
+    const day = session.suggested(true);
+    expect(day.some((s) => s.kind === "work")).toBe(true);
+    const rich = day.find((s) => s.goal?.id === 1);
+    expect(rich && renderSuggestion(rich)).toBe("Trabajar de más (por «hacerme rico»)");
+    const played = await session.choose("goal:1");
+    // Se juega como cualquier opción: la factibilidad real la decide la sim (acá, dónde trabajar).
+    expect(played.text).not.toMatch(/ya no está/);
+    expect(played.text.length).toBeGreaterThan(0);
+    await session.say("ya no quiero hacerme rico");
+    expect(session.suggested(true).some((s) => s.goal?.id === 1)).toBe(false);
   }, 300_000);
 });

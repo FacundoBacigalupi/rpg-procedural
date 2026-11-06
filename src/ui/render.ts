@@ -654,10 +654,15 @@ const SUGGESTION_LABELS: Readonly<Record<Suggestion["kind"], string>> = {
   talk: "Hablar con",
   look: "Mirar alrededor",
   wait: "Esperar una hora",
+  goal: "Por lo que querés",
 };
 
 export function renderSuggestion(s: Suggestion): string {
   const label = SUGGESTION_LABELS[s.kind];
+  if (s.goal !== undefined) {
+    const say = s.goal.say;
+    return `${say.charAt(0).toUpperCase()}${say.slice(1)} (por «${s.goal.text}»)`;
+  }
   return s.with === undefined ? label : `${label} tu ${s.with}`;
 }
 

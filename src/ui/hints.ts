@@ -36,10 +36,26 @@ const PHRASES: Readonly<Record<Suggestion["kind"], string>> = {
   talk: "hablo con",
   look: "miro alrededor",
   wait: "espero una hora",
+  goal: "trabajo de más",
+};
+
+/** Las de una meta (novel-goals-hooks), por el verbo del borrador: «miro a Langdang». */
+const GOAL_PHRASES: Readonly<Record<string, string>> = {
+  speak: "hablo con",
+  look: "miro a",
+  work: "trabajo de más",
 };
 
 /** La frase escribible de una sugerencia: «hablo con mi madre», «como algo». */
 export function suggestionPhrase(s: Suggestion): string {
+  if (s.kind === "goal") {
+    const node = s.draft.kind === "act" ? s.draft.plan : undefined;
+    const verb = node?.kind === "do" ? node.verb : "work";
+    const ref = node?.kind === "do" ? node.args.find((a) => "ref" in a) : undefined;
+    const who = ref !== undefined && "ref" in ref ? ref.ref.text : undefined;
+    const phrase = GOAL_PHRASES[verb] ?? PHRASES.goal;
+    return who === undefined ? phrase : `${phrase} ${who}`;
+  }
   const phrase = PHRASES[s.kind];
   return s.with === undefined ? phrase : `${phrase} mi ${s.with}`;
 }

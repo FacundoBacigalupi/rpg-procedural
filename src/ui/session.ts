@@ -844,10 +844,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     );
   };
 
-  const suggested = (all = false) => suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS);
+  const suggested = (all = false) =>
+    suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS, { goals, sketches });
   const choose = async (id: string): Promise<Reply> => {
     // Se vuelve a armar la lista: si el cuerpo o la hora cambiaron, la opción puede ya no estar.
-    const picked = suggestions(life.world).find((x) => x.id === id);
+    const picked = suggestions(life.world, undefined, { goals, sketches }).find((x) => x.id === id);
     pending = null;
     if (picked === undefined) return { text: "Esa opción ya no está." };
     return play(picked.draft, renderSuggestion(picked));

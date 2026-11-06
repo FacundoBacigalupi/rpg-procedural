@@ -124,6 +124,18 @@ export const GoalSketch = z.strictObject({
       action: z.enum(["stop", "note"]).optional(),
     })
     .optional(),
+  /**
+   * La opción sugerida que ofrece esta meta (novel-goals-hooks): con `person`, solo si la persona de
+   * la meta está delante; `say` es cómo se lee la opción (`{who}`, su nombre).
+   */
+  suggest: z
+    .strictObject({
+      verb: z.enum(["speak", "look", "work"]),
+      person: z.boolean().optional(),
+      hours: z.number().int().min(1).max(12).optional(),
+      say: phrase,
+    })
+    .optional(),
 });
 export type GoalSketch = z.infer<typeof GoalSketch>;
 export const GOAL_SKETCHES = defineContent("goals", GoalSketch, (g) => [

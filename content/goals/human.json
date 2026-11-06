@@ -34,7 +34,12 @@
       "negocio",
       "mercader"
     ],
-    "target": "none"
+    "target": "none",
+    "suggest": {
+      "verb": "work",
+      "hours": 6,
+      "say": "trabajar de más"
+    }
   },
   {
     "id": "land",
@@ -53,6 +58,11 @@
     "watch": {
       "events": ["property."],
       "action": "note"
+    },
+    "suggest": {
+      "verb": "work",
+      "hours": 6,
+      "say": "trabajar de más para juntar"
     }
   },
   {
@@ -76,6 +86,11 @@
       "person": "note",
       "events": ["family."],
       "action": "note"
+    },
+    "suggest": {
+      "verb": "speak",
+      "person": true,
+      "say": "hablar con {who}"
     }
   },
   {
@@ -86,6 +101,11 @@
     "target": "required",
     "watch": {
       "person": "stop"
+    },
+    "suggest": {
+      "verb": "look",
+      "person": true,
+      "say": "observar a {who} sin que se note"
     }
   },
   {
@@ -105,7 +125,12 @@
       "artesan",
       "maestro en"
     ],
-    "target": "none"
+    "target": "none",
+    "suggest": {
+      "verb": "work",
+      "hours": 4,
+      "say": "trabajar con cuidado, aprendiendo"
+    }
   },
   {
     "id": "leave",
@@ -136,6 +161,11 @@
     "target": "optional",
     "watch": {
       "person": "note"
+    },
+    "suggest": {
+      "verb": "speak",
+      "person": true,
+      "say": "ir a hablar con {who}"
     }
   },
   {

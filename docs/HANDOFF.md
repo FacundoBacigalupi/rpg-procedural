@@ -71,6 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **novel-goals-hooks (2026-11-05)**: las metas proponen una opción sugerida cada una (`suggest` por bosquejo en `content/goals/`, `SuggestionKind` `goal`, `suggestions(w, limit, {goals, sketches})`); las de persona solo si está delante. Sigue `novel-goals-truth`.
 - **novel-goals-watch (2026-11-05)**: las metas ponen avisos en los saltos (`goalWatch`, `watch` por bosquejo en `content/goals/`, `WatchOn {kind: "goal"}`); «sigo con mi vida hasta que pase algo con mi meta» (`SkipTarget` `open`). Sigue `novel-goals-hooks`.
 - **novel-goals-set (2026-11-05)**: «quiero X» → `PlayerGoal` con bosquejo de `content/goals/` y persona si la nombra (`game/life/goals.ts`), en `meta` `player_goals`; `!metas`, `!abandonar N`, «ya no quiero …»; el montaje piensa en la meta (`stretch.goals`). Sigue `novel-goals-watch`.
 - **novel-montage-rules (2026-11-05)**: delegación y avisos de los saltos (`RoutineRules`, `!delegar`, `!avisar`, `!anotar`, `!avisos`), en `meta` `routine_rules`; `novel-montage` cerrado. Sigue `novel-goals`.
