@@ -824,6 +824,8 @@ export interface LifeWorld {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in (novel-cult-law): el talento para cultivar; los que nacen lo heredan (`cultivation.talent`). */
+  readonly cultivation?: { readonly talents: readonly Trait[] };
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
   /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
@@ -2089,6 +2091,7 @@ export function lifeWorld(
               birthProcess({
                 clock: parts.clock,
                 traits: parts.traits,
+                ...(parts.cultivation ? { talents: parts.cultivation.talents } : {}),
                 bodyPlans: parts.plans,
                 ...(parts.form
                   ? {

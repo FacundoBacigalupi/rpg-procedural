@@ -59,10 +59,13 @@ import {
   setComponent,
   standardize,
   strangerDims,
+  TALENT,
   TASTES_OF,
   type TasteDef,
   type Trait,
   table,
+  talentOf,
+  talentRng,
   tasteWorld,
   upbringingSkills,
   villageCulture,
@@ -87,6 +90,8 @@ export const MALE_BIRTH_RATIO = 0.51;
 export interface BirthOptions {
   readonly clock: PlanetClock;
   readonly traits: readonly Trait[];
+  /** Con el cultivo encendido: el catálogo del talento, que el hijo hereda (novel-cult-law). */
+  readonly talents?: readonly Trait[];
   readonly bodyPlans: readonly BodyPlanDef[];
   readonly maleRatio?: number;
   /**
@@ -129,6 +134,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       ENTITY.name,
       LOCATION.name,
+      ...(o.talents ? [TALENT.name] : []),
       ...(o.newborn ? [PERSON_NAME.name, PERSON_CULTURE.name, RELIGIOUS_IDENTITY.name] : []),
     ],
     writes: [
@@ -140,6 +146,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       LOCATION.name,
       BODY_STATE.name,
+      ...(o.talents ? [TALENT.name] : []),
       ...(o.newborn
         ? [
             PERSON_NAME.name,
@@ -224,6 +231,20 @@ export function birthProcess(o: BirthOptions): ProcessDef {
           ),
           setComponent(BIRTH, key, { dueAt: labor.dueAt, child }),
         );
+        if (o.talents) {
+          const mt = ctx.truth.get(TALENT, key);
+          const ft = ctx.truth.get(TALENT, f as unknown as EntityRef);
+          const talent = talentOf(
+            o.talents,
+            sex,
+            mt && ft
+              ? { mother: { id: mother, genome: mt.genome }, father: { id: f, genome: ft.genome } }
+              : undefined,
+            talentRng(ctx.rng.seed, child),
+            birthEvent,
+          );
+          changes.push(setComponent(TALENT, child as unknown as EntityRef, talent));
+        }
         if (o.newborn) {
           const n = o.newborn;
           const childKey = child as unknown as EntityRef;

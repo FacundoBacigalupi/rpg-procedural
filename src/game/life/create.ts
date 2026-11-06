@@ -53,6 +53,7 @@ import {
   dayOf,
   EATEN,
   ECOLOGY,
+  ELEMENT_SYSTEMS,
   ENTITY,
   ETIQUETTE,
   EXCRETED,
@@ -116,6 +117,7 @@ import {
   type StatusDef,
   seedBodies,
   seedCommunityAccent,
+  seedCultivation,
   seedCulture,
   seedHouseholdTools,
   seedLivestock,
@@ -135,6 +137,7 @@ import {
   settlementUnits,
   startingParcel,
   TABOOS,
+  TALENTS,
   TAN_VAT,
   TASTES,
   type TanRule,
@@ -477,6 +480,8 @@ export interface LifeOptions {
   readonly offerings?: boolean;
   /** Opt-in: procesos mortales (technology §1-§2): al materializar la aldea se siembra el saber tácito de los procesos que la geografía permite (`tech.seeded`), en el hogar se enseña de a poco (`life.tech-teach`, `teachProcess`) y la cosecha de la rutina lee `yieldFactor` (`LifeParts.mortalTech`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly mortalTech?: boolean;
+  /** Opt-in: cultivo mínimo (novel-cultivation-min, cultivation §1-§3): la ley del seed en la fila del plano (`cultivation.law`) y el talento heredable y oculto de cada persona (`cultivation.talent`, `content/talents/`), también de los que nacen; apagado, hashes idénticos. */
+  readonly cultivation?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
@@ -834,6 +839,20 @@ export function derivedLoanUsury(
  * Lo que está encendido por defecto desde `life-2` y se apaga con `false`: por ahora las capas de
  * objetivos persistidas. Va antes de `optInParts`, que solo lleva lo que se pidió.
  */
+/** El catálogo del talento si `cultivation` está encendido (cableado opt-in, novel-cult-law). */
+export function cultivationParts(
+  options: LifeOptions,
+  content: Content,
+): Pick<LifeParts, "cultivation"> {
+  return options.cultivation ? { cultivation: { talents: content.all(TALENTS) } } : {};
+}
+
+/** El sistema elemental del mundo xianxia para la ley del cultivo (`content/elements/`). */
+function elementSystemOf(content: Content): { id: string; elements: string[] } {
+  const s = required(content.get(ELEMENT_SYSTEMS, "five_phases"), "elements five_phases");
+  return { id: s.id, elements: s.elements.map((e) => e.id) };
+}
+
 /** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
 export function mortalTechParts(
   options: LifeOptions,
@@ -2032,6 +2051,16 @@ export function createLife(
     tenures: content.all(TENURES),
     standing,
   });
+  // Opt-in: la ley del cultivo y el talento de cada uno (novel-cult-law).
+  if (options.cultivation) {
+    seedCultivation(truth, ids, log, {
+      seed,
+      now: pop.now,
+      place: terrain.village,
+      elementSystem: elementSystemOf(content),
+      talents: content.all(TALENTS),
+    });
+  }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
   // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
@@ -2308,6 +2337,7 @@ export function createLife(
           }
         : {}),
       ...mortalTechParts(options, content),
+      ...cultivationParts(options, content),
       ...conditionLabelParts(options, content),
       ...(options.medicalSchools
         ? (() => {
