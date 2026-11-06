@@ -34,9 +34,17 @@ import { TALENT, type TalentRecord, talentOf } from "./talent.ts";
 
 export const CULTIVATION_LAW_EVENT = "cultivation.law";
 
+/**
+ * Hace cuántos años rige la ley al sembrarla: es del mundo, más vieja que cualquier cosa que se
+ * siembre después citándola (la secta se funda hasta 400 años antes).
+ */
+export const LAW_SINCE_YEARS = 1000;
+
 export interface SeedCultivationOptions {
   readonly seed: Seed;
   readonly now: Tick;
+  /** Ticks por año, para fechar la ley `LAW_SINCE_YEARS` antes de `now`. */
+  readonly yearTicks: number;
   readonly place: PlaceRef;
   readonly elementSystem: { readonly id: string; readonly elements: readonly string[] };
   readonly talents: readonly Trait[];
@@ -61,9 +69,10 @@ export function seedCultivation(
     o.elementSystem,
     event,
   );
+  const since = o.now - LAW_SINCE_YEARS * o.yearTicks;
   log.append({
     id: event,
-    tick: o.now,
+    tick: since,
     kind: CULTIVATION_LAW_EVENT,
     actors: [],
     place: o.place,
@@ -72,7 +81,7 @@ export function seedCultivation(
     causes: [{ kind: "seed" }],
     resolution: "world",
   });
-  truth.set(ENTITY, plane, { id: plane, originEventId: event, createdAt: o.now });
+  truth.set(ENTITY, plane, { id: plane, originEventId: event, createdAt: since });
   truth.set(CULTIVATION_LAW, plane, law);
   if (o.qi) {
     truth.set(PLACE_QI, plane, o.qi);
