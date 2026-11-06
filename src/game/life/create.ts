@@ -121,6 +121,7 @@ import {
   SPEECH_LINES,
   STATUSES,
   type StatusDef,
+  sectVisitDay,
   seedBodies,
   seedCommunityAccent,
   seedCultivation,
@@ -2122,6 +2123,11 @@ export function createLife(
           place: terrain.village,
           talents: content.all(TALENTS),
           seat,
+          // Baja a buscar discípulos unos días después del pico de la cosecha.
+          visitDay: sectVisitDay(
+            harvestSeasonOf(map, clock, seed),
+            Math.round(clock.year / clock.day),
+          ),
         })
       : undefined;
     if (sect) {

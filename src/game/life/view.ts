@@ -45,6 +45,9 @@ import {
   presenceStimulus,
   type ReadonlyWorldTruth,
   rainBetween,
+  SECT_HERALD_EVENT,
+  SECT_LORE,
+  SECT_VISIT_EVENT,
   SENSED_QI_EVENT,
   STATUS,
   sameValue,
@@ -56,6 +59,7 @@ import {
   thingStimulus,
   traceStrength,
   traceVisible,
+  VILLAGE_SQUARE,
   watching,
 } from "../../sim/index.ts";
 import {
@@ -527,6 +531,27 @@ function lastPlayerEventSince(
 }
 
 /**
+ * La secta (novel-cult-sect-visit): si desde `since` llegó el aviso y lo oyó (cree cuándo bajan), o
+ * si bajaron y lo sabe (lo esperaba o está en la plaza). Lo último que pasó manda.
+ */
+function sectCue(w: LifeWorld, since: Tick): SelfCue | undefined {
+  const lore = w.truth.get(SECT_LORE, w.player);
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    const d = (e.data ?? {}) as { visitAt?: number; start?: number };
+    if (e.kind === SECT_VISIT_EVENT) {
+      const atSquare = w.truth.get(LOCATION, w.player)?.space === VILLAGE_SQUARE;
+      if (atSquare || (lore?.visitAt !== undefined && lore.visitAt === d.start)) return "sect_here";
+    }
+    if (e.kind === SECT_HERALD_EVENT && lore?.visitAt !== undefined && lore.visitAt === d.visitAt)
+      return "sect_coming";
+  }
+  return undefined;
+}
+
+/**
  * Cómo siente la ruptura (novel-cult-break): lo dice el resultado; si el último es el intento y no
  * el resultado, es que no sentía el qi y no hubo nada que empujar.
  */
@@ -668,6 +693,8 @@ export function playerView(
           (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
         );
   if (broke) cues.add(breakCue(broke));
+  const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
+  if (sect) cues.add(sect);
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

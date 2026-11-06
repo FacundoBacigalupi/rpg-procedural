@@ -59,6 +59,11 @@ export interface Sect {
   readonly founded: Tick;
   readonly originEventId: EventId;
   readonly slots: readonly SectSlot[];
+  /**
+   * El día del año (día local, 0 = comienzo del año) en que baja a la aldea a buscar discípulos
+   * (novel-cult-sect-visit); sin él, no baja.
+   */
+  readonly visitDay?: number;
 }
 
 /** La secta vive en una entidad `org:N` con este componente. */
@@ -196,6 +201,8 @@ export interface SectLore {
   /** 0-1: qué tan firme lo cree (de oídas en la aldea, casi nunca seguro). */
   readonly confidence: number;
   readonly learnedAt: Tick;
+  /** Cuándo cree que baja la próxima vez (lo anunció el heraldo). */
+  readonly visitAt?: Tick;
 }
 
 /** La creencia sobre la secta, en la entidad de quien cree. */
@@ -224,4 +231,61 @@ export function sectLoreOf(rng: Rng, org: EntityRef, sect: Sect, learnedAt: Tick
     confidence: Math.round((0.4 + 0.45 * rng.fork("confidence").float()) * 1000) / 1000,
     learnedAt,
   };
+}
+
+// La bajada anual (novel-cult-sect-visit): un día al año la secta manda gente a la plaza de la aldea
+// a buscar chicos con raíz. Una semana antes llega el aviso; el día, de media mañana a la tarde.
+
+export const SECT_HERALD_EVENT = "cultivation.sect_herald";
+export const SECT_VISIT_EVENT = "cultivation.sect_visit";
+/** Con cuántos días de aviso, desde qué hora local y cuántas horas se queda. */
+export const SECT_ANNOUNCE_DAYS = 7;
+export const SECT_VISIT_FROM_HOUR = 9;
+export const SECT_VISIT_HOURS = 8;
+/** Cuántos días después del pico de la cosecha baja (con los graneros llenos y los chicos libres). */
+export const SECT_VISIT_AFTER_HARVEST_DAYS = 15;
+
+/** Qué año (índice desde el comienzo) ya se anunció y cuál ya bajó, en la entidad de la secta. */
+export interface SectVisitState {
+  readonly announced: number;
+  readonly visited: number;
+}
+export const SECT_VISIT = table<SectVisitState>("cultivation.sect_visit");
+
+/** El día del año de la bajada: unos días después del pico de la cosecha de `season`. */
+export function sectVisitDay(season: (day: number) => number, yearDays: number): number {
+  let best = 0;
+  let peak = Number.NEGATIVE_INFINITY;
+  for (let d = 0; d < yearDays; d++) {
+    const f = season(d);
+    if (f > peak) {
+      peak = f;
+      best = d;
+    }
+  }
+  return (best + SECT_VISIT_AFTER_HARVEST_DAYS) % yearDays;
+}
+
+/**
+ * La bajada que toca a `now`: la de este año si todavía no terminó, si no la del que viene. `offset`
+ * son los ticks que suma la longitud del lugar a la hora (hora local).
+ */
+export function upcomingVisit(
+  now: Tick,
+  visitDay: number,
+  clock: { readonly day: number; readonly year: number },
+  offset: number,
+): { readonly year: number; readonly start: Tick; readonly end: Tick } {
+  const yearDays = Math.round(clock.year / clock.day);
+  const localDay = Math.floor((now + offset) / clock.day);
+  const at = (year: number) => {
+    const start =
+      (year * yearDays + visitDay) * clock.day -
+      offset +
+      Math.round((SECT_VISIT_FROM_HOUR / 24) * clock.day);
+    return { year, start, end: start + Math.round((SECT_VISIT_HOURS / 24) * clock.day) };
+  };
+  const year = Math.floor(localDay / yearDays);
+  const here = at(year);
+  return now < here.end ? here : at(year + 1);
 }
