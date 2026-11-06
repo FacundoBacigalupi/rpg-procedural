@@ -853,6 +853,9 @@ export function buildPlayerView(input: ViewInput): PlayerView {
   }));
 
   const things = thingViews(input.things ?? [], input.fixtures ?? [], input.steps);
+  // En un salto la escena de la última hora no se cuenta (novel-narr-montage): quién aparece o se va
+  // y lo que dijo al pasar es de escena; lo que pesó del salto ya viene en `stretch`.
+  const scenic = input.mode !== "montage";
   const view = {
     self: {
       cues: [...(input.self ?? [])],
@@ -860,9 +863,9 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       ...(input.selfTechnique !== undefined ? { technique: input.selfTechnique } : {}),
     },
     scene: sceneView(input.scene),
-    percepts,
+    percepts: scenic ? percepts : [],
     ...(things.length > 0 ? { things } : {}),
-    ...(gone.length > 0 ? { gone } : {}),
+    ...(scenic && gone.length > 0 ? { gone } : {}),
     outcomes,
     thoughts,
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),

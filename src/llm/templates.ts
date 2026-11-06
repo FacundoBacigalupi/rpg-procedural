@@ -90,11 +90,22 @@ function plainTerms(
   }
   let text = fill(line, held, id);
   for (const a of vocabulary.avoid) {
-    const re = new RegExp(`(?<![\\p{L}\\uE000])${escapeRe(a.term)}(?![\\p{L}])`, "giu");
-    text = text.replace(re, a.say);
+    // Si la glosa ya trae su determinante («ese aliento…»), el artículo de la plantilla sobra.
+    const article = DETERMINER.test(a.say) ? "(?:(el|la|los|las|un|una|del|al)\\s+)?" : "()";
+    const re = new RegExp(`(?<![\\p{L}\\uE000])${article}${escapeRe(a.term)}(?![\\p{L}])`, "giu");
+    text = text.replace(re, (_m, art: string | undefined) => {
+      if (art === undefined || art === "") return a.say;
+      const lower = art.toLowerCase();
+      const lead = lower === "del" ? "de " : lower === "al" ? "a " : "";
+      const said = `${lead}${a.say}`;
+      return art[0] !== lower[0] ? capitalize(said) : said;
+    });
   }
   return text.replace(/(\d+)/g, (_, i: string) => quotes[Number(i)] as string);
 }
+
+/** Glosas que empiezan con su propio determinante. */
+const DETERMINER = /^(ese|esa|esos|esas|aquel|aquella|aquellos|aquellas|uno|una|unos|unas)\s/i;
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
