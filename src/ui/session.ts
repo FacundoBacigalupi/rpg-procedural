@@ -479,7 +479,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     );
     const request = narrationRequest(
       view,
-      styleOf(DEFAULT_NARRATION, "es"),
+      {
+        ...styleOf(DEFAULT_NARRATION, "es"),
+        ...(options.setup.game.mode === "novel" ? { novel: true } : {}),
+      },
       ambienceOf(view.scene, ambience),
       {
         voice: voiceOf(

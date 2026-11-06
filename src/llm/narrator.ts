@@ -60,7 +60,9 @@ export async function narrate(
     const marked = result.value.trim();
     return { text: stripMarks(marked), marked, source: "llm", problems: [] };
   }
-  const marked = renderView(request.view, options.templates, options.rng, request.vocabulary);
+  const marked = renderView(request.view, options.templates, options.rng, request.vocabulary, {
+    novel: request.style.novel === true,
+  });
   return { text: stripMarks(marked), marked, source: "templates", problems: result.problems };
 }
 
