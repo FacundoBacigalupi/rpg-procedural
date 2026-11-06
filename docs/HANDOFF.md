@@ -83,6 +83,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **novel-narr-chapters (2026-11-06)**: `chapterHeading`/`chaptersIn`/`CHAPTER_MIN_DAYS` en `ui/render.ts`; `runTurn` antepone el encabezado a los saltos de 7 días o más y lo guarda en la bitácora. Sigue `novel-narr-voice`.
 - **novel-narr-voice (2026-11-06)**: `StyleSettings.novel` → `NOVEL_VOICE` en el prompt y `novel.mode.*`/`novel.close.*` en las plantillas (quinto argumento de `renderView`). Sigue `novel-narr-recap`.
 - **novel-narr-recap (2026-11-06)**: al retomar, `renderResume` = último párrafo leído + recuerdos + metas activas. Cierra `novel-narration`; sigue `novel-flags-group`.
+- **novel-flags-groups-core (2026-11-06)**: `LIFE_GROUPS`/`lifeGroupOptions` en `game/life/profile.ts` parten el perfil en grupos con cierre por dependencias. Sigue `novel-flags-groups-cli`.
 
 - **novel-cult-law (2026-11-05)**: opción `cultivation`: la ley del seed (`sim/cultivation/law.ts`, escalera del qi con capacidad y cuello de botella) en una fila `plane:N` con `cultivation.law`, y el talento oculto y heredable en `TALENT` (`content/talents/`, aparte del genoma para no mover hashes); `aptitudeOf` lo lee. Sigue `novel-cult-meditate`.
 - **novel-cult-meditate (2026-11-05)**: verbo `meditate` con palabras, plantillas y señal `sensed_qi`; `CULTIVATION_STATE` y `PLACE_QI` (qi de la celda fijado al sembrar); `life.cultivation.meditate` sube la sensibilidad y emite `cultivation.sensed_qi` una vez (sin raíz nunca). Bandera `--cultivation`. Sigue `novel-cult-absorb`.
