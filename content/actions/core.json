@@ -895,10 +895,7 @@
       "sight": 0.2,
       "sound": 0.02
     },
-    "serves": {
-      "power": 0.6,
-      "meaning": 0.3
-    },
+    "serves": {},
     "resolver": "none",
     "ease": 1,
     "failureModes": [],
@@ -932,10 +929,7 @@
       "sight": 0.2,
       "sound": 0.05
     },
-    "serves": {
-      "power": 0.8,
-      "meaning": 0.2
-    },
+    "serves": {},
     "resolver": "none",
     "ease": 1,
     "failureModes": [],
