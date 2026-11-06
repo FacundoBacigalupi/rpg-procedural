@@ -1489,6 +1489,17 @@
     "lines": ["Regás lo sembrado."]
   },
   {
+    "id": "stretch.kept.meditate",
+    "lines": [
+      "Después, ya en casa, te sentás quieto a respirar un rato largo.",
+      "Las noches son para sentarte quieto y respirar."
+    ]
+  },
+  {
+    "id": "stretch.kept.breakthrough",
+    "lines": ["Más de una noche, con el pecho lleno, empujás contra la pared que sentís adentro."]
+  },
+  {
     "id": "stretch.kept.ate",
     "lines": ["Comés en casa lo que hay.", "A la noche, la comida de siempre."]
   },
