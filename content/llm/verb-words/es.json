@@ -377,6 +377,28 @@
     ]
   },
   {
+    "id": "breakthrough",
+    "example": "intento romper el umbral",
+    "tail": "",
+    "forms": ["intento romper", "intentar romper"],
+    "synonyms": [
+      {
+        "as": "intento romper",
+        "words": [
+          "intento la ruptura",
+          "busco la ruptura",
+          "trato de romper el umbral",
+          "rompo el umbral",
+          "romper el umbral",
+          "fuerzo el umbral",
+          "rompo el cuello de botella",
+          "intento abrirme paso al siguiente nivel",
+          "intento subir de nivel"
+        ]
+      }
+    ]
+  },
+  {
     "id": "wait",
     "example": "espero media hora",
     "tail": "media hora",

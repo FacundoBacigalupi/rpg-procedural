@@ -8,26 +8,40 @@
 // aldea hacia su recipiente (`absorbDraw`: lo pide el cuerpo, lo acota la celda y la capacidad del
 // primer umbral), con la pureza de cuánto se parece a su raíz; la celda lo anota en `QI_TAKEN` (en
 // la fila del plano, repuesto por su regeneración) y cada toma deja `cultivation.absorbed`.
+//
+// Romper (novel-cult-break): `action.breakthrough` de quien ya siente el qi tira contra el cuello de
+// botella del umbral que le falta (`breakOutcome`); el éxito sube el tramo y el fundamento, el
+// retroceso devuelve parte del qi a la celda (baja `QI_TAKEN`: conservación) y daña los meridianos.
+// Deja `cultivation.breakthrough`, visible si pasó algo (el qi se arremolina, escupe sangre). En el
+// mismo proceso que meditar porque los dos escriben la fila de la celda.
 
-import type { AgentId, Event, EventId } from "../../core/index.ts";
+import type { AgentId, Event, EventId, Rng } from "../../core/index.ts";
 import {
   ABSORBED_EVENT,
+  type Aptitude,
   absorbDraw,
   absorbWant,
   aptitudeOf,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  BREAKTHROUGH_EVENT,
+  breakOutcome,
+  breakPreparation,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
+  type CultivationLaw,
   type CultivationState,
   type EventDraft,
+  MAX_MERIDIAN_DAMAGE,
   meditationGain,
   mixedPurity,
   needsFrom,
   PLACE_QI,
+  type PlaceQi,
   type ProcessDef,
   QI_TAKEN,
+  type QiTaken,
   qiFactor,
   regrown,
   rootMatch,
@@ -50,6 +64,91 @@ export function meditation(e: Event): { who: AgentId; hours: number } | undefine
   const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
   if (!who || typeof seconds !== "number" || seconds <= 0) return undefined;
   return { who, hours: seconds / 3600 };
+}
+
+/** Quién intentó romper, de un `action.breakthrough`. */
+export function breakAttempt(e: Event): AgentId | undefined {
+  if (e.kind !== "action.breakthrough") return undefined;
+  return e.actors[0] as AgentId | undefined;
+}
+
+/** Los meridianos que quedan sanos: el daño de los retrocesos los achica. */
+function healthyAptitude(apt: Aptitude, s: CultivationState): Aptitude {
+  const damage = s.meridianDamage ?? 0;
+  return damage > 0 ? { ...apt, meridians: apt.meridians * (1 - damage) } : apt;
+}
+
+/**
+ * Una ruptura: la tirada contra el cuello de botella del umbral que falta. Devuelve la fila nueva,
+ * el débito de la celda (el qi perdido vuelve a ella) y el evento; sin sentir el qi, nada.
+ */
+function resolveBreak(
+  e: Event,
+  who: AgentId,
+  law: CultivationLaw,
+  apt: Aptitude,
+  before: CultivationState,
+  calm: number,
+  taken: QiTaken | undefined,
+  rng: Rng,
+): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
+  if (!before.sensed) return undefined;
+  const stage = before.stage ?? 0;
+  const threshold = law.paths[0]?.thresholds[stage];
+  if (!threshold) return undefined;
+  const qi = before.qi ?? 0;
+  const capacity = threshold.capacity;
+  const prep = breakPreparation(apt, {
+    qi,
+    capacity,
+    purity: before.purity ?? 0,
+    calm,
+    meridianDamage: before.meridianDamage ?? 0,
+    foundation: before.foundation ?? 0,
+  });
+  const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
+  let next = before;
+  let lost = 0;
+  if (outcome.kind === "success") {
+    next = {
+      ...before,
+      stage: stage + 1,
+      foundation: round4((before.foundation ?? 0) + outcome.quality),
+    };
+  } else if (outcome.kind === "backlash") {
+    lost = round4(qi * outcome.lostShare);
+    next = {
+      ...before,
+      qi: round4(qi - lost),
+      meridianDamage: round4(
+        Math.min(MAX_MERIDIAN_DAMAGE, (before.meridianDamage ?? 0) + outcome.damage),
+      ),
+    };
+  }
+  const back =
+    taken && lost > 0
+      ? {
+          ...taken,
+          taken: round4(Math.max(0, taken.taken - lost)),
+          drawn: round4(taken.drawn - lost),
+        }
+      : taken;
+  const seen = outcome.kind === "success" ? 0.5 : outcome.kind === "backlash" ? 0.3 : 0;
+  return {
+    next,
+    taken: back,
+    event: {
+      kind: BREAKTHROUGH_EVENT,
+      actors: [who],
+      place: e.place,
+      data: { outcome: outcome.kind, threshold: threshold.id, prep, lost, ...outcome },
+      emissions: seen > 0 ? { sight: seen } : {},
+      causes: [
+        { kind: "event", event: e.id },
+        { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+      ],
+    },
+  };
 }
 
 /** La calma para meditar: el dolor la corta, el hambre y la sed la distraen. */
@@ -87,21 +186,36 @@ export function meditateProcess(o: {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
       const law = plane ? ctx.truth.get(CULTIVATION_LAW, plane) : undefined;
       if (!plane || !law) return {};
-      const place = ctx.truth.get(PLACE_QI, plane);
+      const place: PlaceQi | undefined = ctx.truth.get(PLACE_QI, plane);
       const factor = qiFactor(place);
-      const capacity = vesselCapacity(law);
       const takenRow = ctx.truth.get(QI_TAKEN, plane);
       let taken = place && takenRow ? regrown(takenRow, place, ctx.now, o.yearTicks) : undefined;
       const rows = new Map<AgentId, CultivationState>();
       const events: EventDraft[] = [];
+      const stateOf = (who: AgentId): CultivationState =>
+        rows.get(who) ?? ctx.truth.get(CULTIVATION_STATE, who) ?? { sensitivity: 0, hours: 0 };
       for (const e of ctx.recent) {
+        const breaker = breakAttempt(e);
+        if (breaker) {
+          const talent = ctx.truth.get(TALENT, breaker);
+          if (!talent) continue;
+          const before = stateOf(breaker);
+          const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
+          const calm = calmOf(plans, ctx.truth.get(BODY_STATE, breaker));
+          const r = resolveBreak(e, breaker, law, apt, before, calm, taken, ctx.rng);
+          if (!r) continue;
+          rows.set(breaker, r.next);
+          taken = r.taken;
+          events.push(r.event);
+          continue;
+        }
         const m = meditation(e);
         if (!m) continue;
         const talent = ctx.truth.get(TALENT, m.who);
         if (!talent) continue;
-        const apt = aptitudeOf(law, talent.innate);
-        const before = rows.get(m.who) ??
-          ctx.truth.get(CULTIVATION_STATE, m.who) ?? { sensitivity: 0, hours: 0 };
+        const before = stateOf(m.who);
+        const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
+        const capacity = vesselCapacity(law, before.stage ?? 0);
         const calm = calmOf(plans, ctx.truth.get(BODY_STATE, m.who));
         const gain = meditationGain(apt, m.hours, calm, factor);
         let next: CultivationState = {

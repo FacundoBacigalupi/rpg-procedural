@@ -905,6 +905,43 @@
     "evidence": 1
   },
   {
+    "id": "breakthrough",
+    "name": "intentar la ruptura",
+    "domain": "esoteric",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [],
+    "occupies": {
+      "legs": "full",
+      "mind": "full"
+    },
+    "duration": {
+      "kind": "arg",
+      "role": "for",
+      "default": 3600,
+      "max": 14400
+    },
+    "checkpoint": 1800,
+    "emissions": {
+      "sight": 0.2,
+      "sound": 0.05
+    },
+    "serves": {
+      "power": 0.8,
+      "meaning": 0.2
+    },
+    "resolver": "none",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 1
+  },
+  {
     "id": "wait",
     "name": "esperar",
     "domain": "time",

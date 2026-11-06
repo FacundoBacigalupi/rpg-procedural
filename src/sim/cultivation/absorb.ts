@@ -51,9 +51,13 @@ export function rootMatch(apt: Aptitude, place: PlaceQi | undefined): number {
   return round4(clamp01(2 * fit));
 }
 
-/** La capacidad del recipiente antes del primer umbral del camino del qi. */
-export function vesselCapacity(law: CultivationLaw): number {
-  return law.paths[0]?.thresholds[0]?.capacity ?? 0;
+/**
+ * La capacidad del recipiente en el tramo `stage` (umbrales ya cruzados) del camino del qi: la del
+ * umbral que falta cruzar; pasado el último, la del último.
+ */
+export function vesselCapacity(law: CultivationLaw, stage = 0): number {
+  const ts = law.paths[0]?.thresholds ?? [];
+  return ts[Math.min(stage, ts.length - 1)]?.capacity ?? 0;
 }
 
 /** El débito de la celda repuesto hasta `now` por la regeneración (nunca negativo). */

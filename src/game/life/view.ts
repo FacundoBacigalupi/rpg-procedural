@@ -20,6 +20,7 @@ import {
   BELIEFS,
   type Beliefs,
   BODY_STATE,
+  BREAKTHROUGH_EVENT,
   beliefConfidenceAt,
   believed,
   bodySigns,
@@ -525,6 +526,18 @@ function lastPlayerEventSince(
   return undefined;
 }
 
+/**
+ * Cómo siente la ruptura (novel-cult-break): lo dice el resultado; si el último es el intento y no
+ * el resultado, es que no sentía el qi y no hubo nada que empujar.
+ */
+function breakCue(e: Event): SelfCue {
+  if (e.kind !== BREAKTHROUGH_EVENT) return "break_nothing";
+  const outcome = (e.data as { outcome?: string } | null)?.outcome;
+  if (outcome === "success") return "break_success";
+  if (outcome === "backlash") return "break_backlash";
+  return "break_stalled";
+}
+
 /** Desde qué fracción del recipiente se siente la presión, y desde qué parecido el qi no se resiste. */
 const QI_PRESSURE_FILL = 0.8;
 const QI_RESIST_MATCH = 0.3;
@@ -646,6 +659,15 @@ export function playerView(
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === ABSORBED_EVENT);
   if (absorbed) cues.add(absorbCue(absorbed));
+  const broke =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
+        );
+  if (broke) cues.add(breakCue(broke));
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

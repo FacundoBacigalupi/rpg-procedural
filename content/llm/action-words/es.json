@@ -295,6 +295,20 @@
     "weak": ["meta"]
   },
   {
+    "id": "breakthrough",
+    "kind": "action",
+    "stems": ["ruptur", "umbral"],
+    "forms": [],
+    "weak": ["qi", "romp", "romper"]
+  },
+  {
+    "id": "cultivation.breakthrough",
+    "kind": "action",
+    "stems": ["ruptur", "umbral", "arremolin"],
+    "forms": [],
+    "weak": ["qi", "sangre"]
+  },
+  {
     "id": "body.died",
     "kind": "action",
     "stems": ["muer", "muri", "fallec", "exhal", "inert", "cadaver"],

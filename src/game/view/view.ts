@@ -53,7 +53,15 @@ export type SelfCue =
   /** El recipiente aprieta: cerca del tope. */
   | "qi_pressure"
   /** Lleno: no entra más. */
-  | "qi_full";
+  | "qi_full"
+  /** La ruptura pasó: el umbral cedió (`cultivation.breakthrough`, novel-cult-break). */
+  | "break_success"
+  /** La ruptura no pasó: la pared no cede. */
+  | "break_stalled"
+  /** Retroceso: el qi se volvió en contra y se escapó. */
+  | "break_backlash"
+  /** Intentó romper sin sentir el qi: no hay nada que empujar. */
+  | "break_nothing";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

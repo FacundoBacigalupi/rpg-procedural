@@ -270,6 +270,20 @@
     "lines": ["{who} cae sin vida.", "Ves a {who} caer muerto."]
   },
   {
+    "id": "percept.action.breakthrough",
+    "lines": [
+      "{who} está sentado, tenso, como empujando una ruptura desde adentro.",
+      "Ves a {who} quieto y rígido, apretando algo contra un umbral que no se ve."
+    ]
+  },
+  {
+    "id": "percept.action.cultivation.breakthrough",
+    "lines": [
+      "Alrededor de {who} el aire se arremolina de golpe, y después se aquieta.",
+      "Algo pasa con {who}: una ruptura que se nota en el aire, como un tirón."
+    ]
+  },
+  {
     "id": "percept.action.family.birth",
     "lines": [
       "Se oye llorar a {who}, apenas nacido.",
@@ -430,6 +444,25 @@
   {
     "id": "outcome.meditate.unsure",
     "lines": ["Meditás un rato."]
+  },
+  {
+    "id": "outcome.breakthrough.success",
+    "lines": [
+      "Concentrás todo el qi que tenés adentro y lo empujás contra el umbral.",
+      "Te sentás derecho, respirás hondo y empujás el qi hacia la ruptura."
+    ]
+  },
+  {
+    "id": "outcome.breakthrough.partial",
+    "lines": ["Empujás hacia la ruptura, pero la cabeza no termina de aquietarse."]
+  },
+  {
+    "id": "outcome.breakthrough.failure",
+    "lines": ["La ruptura no llega: el umbral sigue lejos, borroso."]
+  },
+  {
+    "id": "outcome.breakthrough.unsure",
+    "lines": ["Intentás la ruptura."]
   },
   {
     "id": "outcome.wait.success",
@@ -1106,6 +1139,31 @@
       "En la quietud, algo se mueve: una corriente tibia, apenas, entre vos y el aire. No es el viento.",
       "Por primera vez sentís algo que no sabías que estaba: un hilo de calor que va y viene con la respiración."
     ]
+  },
+  {
+    "id": "self.break_success",
+    "lines": [
+      "Algo cede adentro, como una compuerta. El qi baja de golpe y encuentra lugar donde antes había pared.",
+      "La pared que sentías se abre. Respirás y el cuerpo entero parece más hondo que antes."
+    ]
+  },
+  {
+    "id": "self.break_stalled",
+    "lines": [
+      "Empujás y empujás, pero la pared no cede. Te quedás con el qi apretado y la frente mojada.",
+      "No pasa. El qi se arremansa contra el mismo borde de siempre."
+    ]
+  },
+  {
+    "id": "self.break_backlash",
+    "lines": [
+      "El qi se te vuelve en contra: un golpe por dentro, sabor a sangre en la boca, y lo acumulado se escapa.",
+      "Algo se tuerce adentro. Te dobla un dolor que corre por los canales, y sentís cómo se va lo que habías acumulado."
+    ]
+  },
+  {
+    "id": "self.break_nothing",
+    "lines": ["Empujás hacia adentro, pero no hay nada que empujar: ni corriente, ni pared."]
   },
   {
     "id": "self.qi_flows",

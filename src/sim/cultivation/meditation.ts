@@ -39,6 +39,12 @@ export interface CultivationState {
   readonly qi?: number;
   /** Pureza del qi del recipiente, 0-1: cuánto se parece a la raíz. */
   readonly purity?: number;
+  /** Umbrales del camino del qi ya cruzados (novel-cult-break). */
+  readonly stage?: number;
+  /** Fundamento: la suma de la calidad de las rupturas (cultivation §7). */
+  readonly foundation?: number;
+  /** Daño a los meridianos por retrocesos, 0-1: absorben y rompen peor. */
+  readonly meridianDamage?: number;
 }
 
 export const CULTIVATION_STATE = table<CultivationState>("cultivation.state");

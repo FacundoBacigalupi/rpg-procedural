@@ -578,6 +578,14 @@ const VERBS: readonly {
     },
   },
   {
+    // La ruptura (novel-cult-break): empujar el qi contra el umbral.
+    re: /^(?:intento|intentar)\s+romper\b/i,
+    build: (rest) => {
+      const d = duration(rest);
+      return { node: act("breakthrough", d ? [{ role: "for", duration: d.duration }] : []) };
+    },
+  },
+  {
     re: /^(?:espero|esperar|aguardo|aguardar|me quedo(?:\s+\p{L}+)?\s+esperando)/iu,
     build: (rest) => {
       const d = duration(rest);
