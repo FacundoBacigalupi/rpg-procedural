@@ -2109,6 +2109,7 @@ export function createLife(
     seedCultivation(truth, ids, log, {
       seed,
       now: pop.now,
+      yearTicks: clock.year,
       place: terrain.village,
       elementSystem: elementSystemOf(content),
       talents: content.all(TALENTS),

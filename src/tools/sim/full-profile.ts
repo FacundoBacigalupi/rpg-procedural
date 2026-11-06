@@ -78,6 +78,8 @@ export interface FullProfileConfig {
   readonly natality?: boolean;
   /** Escenario `full-profile-focus`: suma el foco de salud y deuda (`full-profile-focus.ts`) a FULL_PROFILE. */
   readonly focus?: boolean;
+  /** Suma el cultivo al perfil, como una vida nueva en modo novela (novel-full-profile-default). */
+  readonly cultivation?: boolean;
 }
 
 /** Observación del tooling; el callback nunca entra al estado ni al setup de replay. */

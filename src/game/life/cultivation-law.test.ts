@@ -6,6 +6,7 @@ import {
   aptitudeOf,
   CULTIVATION_LAW,
   CULTIVATION_LAW_EVENT,
+  checkInvariants,
   ENTITY,
   PERSON,
   PLACE_NAME,
@@ -77,6 +78,13 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(rooted.length).toBeLessThan(people.length / 2);
     // Mismo seed, misma vida.
     expect(Life.create(3, content, { cultivation: true }).hash().total).toBe(on.hash().total);
+  });
+
+  it("la ley es más vieja que la secta que la cita: invariantes limpias al crear", () => {
+    for (const seed of [1, 2]) {
+      const w = Life.create(seed, content, { cultivation: true }).world;
+      expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    }
   });
 
   it("encendido: una secta cercana con sede nombrada y fundada antes (novel-cult-sect-place)", () => {
