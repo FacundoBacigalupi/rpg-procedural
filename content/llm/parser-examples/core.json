@@ -5,7 +5,15 @@
     "scene": "Estás en la plaza al mediodía.",
     "expect": {
       "kind": "plan",
-      "plan": { "kind": "repeat", "times": 2, "body": { "kind": "do", "verb": "look", "args": [] } }
+      "plan": {
+        "kind": "repeat",
+        "times": 2,
+        "body": {
+          "kind": "do",
+          "verb": "look",
+          "args": []
+        }
+      }
     }
   },
   {
@@ -16,12 +24,30 @@
       "kind": "plan",
       "plan": {
         "kind": "if",
-        "cond": { "kind": "time", "text": "si es de noche", "is": { "kind": "dark" } },
-        "then": { "kind": "do", "verb": "look", "args": [] },
+        "cond": {
+          "kind": "time",
+          "text": "si es de noche",
+          "is": {
+            "kind": "dark"
+          }
+        },
+        "then": {
+          "kind": "do",
+          "verb": "look",
+          "args": []
+        },
         "else": {
           "kind": "do",
           "verb": "wait",
-          "args": [{ "role": "for", "duration": { "amount": 1, "unit": "minute" } }]
+          "args": [
+            {
+              "role": "for",
+              "duration": {
+                "amount": 1,
+                "unit": "minute"
+              }
+            }
+          ]
         }
       }
     }
@@ -780,7 +806,10 @@
         },
         "act": {
           "kind": "ask",
-          "about": { "text": "Lin", "features": ["Lin"] }
+          "about": {
+            "text": "Lin",
+            "features": ["Lin"]
+          }
         }
       }
     },
@@ -870,7 +899,12 @@
       "plan": {
         "kind": "do",
         "verb": "hunt",
-        "args": [{ "role": "what", "text": "ciervo" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "ciervo"
+          }
+        ]
       }
     }
   },
@@ -1052,8 +1086,18 @@
         "kind": "do",
         "verb": "use",
         "args": [
-          { "role": "target", "ref": { "text": "el pozo", "kind": "object", "features": [] } },
-          { "role": "how", "text": "sacar agua" }
+          {
+            "role": "target",
+            "ref": {
+              "text": "el pozo",
+              "kind": "object",
+              "features": []
+            }
+          },
+          {
+            "role": "how",
+            "text": "sacar agua"
+          }
         ]
       }
     }
@@ -1077,7 +1121,11 @@
     "scene": "Estás en tu casa; hay un fuego, una olla y leña.",
     "expect": {
       "kind": "act",
-      "plan": { "kind": "do", "verb": "boil", "args": [] }
+      "plan": {
+        "kind": "do",
+        "verb": "boil",
+        "args": []
+      }
     }
   },
   {
@@ -1089,7 +1137,12 @@
       "plan": {
         "kind": "do",
         "verb": "slaughter",
-        "args": [{ "role": "what", "text": "cabra vieja" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "cabra vieja"
+          }
+        ]
       }
     }
   },
@@ -1102,7 +1155,12 @@
       "plan": {
         "kind": "do",
         "verb": "milk",
-        "args": [{ "role": "what", "text": "cabra parida" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "cabra parida"
+          }
+        ]
       }
     }
   },
@@ -1112,7 +1170,11 @@
     "scene": "Estás en tu casa; hay un hogar frío y una pila de leña.",
     "expect": {
       "kind": "act",
-      "plan": { "kind": "do", "verb": "kindle", "args": [] }
+      "plan": {
+        "kind": "do",
+        "verb": "kindle",
+        "args": []
+      }
     }
   },
   {
@@ -1121,7 +1183,11 @@
     "scene": "Estás en tu casa; el hogar arde.",
     "expect": {
       "kind": "act",
-      "plan": { "kind": "do", "verb": "douse", "args": [] }
+      "plan": {
+        "kind": "do",
+        "verb": "douse",
+        "args": []
+      }
     }
   },
   {
@@ -1130,7 +1196,11 @@
     "scene": "Estás en tu casa; hay un balde con agua turbia y un filtro de arena.",
     "expect": {
       "kind": "act",
-      "plan": { "kind": "do", "verb": "filter", "args": [] }
+      "plan": {
+        "kind": "do",
+        "verb": "filter",
+        "args": []
+      }
     }
   },
   {
@@ -1142,7 +1212,12 @@
       "plan": {
         "kind": "do",
         "verb": "consume",
-        "args": [{ "role": "what", "text": "hierba" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "hierba"
+          }
+        ]
       }
     }
   },
@@ -1155,7 +1230,12 @@
       "plan": {
         "kind": "do",
         "verb": "store",
-        "args": [{ "role": "what", "text": "el grano que traje" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "el grano que traje"
+          }
+        ]
       }
     }
   },
@@ -1168,7 +1248,12 @@
       "plan": {
         "kind": "do",
         "verb": "drop",
-        "args": [{ "role": "what", "text": "el saco de grano" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "el saco de grano"
+          }
+        ]
       }
     }
   },
@@ -1181,7 +1266,12 @@
       "plan": {
         "kind": "do",
         "verb": "cook",
-        "args": [{ "role": "what", "text": "pan con el grano de la despensa" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "pan con el grano de la despensa"
+          }
+        ]
       }
     }
   },
@@ -1211,10 +1301,20 @@
         "args": [
           {
             "role": "with",
-            "ref": { "text": "la adivina", "kind": "person", "features": ["adivina"] }
+            "ref": {
+              "text": "la adivina",
+              "kind": "person",
+              "features": ["adivina"]
+            }
           },
-          { "role": "about", "text": "mi hijo" },
-          { "role": "offer", "text": "dos monedas" }
+          {
+            "role": "about",
+            "text": "mi hijo"
+          },
+          {
+            "role": "offer",
+            "text": "dos monedas"
+          }
         ]
       }
     }
@@ -1281,8 +1381,18 @@
         "kind": "do",
         "verb": "forge",
         "args": [
-          { "role": "of", "ref": { "text": "Wu", "kind": "person", "features": ["Wu"] } },
-          { "role": "what", "text": "saco de grano" }
+          {
+            "role": "of",
+            "ref": {
+              "text": "Wu",
+              "kind": "person",
+              "features": ["Wu"]
+            }
+          },
+          {
+            "role": "what",
+            "text": "saco de grano"
+          }
         ]
       }
     },
@@ -1298,8 +1408,18 @@
         "kind": "do",
         "verb": "hire",
         "args": [
-          { "role": "who", "ref": { "text": "Wu", "kind": "person", "features": ["Wu"] } },
-          { "role": "what", "text": "ayudar con la cosecha" }
+          {
+            "role": "who",
+            "ref": {
+              "text": "Wu",
+              "kind": "person",
+              "features": ["Wu"]
+            }
+          },
+          {
+            "role": "what",
+            "text": "ayudar con la cosecha"
+          }
         ]
       }
     },
@@ -1314,10 +1434,34 @@
       "plan": {
         "kind": "do",
         "verb": "ponder",
-        "args": [{ "role": "about", "text": "el campo rinde más en verano" }]
+        "args": [
+          {
+            "role": "about",
+            "text": "el campo rinde más en verano"
+          }
+        ]
       }
     },
     "notes": "una idea sobre cómo anda el mundo es suponer, con las palabras del jugador; el juego decide qué hipótesis es"
+  },
+  {
+    "id": "resolve-craft",
+    "text": "me propongo ser herrero",
+    "scene": "Estás en tu casa, a la mañana.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "resolve",
+        "args": [
+          {
+            "role": "about",
+            "text": "ser herrero"
+          }
+        ]
+      }
+    },
+    "notes": "proponerse algo a largo plazo es un acto de la mente con las palabras del jugador; qué meta es lo decide el juego"
   },
   {
     "id": "purpose-gift",
@@ -1327,14 +1471,28 @@
       "kind": "act",
       "purpose": {
         "motive": "gift",
-        "forWhom": { "text": "Tomás", "kind": "person", "features": ["Tomás"] }
+        "forWhom": {
+          "text": "Tomás",
+          "kind": "person",
+          "features": ["Tomás"]
+        }
       },
       "plan": {
         "kind": "do",
         "verb": "give",
         "args": [
-          { "role": "to", "ref": { "text": "Tomás", "kind": "person", "features": ["Tomás"] } },
-          { "role": "what", "text": "el pan" }
+          {
+            "role": "to",
+            "ref": {
+              "text": "Tomás",
+              "kind": "person",
+              "features": ["Tomás"]
+            }
+          },
+          {
+            "role": "what",
+            "text": "el pan"
+          }
         ]
       }
     },
@@ -1346,11 +1504,18 @@
     "scene": "Estás en tu casa, con hambre. Hay pan sobre la mesa.",
     "expect": {
       "kind": "act",
-      "purpose": { "motive": "sustenance" },
+      "purpose": {
+        "motive": "sustenance"
+      },
       "plan": {
         "kind": "do",
         "verb": "eat",
-        "args": [{ "role": "what", "text": "pan" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "pan"
+          }
+        ]
       }
     },
     "notes": "el motivo sin beneficiario: forWhom queda afuera"
@@ -1364,7 +1529,12 @@
       "plan": {
         "kind": "do",
         "verb": "take",
-        "args": [{ "role": "what", "text": "el pan" }]
+        "args": [
+          {
+            "role": "what",
+            "text": "el pan"
+          }
+        ]
       }
     },
     "notes": "si el jugador no dice para qué, no hay purpose: nunca se adivina del verbo"

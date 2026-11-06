@@ -943,6 +943,7 @@ function effectView(
   switch (e.kind) {
     case "none":
     case "ponder":
+    case "resolve":
     case "forge":
     case "hire":
       return { kind: "none" };

@@ -317,6 +317,59 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     store.setMeta(PLAYER_GOALS_META, next);
   };
   const sketches = options.content.all(GOAL_SKETCHES);
+  /**
+   * Proponerse o dejar una meta es un acto de un minuto (novel-goals-truth-act): `resolve` deja la
+   * meta en la verdad con su evento de origen y el replay la rehace desde el plan. Se juega sin
+   * narrar: lo que se dice es la respuesta de la sesión. Si la persona no se deja nombrar, va sin
+   * ella.
+   */
+  const resolveAct = (goal: PlayerGoal, drop: boolean): void => {
+    const name =
+      goal.target !== undefined
+        ? knownNow().find((k) => k.ref === goal.target)?.names[0]
+        : undefined;
+    const draftOf = (withWhom: boolean): IntentDraft => ({
+      kind: "act",
+      plan: {
+        kind: "do",
+        verb: "resolve",
+        args: [
+          { role: "about", text: goal.text },
+          ...(withWhom && name !== undefined
+            ? [{ role: "whom", ref: { text: name, kind: "person" as const, features: [] } }]
+            : []),
+        ],
+        ...(drop ? { manner: ["drop"] } : {}),
+      },
+    });
+    const planOf = (d: IntentDraft) =>
+      planFromDraft(d, {
+        actor: life.player,
+        source: "player",
+        catalog: life.world.catalog,
+        known: knownNow(),
+        clock: life.world.clock,
+        causes: [{ kind: "state", entity: life.player, key: "intent" }],
+        here: life.world.truth.get(LOCATION, life.player)?.hex,
+      });
+    let made = planOf(draftOf(true));
+    if (made.kind !== "plan" && name !== undefined) made = planOf(draftOf(false));
+    if (made.kind !== "plan") return;
+    const tick = life.now;
+    const seq = store.nextPlanSeq();
+    if (lastSnapshot === undefined || tick - lastSnapshot >= life.world.clock.day) {
+      store.saveSnapshot(life.state());
+      lastSnapshot = tick;
+    }
+    life.turn(made.plan, seq, rulesNow());
+    openSkip = null;
+    store.saveTurn(life.state(), {
+      seq,
+      tick,
+      plan: made.plan,
+      sourceTextHash: sha256(`${drop ? "ya no quiero" : "quiero"} ${goal.text}`),
+    });
+  };
   const sketchLabel = (id: string) => sketches.find((s) => s.id === id)?.label;
   const goalText = (id: number) => goals.find((g) => g.id === id)?.text;
   // Los avisos del próximo salto: los del usuario más los de sus metas (novel-goals-watch); con
@@ -636,6 +689,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       const out = dropGoal(goals, giveUp[1] as string, sketches);
       if (out.dropped !== undefined) {
         setGoals(out.goals);
+        resolveAct(out.dropped, true);
         return { text: `Lo dejás: ${out.dropped.text}.` };
       }
     }
@@ -678,6 +732,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         if (out.dropped === undefined)
           return { text: `No tenés esa meta.\n${renderGoals(goals, sketchLabel, nameOf)}` };
         setGoals(out.goals);
+        resolveAct(out.dropped, true);
         return { text: `Lo dejás: ${out.dropped.text}.` };
       }
       // Delegación y avisos de los saltos (player-loop §6-§7, novel-montage-rules).
@@ -802,6 +857,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       }
       return { text: HELP };
     }
+    // «Me propongo ser herrero» llega como el acto `resolve`: es lo mismo que «quiero».
+    if (draft.kind === "act" && draft.plan?.kind === "do" && draft.plan.verb === "resolve") {
+      const about = draft.plan.args.find((a) => a.role === "about");
+      if (about !== undefined && "text" in about) draft = { kind: "goal", text: about.text };
+    }
     // «Quiero comer»: un deseo de ahora, no de la vida. Si no nombra un bosquejo y se lee como
     // acción, se juega como acción.
     if (draft.kind === "goal" && sketchOf(draft.text ?? "", sketches) === undefined) {
@@ -812,6 +872,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       const out = addGoal(goals, draft.text ?? line, sketches, knownNow(), life.now);
       if (out.same) return { text: `Ya te lo habías propuesto: ${out.goal.text}.` };
       setGoals(out.goals);
+      resolveAct(out.goal, false);
       const sketch = sketches.find((s) => s.id === out.goal.sketch);
       const who = out.goal.target !== undefined ? nameOf(out.goal.target) : undefined;
       const unsure = sketch?.target === "required" && who === undefined;

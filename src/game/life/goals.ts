@@ -7,7 +7,6 @@
 
 import type { AgentId, Tick } from "../../core/index.ts";
 import type { GoalSketch } from "../view/index.ts";
-import type { WatchRule } from "./interrupts.ts";
 
 export const GOAL_STATUSES = ["active", "abandoned", "achieved_believed"] as const;
 export type GoalStatus = (typeof GOAL_STATUSES)[number];
@@ -158,32 +157,4 @@ export function goalSketches(goals: readonly PlayerGoal[]): string[] {
   return [
     ...new Set(activePlayerGoals(goals).flatMap((g) => (g.sketch !== undefined ? [g.sketch] : []))),
   ];
-}
-
-/**
- * Los avisos que ponen las metas activas en un salto delegado (novel-goals-watch): ver a la persona
- * de la meta y los sucesos de su bosquejo. Con `stopAll` («hasta que pase algo con mi meta») todo
- * corta en vez de anotar.
- */
-export function goalWatch(
-  goals: readonly PlayerGoal[],
-  sketches: readonly GoalSketch[],
-  stopAll = false,
-): WatchRule[] {
-  const out: WatchRule[] = [];
-  for (const g of activePlayerGoals(goals)) {
-    const w = sketches.find((s) => s.id === g.sketch)?.watch;
-    if (w === undefined) continue;
-    if (w.person !== undefined && g.target !== undefined)
-      out.push({
-        on: { kind: "goal", goal: g.id, who: g.target },
-        action: stopAll ? "stop" : w.person,
-      });
-    if (w.events !== undefined)
-      out.push({
-        on: { kind: "goal", goal: g.id, events: w.events },
-        action: stopAll ? "stop" : (w.action ?? "note"),
-      });
-  }
-  return out;
 }

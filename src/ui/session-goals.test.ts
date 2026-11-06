@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Suggestion } from "../game/index.ts";
+import type { LifeSetup, Suggestion } from "../game/index.ts";
 import {
   addGoal,
   dropGoal,
@@ -8,10 +8,14 @@ import {
   goalSketches,
   goalTarget,
   goalWatch,
+  NPC_GOALS,
   parseSkip,
   sketchOf,
 } from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
+import type { ActionPlan } from "../sim/index.ts";
+import { replayLifeAt } from "../tools/inspector/at.ts";
+import { type ReplayInput, replayInputFromStore } from "../tools/replay/index.ts";
 import { lifeConfig } from "./config.ts";
 import { suggestionPhrase } from "./hints.ts";
 import { renderSuggestion } from "./render.ts";
@@ -160,5 +164,36 @@ describe("metas del personaje (novel-goals-set)", () => {
     expect(played.text.length).toBeGreaterThan(0);
     await session.say("ya no quiero hacerme rico");
     expect(session.suggested(true).some((s) => s.goal?.id === 1)).toBe(false);
+  }, 300_000);
+
+  it("seed 1 (novel-goals-truth-act): la meta entra a la verdad con su acto y el replay la rehace", async () => {
+    const config = lifeConfig({ ...base, seed: "1" });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    const life = session.life;
+    const goalsOf = () => life.world.truth.get(NPC_GOALS, life.player)?.items ?? [];
+    expect(goalsOf()).toEqual([]);
+    await session.say("quiero vengar a mi madre");
+    await session.say("me propongo hacerme rico");
+    const [revenge, rich] = goalsOf();
+    expect(revenge).toMatchObject({ layer: "long", kind: "avenge", weight: 0.5 });
+    expect(revenge?.id).toMatch(/^resolve:revenge:agent:\d+$/);
+    expect(rich).toMatchObject({ id: "resolve:wealth", kind: "pursue", value: "wealth" });
+    const origin = life.world.log.get(revenge?.originEventId as never);
+    expect(origin?.kind).toBe("action.resolve");
+    // El panel también la tiene: «me propongo» es lo mismo que «quiero».
+    expect((await session.say("!metas")).text).toMatch(/2\. hacerme rico/);
+
+    const replayed = () =>
+      replayLifeAt(
+        content,
+        replayInputFromStore(store).input as ReplayInput<LifeSetup, ActionPlan>,
+        life.now + 1,
+      ).world.truth.get(NPC_GOALS, life.player)?.items;
+    expect(replayed()).toEqual(goalsOf());
+
+    await session.say("ya no quiero vengar a mi madre");
+    expect(goalsOf().map((g) => g.id)).toEqual(["resolve:wealth"]);
+    expect(replayed()).toEqual(goalsOf());
   }, 300_000);
 });

@@ -281,6 +281,13 @@
     "weak": ["vuelta", "queda"]
   },
   {
+    "id": "resolve",
+    "kind": "action",
+    "stems": ["propon", "propus", "propues", "propós"],
+    "forms": [],
+    "weak": ["meta"]
+  },
+  {
     "id": "body.died",
     "kind": "action",
     "stems": ["muer", "muri", "fallec", "exhal", "inert", "cadaver"],

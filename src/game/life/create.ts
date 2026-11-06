@@ -171,6 +171,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { GOAL_SKETCHES } from "../view/index.ts";
 import { seedBelonging } from "./belonging.ts";
 import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
@@ -1484,6 +1485,7 @@ export function resumeParts(
   | "materials"
   | "trajectories"
   | "divinations"
+  | "goalSketches"
   | "concerns"
   | "tastes"
   | "form"
@@ -1522,6 +1524,7 @@ export function resumeParts(
     lineages: content.all(LINEAGES),
     trajectories: content.all(TRAJECTORIES),
     divinations: content.all(DIVINATION_METHODS),
+    goalSketches: content.all(GOAL_SKETCHES),
     concerns: content.all(DIVINATION_CONCERNS),
     tastes: content.all(TASTES),
     form: villageForm(seed, content),
@@ -2186,6 +2189,7 @@ export function createLife(
       materials,
       trajectories: content.all(TRAJECTORIES),
       divinations: content.all(DIVINATION_METHODS),
+      goalSketches: content.all(GOAL_SKETCHES),
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),

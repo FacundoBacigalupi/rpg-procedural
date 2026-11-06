@@ -1,17 +1,52 @@
 [
-  { "id": "figure.female.child", "lines": ["una nena"] },
-  { "id": "figure.female.youth", "lines": ["una muchacha"] },
-  { "id": "figure.female.adult", "lines": ["una mujer"] },
-  { "id": "figure.female.elder", "lines": ["una vieja"] },
-  { "id": "figure.male.child", "lines": ["un nene"] },
-  { "id": "figure.male.youth", "lines": ["un muchacho"] },
-  { "id": "figure.male.adult", "lines": ["un hombre"] },
-  { "id": "figure.male.elder", "lines": ["un viejo"] },
-  { "id": "attire.fine", "lines": ["de ropa fina", "con buena ropa"] },
-  { "id": "attire.worn", "lines": ["de ropa gastada y remendada", "con ropa raída"] },
-  { "id": "who.vague", "lines": ["alguien"] },
-  { "id": "who.seen_before", "lines": ["que ya viste otro día"] },
-
+  {
+    "id": "figure.female.child",
+    "lines": ["una nena"]
+  },
+  {
+    "id": "figure.female.youth",
+    "lines": ["una muchacha"]
+  },
+  {
+    "id": "figure.female.adult",
+    "lines": ["una mujer"]
+  },
+  {
+    "id": "figure.female.elder",
+    "lines": ["una vieja"]
+  },
+  {
+    "id": "figure.male.child",
+    "lines": ["un nene"]
+  },
+  {
+    "id": "figure.male.youth",
+    "lines": ["un muchacho"]
+  },
+  {
+    "id": "figure.male.adult",
+    "lines": ["un hombre"]
+  },
+  {
+    "id": "figure.male.elder",
+    "lines": ["un viejo"]
+  },
+  {
+    "id": "attire.fine",
+    "lines": ["de ropa fina", "con buena ropa"]
+  },
+  {
+    "id": "attire.worn",
+    "lines": ["de ropa gastada y remendada", "con ropa raída"]
+  },
+  {
+    "id": "who.vague",
+    "lines": ["alguien"]
+  },
+  {
+    "id": "who.seen_before",
+    "lines": ["que ya viste otro día"]
+  },
   {
     "id": "scene.room",
     "lines": ["Estás bajo techo, entre paredes de barro.", "Estás adentro, en un cuarto."]
@@ -24,21 +59,50 @@
     "id": "mark.blood.old",
     "lines": ["Quedan manchas oscuras de sangre seca.", "Se ve una mancha vieja, de sangre."]
   },
-  { "id": "scene.home", "lines": ["Estás en tu casa.", "Estás en casa, entre tus cosas."] },
-  { "id": "scene.yard", "lines": ["Estás en un patio.", "Estás en el patio, a cielo abierto."] },
+  {
+    "id": "scene.home",
+    "lines": ["Estás en tu casa.", "Estás en casa, entre tus cosas."]
+  },
+  {
+    "id": "scene.yard",
+    "lines": ["Estás en un patio.", "Estás en el patio, a cielo abierto."]
+  },
   {
     "id": "scene.street",
     "lines": ["Estás en una calle de la aldea.", "Estás en la calle, entre las casas."]
   },
-  { "id": "scene.square", "lines": ["Estás en la plaza.", "Estás en la plaza de la aldea."] },
-  { "id": "scene.open", "lines": ["Estás a campo abierto.", "Estás afuera, lejos de las casas."] },
-  { "id": "time.night", "lines": ["Es de noche."] },
-  { "id": "time.dawn", "lines": ["Está amaneciendo.", "Clarea."] },
-  { "id": "time.morning", "lines": ["Es de mañana."] },
-  { "id": "time.midday", "lines": ["Es mediodía.", "El sol está alto."] },
-  { "id": "time.afternoon", "lines": ["Es de tarde."] },
-  { "id": "time.dusk", "lines": ["Está atardeciendo.", "Cae la tarde."] },
-
+  {
+    "id": "scene.square",
+    "lines": ["Estás en la plaza.", "Estás en la plaza de la aldea."]
+  },
+  {
+    "id": "scene.open",
+    "lines": ["Estás a campo abierto.", "Estás afuera, lejos de las casas."]
+  },
+  {
+    "id": "time.night",
+    "lines": ["Es de noche."]
+  },
+  {
+    "id": "time.dawn",
+    "lines": ["Está amaneciendo.", "Clarea."]
+  },
+  {
+    "id": "time.morning",
+    "lines": ["Es de mañana."]
+  },
+  {
+    "id": "time.midday",
+    "lines": ["Es mediodía.", "El sol está alto."]
+  },
+  {
+    "id": "time.afternoon",
+    "lines": ["Es de tarde."]
+  },
+  {
+    "id": "time.dusk",
+    "lines": ["Está atardeciendo.", "Cae la tarde."]
+  },
   {
     "id": "percept.vague.sight",
     "lines": [
@@ -50,7 +114,10 @@
     "id": "percept.vague.sound",
     "lines": ["Oís a {who} moverse, sin verlo.", "Un ruido te dice que hay {who} cerca."]
   },
-  { "id": "percept.presence", "lines": ["Ves a {who}.", "Está {who} ahí."] },
+  {
+    "id": "percept.presence",
+    "lines": ["Ves a {who}.", "Está {who} ahí."]
+  },
   {
     "id": "percept.arrived",
     "lines": ["Ahora ves también a {who}.", "{who} aparece a la vista."]
@@ -79,21 +146,42 @@
     "id": "percept.action.hunt",
     "lines": ["{who} caza.", "Ves a {who} cazando."]
   },
-  { "id": "percept.action.work", "lines": ["{who} trabaja.", "Ves a {who} trabajando."] },
-  { "id": "percept.action.rest", "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."] },
-  { "id": "percept.action.wait", "lines": ["{who} espera, quieto.", "Ves a {who} esperando."] },
-  { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
-  { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
+  {
+    "id": "percept.action.work",
+    "lines": ["{who} trabaja.", "Ves a {who} trabajando."]
+  },
+  {
+    "id": "percept.action.rest",
+    "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
+  },
+  {
+    "id": "percept.action.wait",
+    "lines": ["{who} espera, quieto.", "Ves a {who} esperando."]
+  },
+  {
+    "id": "percept.action.speak",
+    "lines": ["{who} habla.", "Oís hablar a {who}."]
+  },
+  {
+    "id": "percept.action.strike",
+    "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."]
+  },
   {
     "id": "percept.action.spare",
     "lines": ["{who} baja la mano y deja ir a alguien.", "Ves a {who} perdonar a otro."]
   },
-  { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
+  {
+    "id": "percept.action.trade",
+    "lines": ["{who} está negociando.", "Ves a {who} regateando."]
+  },
   {
     "id": "percept.action.give",
     "lines": ["{who} le da algo a alguien.", "Ves a {who} pasándole algo a otro."]
   },
-  { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
+  {
+    "id": "percept.action.take",
+    "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."]
+  },
   {
     "id": "percept.action.store",
     "lines": ["{who} guarda algo en la casa.", "Ves a {who} guardando algo."]
@@ -102,14 +190,26 @@
     "id": "percept.action.drop",
     "lines": ["{who} suelta algo en el suelo.", "Ves a {who} dejando algo en el suelo."]
   },
-  { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
+  {
+    "id": "percept.action.eat",
+    "lines": ["{who} come.", "Ves a {who} comiendo."]
+  },
   {
     "id": "percept.action.cook",
     "lines": ["{who} cocina.", "Ves a {who} atendiendo el fuego."]
   },
-  { "id": "percept.action.use", "lines": ["{who} usa algo.", "Ves a {who} usando algo."] },
-  { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
-  { "id": "percept.action.boil", "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."] },
+  {
+    "id": "percept.action.use",
+    "lines": ["{who} usa algo.", "Ves a {who} usando algo."]
+  },
+  {
+    "id": "percept.action.drink",
+    "lines": ["{who} toma agua.", "Ves a {who} bebiendo."]
+  },
+  {
+    "id": "percept.action.boil",
+    "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."]
+  },
   {
     "id": "percept.action.kindle",
     "lines": ["{who} enciende el fuego.", "Ves a {who} avivando el hogar."]
@@ -126,9 +226,18 @@
     "id": "percept.action.milk",
     "lines": ["{who} ordeña un animal.", "Ves a {who} ordeñando en el corral."]
   },
-  { "id": "percept.action.filter", "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."] },
-  { "id": "percept.action.consume", "lines": ["{who} toma algo.", "Ves a {who} tomando algo."] },
-  { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
+  {
+    "id": "percept.action.filter",
+    "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."]
+  },
+  {
+    "id": "percept.action.consume",
+    "lines": ["{who} toma algo.", "Ves a {who} tomando algo."]
+  },
+  {
+    "id": "percept.action.tend",
+    "lines": ["{who} cura una herida.", "Ves a {who} vendando."]
+  },
   {
     "id": "percept.action.consult",
     "lines": ["{who} le paga a alguien para que le lea la suerte.", "Ves a {who} consultando."]
@@ -146,6 +255,10 @@
     "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
   },
   {
+    "id": "percept.action.resolve",
+    "lines": ["{who} parece proponerse algo.", "Ves a {who} con cara de haberse propuesto algo."]
+  },
+  {
     "id": "percept.action.body.died",
     "lines": ["{who} cae sin vida.", "Ves a {who} caer muerto."]
   },
@@ -156,11 +269,22 @@
       "Alguien acaba de nacer: oís a {who} llorar."
     ]
   },
-  { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
-  { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
-
-  { "id": "outcome.none", "lines": ["Hacés lo que te propusiste."] },
-  { "id": "outcome.move.arrived", "lines": ["Llegás.", "Llegás adonde ibas."] },
+  {
+    "id": "percept.action.other",
+    "lines": ["{who} hace algo que no llegás a entender."]
+  },
+  {
+    "id": "percept.words",
+    "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"]
+  },
+  {
+    "id": "outcome.none",
+    "lines": ["Hacés lo que te propusiste."]
+  },
+  {
+    "id": "outcome.move.arrived",
+    "lines": ["Llegás.", "Llegás adonde ibas."]
+  },
   {
     "id": "outcome.move.short",
     "lines": ["Todavía no llegás: te queda camino.", "Avanzás, pero no llegás todavía."]
@@ -172,7 +296,10 @@
       "No lográs abrir la puerta; está trabada."
     ]
   },
-  { "id": "outcome.move.lost", "lines": ["No sabés bien dónde estás.", "Perdiste el rumbo."] },
+  {
+    "id": "outcome.move.lost",
+    "lines": ["No sabés bien dónde estás.", "Perdiste el rumbo."]
+  },
   {
     "id": "outcome.stumbled",
     "lines": [
@@ -188,14 +315,26 @@
     "id": "outcome.look.partial",
     "lines": ["Mirás alrededor, aunque no ves todo lo que querrías."]
   },
-  { "id": "outcome.look.failure", "lines": ["Mirás, pero casi no distinguís nada."] },
-  { "id": "outcome.look.unsure", "lines": ["Mirás alrededor, sin saber si se te escapa algo."] },
-  { "id": "outcome.look_at.success", "lines": ["Mirás a {target} con atención."] },
+  {
+    "id": "outcome.look.failure",
+    "lines": ["Mirás, pero casi no distinguís nada."]
+  },
+  {
+    "id": "outcome.look.unsure",
+    "lines": ["Mirás alrededor, sin saber si se te escapa algo."]
+  },
+  {
+    "id": "outcome.look_at.success",
+    "lines": ["Mirás a {target} con atención."]
+  },
   {
     "id": "outcome.look_at.partial",
     "lines": ["Mirás a {target}, aunque no lo ves del todo bien."]
   },
-  { "id": "outcome.search.found", "lines": ["Encontrás a {target}.", "Ahí está {target}."] },
+  {
+    "id": "outcome.search.found",
+    "lines": ["Encontrás a {target}.", "Ahí está {target}."]
+  },
   {
     "id": "outcome.search.glimpsed",
     "lines": [
@@ -231,8 +370,14 @@
     "id": "outcome.work.partial",
     "lines": ["Trabajás, aunque rinde menos de lo que esperabas."]
   },
-  { "id": "outcome.work.failure", "lines": ["Trabajás, pero no sale nada derecho."] },
-  { "id": "outcome.work.unsure", "lines": ["Trabajás, sin saber bien cuánto adelantaste."] },
+  {
+    "id": "outcome.work.failure",
+    "lines": ["Trabajás, pero no sale nada derecho."]
+  },
+  {
+    "id": "outcome.work.unsure",
+    "lines": ["Trabajás, sin saber bien cuánto adelantaste."]
+  },
   {
     "id": "outcome.work.hurt",
     "lines": ["En un descuido te lastimás.", "Te hacés daño trabajando."]
@@ -248,20 +393,50 @@
     "id": "outcome.rest.success",
     "lines": ["Descansás y te hace bien.", "Dormís un rato y te levantás mejor."]
   },
-  { "id": "outcome.rest.partial", "lines": ["Descansás a medias, sin terminar de aflojar."] },
-  { "id": "outcome.rest.failure", "lines": ["Intentás descansar, pero no hay caso."] },
-  { "id": "outcome.rest.unsure", "lines": ["Descansás un rato."] },
-  { "id": "outcome.wait.success", "lines": ["Esperás.", "Dejás pasar el tiempo."] },
-  { "id": "outcome.wait.partial", "lines": ["Esperás, inquieto."] },
-  { "id": "outcome.wait.failure", "lines": ["Te cuesta quedarte quieto esperando."] },
-  { "id": "outcome.wait.unsure", "lines": ["Esperás."] },
+  {
+    "id": "outcome.rest.partial",
+    "lines": ["Descansás a medias, sin terminar de aflojar."]
+  },
+  {
+    "id": "outcome.rest.failure",
+    "lines": ["Intentás descansar, pero no hay caso."]
+  },
+  {
+    "id": "outcome.rest.unsure",
+    "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.wait.success",
+    "lines": ["Esperás.", "Dejás pasar el tiempo."]
+  },
+  {
+    "id": "outcome.wait.partial",
+    "lines": ["Esperás, inquieto."]
+  },
+  {
+    "id": "outcome.wait.failure",
+    "lines": ["Te cuesta quedarte quieto esperando."]
+  },
+  {
+    "id": "outcome.wait.unsure",
+    "lines": ["Esperás."]
+  },
   {
     "id": "outcome.speak.to",
     "lines": ["Le decís a {to}: «{text}»", "Te dirigís a {to}: «{text}»"]
   },
-  { "id": "outcome.speak.said", "lines": ["Decís: «{text}»"] },
-  { "id": "outcome.speak.to_silent", "lines": ["Le hablás a {to}."] },
-  { "id": "outcome.speak.silent", "lines": ["Hablás."] },
+  {
+    "id": "outcome.speak.said",
+    "lines": ["Decís: «{text}»"]
+  },
+  {
+    "id": "outcome.speak.to_silent",
+    "lines": ["Le hablás a {to}."]
+  },
+  {
+    "id": "outcome.speak.silent",
+    "lines": ["Hablás."]
+  },
   {
     "id": "outcome.speak.unheard",
     "lines": ["No sabés si te oyeron.", "Te parece que nadie te escuchó."]
@@ -346,7 +521,10 @@
     "id": "outcome.spare.done",
     "lines": ["Bajás la mano: a {target} lo dejás ir.", "Le perdonás la vida a {target}."]
   },
-  { "id": "outcome.spare.anyone", "lines": ["No hay a quién perdonar."] },
+  {
+    "id": "outcome.spare.anyone",
+    "lines": ["No hay a quién perdonar."]
+  },
   {
     "id": "outcome.strike.off_balance",
     "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]
@@ -527,19 +705,34 @@
     "id": "outcome.trade.noanimal.no_spare",
     "lines": ["{with} no se desprende del animal ({what}): es el único que tiene su casa."]
   },
-  { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
-  { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
+  {
+    "id": "outcome.trade.no_deal_anyone",
+    "lines": ["No hay trato."]
+  },
+  {
+    "id": "outcome.trade.deal_anyone",
+    "lines": ["Cerrás un trato."]
+  },
   {
     "id": "outcome.give.done",
     "lines": ["Le das {grams} de {what} a {to}.", "Le pasás {grams} de {what} a {to}."]
   },
-  { "id": "outcome.give.done_anyone", "lines": ["Dejás {grams} de {what}."] },
+  {
+    "id": "outcome.give.done_anyone",
+    "lines": ["Dejás {grams} de {what}."]
+  },
   {
     "id": "outcome.give.nothing_to",
     "lines": ["No tenés qué darle a {to}.", "Con las manos vacías, no le podés dar nada a {to}."]
   },
-  { "id": "outcome.give.nothing", "lines": ["No tenés qué dar."] },
-  { "id": "outcome.take.got", "lines": ["Te llevás {what}.", "Agarrás {what}."] },
+  {
+    "id": "outcome.give.nothing",
+    "lines": ["No tenés qué dar."]
+  },
+  {
+    "id": "outcome.take.got",
+    "lines": ["Te llevás {what}.", "Agarrás {what}."]
+  },
   {
     "id": "outcome.take.got_from",
     "lines": ["Le sacás {what} a {from}.", "Te quedás con {what} de {from}."]
@@ -552,18 +745,34 @@
     "id": "outcome.take.nothing",
     "lines": ["No conseguís llevarte nada.", "Te quedás con las manos vacías."]
   },
-
   {
     "id": "cue.skill",
     "lines": ["Sentís que te falta oficio.", "No terminás de saber cómo hacerlo."]
   },
-  { "id": "cue.light", "lines": ["Casi no se ve.", "La poca luz no ayuda."] },
-  { "id": "cue.terrain", "lines": ["El suelo no ayuda.", "El terreno es malo."] },
-  { "id": "cue.nerve", "lines": ["Te tiemblan las manos.", "Los nervios te juegan en contra."] },
-  { "id": "cue.capability", "lines": ["El cuerpo no te da para más.", "No te da la fuerza."] },
-  { "id": "cue.position", "lines": ["No estás bien parado para eso.", "Estás mal ubicado."] },
-  { "id": "cue.means", "lines": ["Te falta con qué.", "No tenés lo que hace falta."] },
-
+  {
+    "id": "cue.light",
+    "lines": ["Casi no se ve.", "La poca luz no ayuda."]
+  },
+  {
+    "id": "cue.terrain",
+    "lines": ["El suelo no ayuda.", "El terreno es malo."]
+  },
+  {
+    "id": "cue.nerve",
+    "lines": ["Te tiemblan las manos.", "Los nervios te juegan en contra."]
+  },
+  {
+    "id": "cue.capability",
+    "lines": ["El cuerpo no te da para más.", "No te da la fuerza."]
+  },
+  {
+    "id": "cue.position",
+    "lines": ["No estás bien parado para eso.", "Estás mal ubicado."]
+  },
+  {
+    "id": "cue.means",
+    "lines": ["Te falta con qué.", "No tenés lo que hace falta."]
+  },
   {
     "id": "outcome.store.done",
     "lines": ["Dejás {what} en la despensa de la casa.", "Guardás {what} con lo demás de la casa."]
@@ -619,7 +828,10 @@
     "id": "outcome.consume.larder",
     "lines": ["Te tomás lo que había guardado en la casa.", "Tragás lo que sacás de la despensa."]
   },
-  { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
+  {
+    "id": "outcome.drink.done",
+    "lines": ["Tomás agua.", "Bebés unos tragos de agua."]
+  },
   {
     "id": "outcome.boil.done",
     "lines": [
@@ -631,8 +843,14 @@
     "id": "outcome.filter.done",
     "lines": ["Pasás el agua por el filtro hasta que sale clara.", "Filtrás el agua con paciencia."]
   },
-  { "id": "outcome.filter.none", "lines": ["No tenés con qué filtrar el agua."] },
-  { "id": "outcome.boil.none", "lines": ["No tenés con qué hervir el agua."] },
+  {
+    "id": "outcome.filter.none",
+    "lines": ["No tenés con qué filtrar el agua."]
+  },
+  {
+    "id": "outcome.boil.none",
+    "lines": ["No tenés con qué hervir el agua."]
+  },
   {
     "id": "outcome.kindle.done",
     "lines": [
@@ -647,12 +865,18 @@
       "Apilás la leña que traías y avivás el fuego."
     ]
   },
-  { "id": "outcome.kindle.none", "lines": ["No hay hogar ni leña con qué hacer fuego acá."] },
+  {
+    "id": "outcome.kindle.none",
+    "lines": ["No hay hogar ni leña con qué hacer fuego acá."]
+  },
   {
     "id": "outcome.douse.done",
     "lines": ["Apagás el fuego del hogar.", "Cubrís las brasas hasta que se apagan."]
   },
-  { "id": "outcome.douse.none", "lines": ["No hay ningún fuego encendido acá."] },
+  {
+    "id": "outcome.douse.none",
+    "lines": ["No hay ningún fuego encendido acá."]
+  },
   {
     "id": "outcome.slaughter.done",
     "lines": [
@@ -664,7 +888,10 @@
     "id": "outcome.slaughter.failed",
     "lines": ["El animal se te escapa de las manos.", "No llegás a carnearlo; sigue vivo."]
   },
-  { "id": "outcome.slaughter.none", "lines": ["No tenés acá ningún animal tuyo para carnear."] },
+  {
+    "id": "outcome.slaughter.none",
+    "lines": ["No tenés acá ningún animal tuyo para carnear."]
+  },
   {
     "id": "outcome.milk.done",
     "lines": [
@@ -680,7 +907,10 @@
     "id": "outcome.milk.none",
     "lines": ["No tenés acá ningún animal tuyo con leche sin ordeñar."]
   },
-  { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
+  {
+    "id": "outcome.drink.none",
+    "lines": ["No llegás a tomar nada."]
+  },
   {
     "id": "outcome.use.well.draw_water.done",
     "lines": [
@@ -786,20 +1016,50 @@
       "Le pagás {coins} a {who} y esperás a que empiece."
     ]
   },
-  { "id": "outcome.consult.sat_anyone", "lines": ["Pagás {coins} y te sentás a consultar."] },
+  {
+    "id": "outcome.consult.sat_anyone",
+    "lines": ["Pagás {coins} y te sentás a consultar."]
+  },
   {
     "id": "outcome.consult.left",
     "lines": ["Te acercás a {who}, pero no te animás a pedir la consulta."]
   },
-  { "id": "outcome.consult.left_anyone", "lines": ["No encontrás a quién consultar."] },
-  { "id": "reputation.nickname", "lines": ["En la aldea te dicen {name}."] },
-  { "id": "self.hungry", "lines": ["Tenés hambre."] },
-  { "id": "self.thirsty", "lines": ["Tenés sed."] },
-  { "id": "self.tired", "lines": ["Estás cansado."] },
-  { "id": "self.hurt", "lines": ["Te duele el cuerpo."] },
-  { "id": "self.bleeding", "lines": ["Estás sangrando."] },
-  { "id": "self.sick", "lines": ["Te sentís mal, afiebrado."] },
-  { "id": "self.cold", "lines": ["Tenés frío."] },
+  {
+    "id": "outcome.consult.left_anyone",
+    "lines": ["No encontrás a quién consultar."]
+  },
+  {
+    "id": "reputation.nickname",
+    "lines": ["En la aldea te dicen {name}."]
+  },
+  {
+    "id": "self.hungry",
+    "lines": ["Tenés hambre."]
+  },
+  {
+    "id": "self.thirsty",
+    "lines": ["Tenés sed."]
+  },
+  {
+    "id": "self.tired",
+    "lines": ["Estás cansado."]
+  },
+  {
+    "id": "self.hurt",
+    "lines": ["Te duele el cuerpo."]
+  },
+  {
+    "id": "self.bleeding",
+    "lines": ["Estás sangrando."]
+  },
+  {
+    "id": "self.sick",
+    "lines": ["Te sentís mal, afiebrado."]
+  },
+  {
+    "id": "self.cold",
+    "lines": ["Tenés frío."]
+  },
   {
     "id": "self.maimed",
     "lines": [
@@ -814,7 +1074,6 @@
       "Te desmayaste por el clima y recién ahora volvés en vos."
     ]
   },
-
   {
     "id": "thought.remember",
     "lines": ["Te quedás un rato recordando.", "Algo del pasado te vuelve a la cabeza."]
@@ -827,7 +1086,10 @@
     "id": "thought.feel_of",
     "lines": ["{who} te ocupa el ánimo.", "Algo en vos gira en torno a {who}."]
   },
-  { "id": "thought.ponder", "lines": ["Te quedás pensando.", "Das vueltas a lo que pasó."] },
+  {
+    "id": "thought.ponder",
+    "lines": ["Te quedás pensando.", "Das vueltas a lo que pasó."]
+  },
   {
     "id": "thought.ponder_of",
     "lines": ["Le das vueltas a lo de {who}.", "No podés dejar de pensar en {who}."]
@@ -840,8 +1102,14 @@
     "id": "thought.mood.fear",
     "lines": ["Un miedo sordo te recorre.", "Se te hace un nudo en el estómago."]
   },
-  { "id": "thought.mood.longing", "lines": ["Los extrañás.", "Te invade la nostalgia."] },
-  { "id": "thought.mood.guilt", "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."] },
+  {
+    "id": "thought.mood.longing",
+    "lines": ["Los extrañás.", "Te invade la nostalgia."]
+  },
+  {
+    "id": "thought.mood.guilt",
+    "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."]
+  },
   {
     "id": "thought.conclude.convinced",
     "lines": ["Estás convencido de que {fact}.", "Ya no te cabe duda: {fact}."]
@@ -850,7 +1118,10 @@
     "id": "thought.conclude.likely",
     "lines": ["Lo más probable es que {fact}.", "Todo apunta a que {fact}."]
   },
-  { "id": "thought.conclude.maybe", "lines": ["Quizá {fact}.", "A lo mejor {fact}."] },
+  {
+    "id": "thought.conclude.maybe",
+    "lines": ["Quizá {fact}.", "A lo mejor {fact}."]
+  },
   {
     "id": "thought.conclude.hunch",
     "lines": ["Tenés una corazonada: tal vez {fact}.", "Algo te dice que quizá {fact}."]
@@ -859,21 +1130,66 @@
     "id": "thought.conclude.rival",
     "lines": ["Aunque también podría ser que {fact}.", "O tal vez {fact}."]
   },
-  { "id": "thought.fact.took", "lines": ["{a} se llevó {b}"] },
-  { "id": "thought.fact.wronged", "lines": ["{a} fue perjudicado por {b}"] },
-  { "id": "thought.fact.poisoned_by", "lines": ["{a} fue envenenado por {b}"] },
-  { "id": "thought.fact.fire_at", "lines": ["hay fuego cerca"] },
-  { "id": "thought.fact.endangered", "lines": ["{a} corre peligro"] },
-  { "id": "thought.fact.at", "lines": ["{a} anda por otro lado"] },
-  { "id": "thought.fact.alive", "lines": ["{a} sigue vivo"] },
-  { "id": "thought.fact.dead", "lines": ["{a} murió"] },
-  { "id": "thought.fact.intends", "lines": ["{a} se trae algo entre manos"] },
-  { "id": "thought.fact.unknown", "lines": ["algo no cierra"] },
-  { "id": "thought.because.wound", "lines": ["Lo dice la herida."] },
-  { "id": "thought.because.tracks", "lines": ["Lo dicen las huellas."] },
-  { "id": "thought.because.seen", "lines": ["Lo viste con tus ojos."] },
-  { "id": "thought.because.told", "lines": ["Es lo que te contaron."] },
-  { "id": "thought.because.inference", "lines": ["Lo sacás de lo que sabés."] },
+  {
+    "id": "thought.fact.took",
+    "lines": ["{a} se llevó {b}"]
+  },
+  {
+    "id": "thought.fact.wronged",
+    "lines": ["{a} fue perjudicado por {b}"]
+  },
+  {
+    "id": "thought.fact.poisoned_by",
+    "lines": ["{a} fue envenenado por {b}"]
+  },
+  {
+    "id": "thought.fact.fire_at",
+    "lines": ["hay fuego cerca"]
+  },
+  {
+    "id": "thought.fact.endangered",
+    "lines": ["{a} corre peligro"]
+  },
+  {
+    "id": "thought.fact.at",
+    "lines": ["{a} anda por otro lado"]
+  },
+  {
+    "id": "thought.fact.alive",
+    "lines": ["{a} sigue vivo"]
+  },
+  {
+    "id": "thought.fact.dead",
+    "lines": ["{a} murió"]
+  },
+  {
+    "id": "thought.fact.intends",
+    "lines": ["{a} se trae algo entre manos"]
+  },
+  {
+    "id": "thought.fact.unknown",
+    "lines": ["algo no cierra"]
+  },
+  {
+    "id": "thought.because.wound",
+    "lines": ["Lo dice la herida."]
+  },
+  {
+    "id": "thought.because.tracks",
+    "lines": ["Lo dicen las huellas."]
+  },
+  {
+    "id": "thought.because.seen",
+    "lines": ["Lo viste con tus ojos."]
+  },
+  {
+    "id": "thought.because.told",
+    "lines": ["Es lo que te contaron."]
+  },
+  {
+    "id": "thought.because.inference",
+    "lines": ["Lo sacás de lo que sabés."]
+  },
   {
     "id": "thought.hazy",
     "lines": ["Pero ya no estás seguro de cómo fue.", "Los detalles se te mezclan."]
@@ -889,52 +1205,130 @@
       "Los días se suceden sin que te des cuenta."
     ]
   },
-  { "id": "stretch.did.work", "lines": ["Casi todo ese tiempo se te va en trabajar."] },
-  { "id": "stretch.did.gather", "lines": ["Esos días los pasás juntando lo que da el campo."] },
-  { "id": "stretch.did.tend", "lines": ["Esos días los pasás atendiendo lo tuyo."] },
-  { "id": "stretch.did.cook", "lines": ["Entre una cosa y otra cocinás lo de siempre."] },
-  { "id": "stretch.did.trade", "lines": ["Vas y venís con tus tratos."] },
-  { "id": "stretch.did.move", "lines": ["Pasás buena parte del tiempo yendo de un lado a otro."] },
-  { "id": "stretch.did.rest", "lines": ["Dejás que el cuerpo descanse."] },
-  { "id": "stretch.did.search", "lines": ["Pasás esos días buscando."] },
-  { "id": "stretch.did.consult", "lines": ["Preguntás y escuchás lo que te dicen."] },
-  { "id": "stretch.failed", "lines": ["No todo te sale bien."] },
-  { "id": "stretch.spoke", "lines": ["Hablás con gente por el camino."] },
+  {
+    "id": "stretch.did.work",
+    "lines": ["Casi todo ese tiempo se te va en trabajar."]
+  },
+  {
+    "id": "stretch.did.gather",
+    "lines": ["Esos días los pasás juntando lo que da el campo."]
+  },
+  {
+    "id": "stretch.did.tend",
+    "lines": ["Esos días los pasás atendiendo lo tuyo."]
+  },
+  {
+    "id": "stretch.did.cook",
+    "lines": ["Entre una cosa y otra cocinás lo de siempre."]
+  },
+  {
+    "id": "stretch.did.trade",
+    "lines": ["Vas y venís con tus tratos."]
+  },
+  {
+    "id": "stretch.did.move",
+    "lines": ["Pasás buena parte del tiempo yendo de un lado a otro."]
+  },
+  {
+    "id": "stretch.did.rest",
+    "lines": ["Dejás que el cuerpo descanse."]
+  },
+  {
+    "id": "stretch.did.search",
+    "lines": ["Pasás esos días buscando."]
+  },
+  {
+    "id": "stretch.did.consult",
+    "lines": ["Preguntás y escuchás lo que te dicen."]
+  },
+  {
+    "id": "stretch.failed",
+    "lines": ["No todo te sale bien."]
+  },
+  {
+    "id": "stretch.spoke",
+    "lines": ["Hablás con gente por el camino."]
+  },
   {
     "id": "stretch.spoke_with",
     "lines": ["En esos días hablás con {who}.", "Compartís palabras con {who}."]
   },
-  { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
+  {
+    "id": "stretch.hurt",
+    "lines": ["Te lastimás en el medio de todo."]
+  },
   {
     "id": "stretch.kept.harvested",
     "lines": ["Los días se te van en el campo, de sol a sol.", "Trabajás la tierra día tras día."]
   },
-  { "id": "stretch.kept.sown", "lines": ["Sembrás cuando toca."] },
-  { "id": "stretch.kept.irrigated", "lines": ["Llevás agua a los surcos."] },
-  { "id": "stretch.kept.watered", "lines": ["Regás lo sembrado."] },
+  {
+    "id": "stretch.kept.sown",
+    "lines": ["Sembrás cuando toca."]
+  },
+  {
+    "id": "stretch.kept.irrigated",
+    "lines": ["Llevás agua a los surcos."]
+  },
+  {
+    "id": "stretch.kept.watered",
+    "lines": ["Regás lo sembrado."]
+  },
   {
     "id": "stretch.kept.ate",
     "lines": ["Comés en casa lo que hay.", "A la noche, la comida de siempre."]
   },
-  { "id": "stretch.by.someone", "lines": ["alguien"] },
-  { "id": "stretch.meanwhile.body.died", "lines": ["Ves morir a {who}."] },
+  {
+    "id": "stretch.by.someone",
+    "lines": ["alguien"]
+  },
+  {
+    "id": "stretch.meanwhile.body.died",
+    "lines": ["Ves morir a {who}."]
+  },
   {
     "id": "stretch.meanwhile.body.died.told",
     "lines": ["Te enterás por {by} de que murió {who}."]
   },
-  { "id": "stretch.meanwhile.family.birth", "lines": ["Ves nacer una criatura."] },
+  {
+    "id": "stretch.meanwhile.family.birth",
+    "lines": ["Ves nacer una criatura."]
+  },
   {
     "id": "stretch.meanwhile.family.birth.told",
     "lines": ["{by} te cuenta que nació una criatura."]
   },
-  { "id": "stretch.meanwhile.combat.fight", "lines": ["Ves una pelea en la que anda {who}."] },
-  { "id": "stretch.meanwhile.combat.fight.told", "lines": ["{by} te cuenta de una pelea."] },
-  { "id": "stretch.meanwhile.band.raided", "lines": ["Ves llegar a los saqueadores."] },
-  { "id": "stretch.meanwhile.band.raided.told", "lines": ["{by} te cuenta de un saqueo."] },
-  { "id": "stretch.season.spring", "lines": ["Cuando te das cuenta, ya es primavera."] },
-  { "id": "stretch.season.summer", "lines": ["Llega el verano."] },
-  { "id": "stretch.season.autumn", "lines": ["El otoño ya está encima."] },
-  { "id": "stretch.season.winter", "lines": ["Entra el invierno."] },
+  {
+    "id": "stretch.meanwhile.combat.fight",
+    "lines": ["Ves una pelea en la que anda {who}."]
+  },
+  {
+    "id": "stretch.meanwhile.combat.fight.told",
+    "lines": ["{by} te cuenta de una pelea."]
+  },
+  {
+    "id": "stretch.meanwhile.band.raided",
+    "lines": ["Ves llegar a los saqueadores."]
+  },
+  {
+    "id": "stretch.meanwhile.band.raided.told",
+    "lines": ["{by} te cuenta de un saqueo."]
+  },
+  {
+    "id": "stretch.season.spring",
+    "lines": ["Cuando te das cuenta, ya es primavera."]
+  },
+  {
+    "id": "stretch.season.summer",
+    "lines": ["Llega el verano."]
+  },
+  {
+    "id": "stretch.season.autumn",
+    "lines": ["El otoño ya está encima."]
+  },
+  {
+    "id": "stretch.season.winter",
+    "lines": ["Entra el invierno."]
+  },
   {
     "id": "stretch.goal.cultivate",
     "lines": [
@@ -965,8 +1359,14 @@
     "id": "stretch.goal.craft",
     "lines": ["Mirás cómo trabajan los que saben y te fijás en cada gesto."]
   },
-  { "id": "stretch.goal.leave", "lines": ["Más de una tarde mirás el camino que sale de acá."] },
-  { "id": "stretch.goal.protect", "lines": ["No perdés de vista a los tuyos."] },
+  {
+    "id": "stretch.goal.leave",
+    "lines": ["Más de una tarde mirás el camino que sale de acá."]
+  },
+  {
+    "id": "stretch.goal.protect",
+    "lines": ["No perdés de vista a los tuyos."]
+  },
   {
     "id": "stretch.goal.knowledge",
     "lines": ["Te quedás con ganas de saber más de lo que sabés."]
@@ -975,23 +1375,62 @@
     "id": "stretch.goal.status",
     "lines": ["Pensás en cómo te miran los demás, y en cómo te gustaría que te miraran."]
   },
-  { "id": "stretch.zone.head", "lines": ["la cabeza"] },
-  { "id": "stretch.zone.neck", "lines": ["el cuello"] },
-  { "id": "stretch.zone.chest", "lines": ["el pecho"] },
-  { "id": "stretch.zone.abdomen", "lines": ["la panza"] },
-  { "id": "stretch.zone.left_arm", "lines": ["el brazo izquierdo"] },
-  { "id": "stretch.zone.right_arm", "lines": ["el brazo derecho"] },
-  { "id": "stretch.zone.left_leg", "lines": ["la pierna izquierda"] },
-  { "id": "stretch.zone.right_leg", "lines": ["la pierna derecha"] },
+  {
+    "id": "stretch.zone.head",
+    "lines": ["la cabeza"]
+  },
+  {
+    "id": "stretch.zone.neck",
+    "lines": ["el cuello"]
+  },
+  {
+    "id": "stretch.zone.chest",
+    "lines": ["el pecho"]
+  },
+  {
+    "id": "stretch.zone.abdomen",
+    "lines": ["la panza"]
+  },
+  {
+    "id": "stretch.zone.left_arm",
+    "lines": ["el brazo izquierdo"]
+  },
+  {
+    "id": "stretch.zone.right_arm",
+    "lines": ["el brazo derecho"]
+  },
+  {
+    "id": "stretch.zone.left_leg",
+    "lines": ["la pierna izquierda"]
+  },
+  {
+    "id": "stretch.zone.right_leg",
+    "lines": ["la pierna derecha"]
+  },
   {
     "id": "stretch.wound.in_pain",
     "lines": ["Te sigue doliendo {zone}.", "Sentís dolorido {zone}."]
   },
-  { "id": "stretch.wound.bleeding", "lines": ["Te sangra {zone} de a ratos."] },
-  { "id": "stretch.wound.bleeding_heavily", "lines": ["Te sangra {zone} sin parar."] },
-  { "id": "stretch.wound.wound_hot", "lines": ["Sentís caliente e hinchado {zone}."] },
-  { "id": "stretch.wound.bone_broken", "lines": ["Algo se rompió en {zone} y duele al moverlo."] },
-  { "id": "stretch.fought", "lines": ["Hay una pelea en el medio."] },
+  {
+    "id": "stretch.wound.bleeding",
+    "lines": ["Te sangra {zone} de a ratos."]
+  },
+  {
+    "id": "stretch.wound.bleeding_heavily",
+    "lines": ["Te sangra {zone} sin parar."]
+  },
+  {
+    "id": "stretch.wound.wound_hot",
+    "lines": ["Sentís caliente e hinchado {zone}."]
+  },
+  {
+    "id": "stretch.wound.bone_broken",
+    "lines": ["Algo se rompió en {zone} y duele al moverlo."]
+  },
+  {
+    "id": "stretch.fought",
+    "lines": ["Hay una pelea en el medio."]
+  },
   {
     "id": "mode.aftermath",
     "lines": ["Después, el silencio.", "Cuando todo termina, queda el cuerpo y la quietud."]
@@ -1000,11 +1439,22 @@
     "id": "thought.mood.calm",
     "lines": ["Por un rato estás en paz.", "Todo está quieto dentro tuyo."]
   },
-
-  { "id": "taste.loves", "lines": ["Te encanta {what}.", "{what}: lo que más te gusta."] },
-  { "id": "taste.likes", "lines": ["Te gusta {what}.", "{what}: te cae bien."] },
-  { "id": "taste.dislikes", "lines": ["No te gusta {what}.", "{what}: no es lo tuyo."] },
-  { "id": "taste.loathes", "lines": ["No soportás {what}.", "Odiás {what}."] },
+  {
+    "id": "taste.loves",
+    "lines": ["Te encanta {what}.", "{what}: lo que más te gusta."]
+  },
+  {
+    "id": "taste.likes",
+    "lines": ["Te gusta {what}.", "{what}: te cae bien."]
+  },
+  {
+    "id": "taste.dislikes",
+    "lines": ["No te gusta {what}.", "{what}: no es lo tuyo."]
+  },
+  {
+    "id": "taste.loathes",
+    "lines": ["No soportás {what}.", "Odiás {what}."]
+  },
   {
     "id": "taste.reminds_of",
     "lines": ["{what} te recuerda a {who}.", "Con {what} te acordás de {who}."]
@@ -1017,7 +1467,6 @@
     "id": "taste.recalls_good",
     "lines": ["{what} te trae un buen recuerdo.", "Con {what} te acordás de un buen momento."]
   },
-
   {
     "id": "due.owe.overdue",
     "lines": [
@@ -1087,8 +1536,10 @@
     "id": "heard_trade.unsure",
     "lines": ["Quién sabe si es cierto.", "No sabés cuánto hay de verdad."]
   },
-  { "id": "due.unsure", "lines": ["No lo recordás bien.", "Los detalles se te borronean."] },
-
+  {
+    "id": "due.unsure",
+    "lines": ["No lo recordás bien.", "Los detalles se te borronean."]
+  },
   {
     "id": "reading.cast",
     "lines": [
@@ -1104,7 +1555,10 @@
     "id": "reading.told.greatness.faint",
     "lines": ["{who} murmura algo sobre una grandeza que quizá te espera."]
   },
-  { "id": "reading.told.ruin.strong", "lines": ["{who} te dice, grave, que traerás ruina."] },
+  {
+    "id": "reading.told.ruin.strong",
+    "lines": ["{who} te dice, grave, que traerás ruina."]
+  },
   {
     "id": "reading.told.ruin.faint",
     "lines": ["{who} deja caer que algo se podría arruinar a tu alrededor."]
@@ -1125,9 +1579,14 @@
     "id": "reading.told.fortune.faint",
     "lines": ["{who} te promete, sin firmeza, algo de buena fortuna."]
   },
-  { "id": "reading.vague", "lines": ["Son palabras que le servirían a cualquiera."] },
-  { "id": "reading.doubtful", "lines": ["No sabés si creerle."] },
-
+  {
+    "id": "reading.vague",
+    "lines": ["Son palabras que le servirían a cualquiera."]
+  },
+  {
+    "id": "reading.doubtful",
+    "lines": ["No sabés si creerle."]
+  },
   {
     "id": "offense.received.rebuke",
     "lines": [
@@ -1161,42 +1620,134 @@
     "id": "offense.caused.ignore",
     "lines": ["A {who} se le nota el disgusto por tu modo, pero se calla."]
   },
-  { "id": "offense.norm.village.address_formal", "lines": ["Faltó el usted que se debe."] },
-  { "id": "offense.norm.village.greet_first", "lines": ["Faltó el saludo primero."] },
+  {
+    "id": "offense.norm.village.address_formal",
+    "lines": ["Faltó el usted que se debe."]
+  },
+  {
+    "id": "offense.norm.village.greet_first",
+    "lines": ["Faltó el saludo primero."]
+  },
   {
     "id": "offense.norm.village.uncover_before_landholder",
     "lines": ["Faltó descubrirse ante el que manda."]
   },
-  { "id": "offense.norm.impostor", "lines": ["Se hizo pasar por más de lo que es."] },
-
-  { "id": "good.forage", "lines": ["hongos y hierbas"] },
-  { "id": "good.gleanings", "lines": ["espigas sueltas"] },
-  { "id": "good.shellfish", "lines": ["almejas"] },
-  { "id": "good.coin", "lines": ["unas monedas"] },
-  { "id": "good.grain", "lines": ["grano"] },
-  { "id": "good.rice", "lines": ["arroz"] },
-  { "id": "good.unknown", "lines": ["algo"] },
-  { "id": "thing.shape.knife", "lines": ["un cuchillo"] },
-  { "id": "thing.shape.basket", "lines": ["una canasta"] },
-  { "id": "thing.shape.pot", "lines": ["una olla"] },
-  { "id": "thing.shape.jar", "lines": ["una jarra"] },
-  { "id": "thing.shape.bowl", "lines": ["un cuenco"] },
-  { "id": "thing.shape.sword", "lines": ["una espada"] },
-  { "id": "thing.shape.hoe", "lines": ["una azada"] },
-  { "id": "thing.shape.sickle", "lines": ["una hoz"] },
-  { "id": "thing.shape.axe", "lines": ["un hacha"] },
-  { "id": "thing.shape.rope", "lines": ["una soga"] },
-  { "id": "thing.shape.stick", "lines": ["un palo"] },
-  { "id": "thing.shape.bag", "lines": ["una bolsa"] },
-  { "id": "thing.shape.box", "lines": ["una caja"] },
-  { "id": "thing.shape.book", "lines": ["un libro"] },
-  { "id": "thing.shape.ring", "lines": ["un anillo"] },
-  { "id": "thing.shape.cloth", "lines": ["un paño"] },
-  { "id": "thing.shape.well", "lines": ["el pozo"] },
-  { "id": "thing.shape.granary", "lines": ["el granero"] },
-  { "id": "thing.shape.hearth", "lines": ["el fogón"] },
-  { "id": "thing.shape.bench", "lines": ["el banco"] },
-  { "id": "thing.shape.vat", "lines": ["la tina de curtir"] },
+  {
+    "id": "offense.norm.impostor",
+    "lines": ["Se hizo pasar por más de lo que es."]
+  },
+  {
+    "id": "good.forage",
+    "lines": ["hongos y hierbas"]
+  },
+  {
+    "id": "good.gleanings",
+    "lines": ["espigas sueltas"]
+  },
+  {
+    "id": "good.shellfish",
+    "lines": ["almejas"]
+  },
+  {
+    "id": "good.coin",
+    "lines": ["unas monedas"]
+  },
+  {
+    "id": "good.grain",
+    "lines": ["grano"]
+  },
+  {
+    "id": "good.rice",
+    "lines": ["arroz"]
+  },
+  {
+    "id": "good.unknown",
+    "lines": ["algo"]
+  },
+  {
+    "id": "thing.shape.knife",
+    "lines": ["un cuchillo"]
+  },
+  {
+    "id": "thing.shape.basket",
+    "lines": ["una canasta"]
+  },
+  {
+    "id": "thing.shape.pot",
+    "lines": ["una olla"]
+  },
+  {
+    "id": "thing.shape.jar",
+    "lines": ["una jarra"]
+  },
+  {
+    "id": "thing.shape.bowl",
+    "lines": ["un cuenco"]
+  },
+  {
+    "id": "thing.shape.sword",
+    "lines": ["una espada"]
+  },
+  {
+    "id": "thing.shape.hoe",
+    "lines": ["una azada"]
+  },
+  {
+    "id": "thing.shape.sickle",
+    "lines": ["una hoz"]
+  },
+  {
+    "id": "thing.shape.axe",
+    "lines": ["un hacha"]
+  },
+  {
+    "id": "thing.shape.rope",
+    "lines": ["una soga"]
+  },
+  {
+    "id": "thing.shape.stick",
+    "lines": ["un palo"]
+  },
+  {
+    "id": "thing.shape.bag",
+    "lines": ["una bolsa"]
+  },
+  {
+    "id": "thing.shape.box",
+    "lines": ["una caja"]
+  },
+  {
+    "id": "thing.shape.book",
+    "lines": ["un libro"]
+  },
+  {
+    "id": "thing.shape.ring",
+    "lines": ["un anillo"]
+  },
+  {
+    "id": "thing.shape.cloth",
+    "lines": ["un paño"]
+  },
+  {
+    "id": "thing.shape.well",
+    "lines": ["el pozo"]
+  },
+  {
+    "id": "thing.shape.granary",
+    "lines": ["el granero"]
+  },
+  {
+    "id": "thing.shape.hearth",
+    "lines": ["el fogón"]
+  },
+  {
+    "id": "thing.shape.bench",
+    "lines": ["el banco"]
+  },
+  {
+    "id": "thing.shape.vat",
+    "lines": ["la tina de curtir"]
+  },
   {
     "id": "thing.state.soaking",
     "lines": [
@@ -1211,10 +1762,22 @@
       "Falta poco: las pieles ya tienen color de cuero."
     ]
   },
-  { "id": "thing.shape.hen", "lines": ["la gallina"] },
-  { "id": "thing.shape.dog", "lines": ["el perro"] },
-  { "id": "thing.shape.ox", "lines": ["el buey"] },
-  { "id": "thing.shape.goat", "lines": ["la cabra"] },
+  {
+    "id": "thing.shape.hen",
+    "lines": ["la gallina"]
+  },
+  {
+    "id": "thing.shape.dog",
+    "lines": ["el perro"]
+  },
+  {
+    "id": "thing.shape.ox",
+    "lines": ["el buey"]
+  },
+  {
+    "id": "thing.shape.goat",
+    "lines": ["la cabra"]
+  },
   {
     "id": "thing.state.tired",
     "lines": [
@@ -1222,7 +1785,10 @@
       "Se lo ve cansado, las patas flojas y la cabeza baja."
     ]
   },
-  { "id": "thing.mark.young", "lines": ["Todavía es una cría.", "Es chico todavía, una cría."] },
+  {
+    "id": "thing.mark.young",
+    "lines": ["Todavía es una cría.", "Es chico todavía, una cría."]
+  },
   {
     "id": "thing.mark.old",
     "lines": ["Se le notan los años.", "Tiene los años encima: se mueve lento."]
@@ -1243,28 +1809,72 @@
     "id": "thing.mark.pregnant",
     "lines": ["Tiene la panza grande: está preñada.", "Se la ve pesada, con cría adentro."]
   },
-  { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
-  { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
-  { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },
+  {
+    "id": "thing.state.lit",
+    "lines": ["Arde con buena llama.", "El fuego está prendido."]
+  },
+  {
+    "id": "thing.state.cold",
+    "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."]
+  },
+  {
+    "id": "thing.state.worn",
+    "lines": ["Se nota gastado por los años.", "Está gastado."]
+  },
   {
     "id": "thing.state.poor",
     "lines": ["Está descuidado, a medio caer.", "Se ve muy descuidado."]
   },
-  { "id": "thing.material.iron", "lines": ["de hierro"] },
-  { "id": "thing.material.bronze", "lines": ["de bronce"] },
-  { "id": "thing.material.wood", "lines": ["de madera"] },
-  { "id": "thing.material.bamboo", "lines": ["de bambú"] },
-  { "id": "thing.material.clay", "lines": ["de barro"] },
-  { "id": "thing.material.stone", "lines": ["de piedra"] },
-  { "id": "thing.material.cloth", "lines": ["de tela"] },
-  { "id": "thing.material.jade", "lines": ["de jade"] },
-  { "id": "thing.material.paper", "lines": ["de papel"] },
-  { "id": "thing.unknown", "lines": ["una cosa"] },
-  { "id": "thing.seen", "lines": ["En el suelo hay {thing}.", "Ves {thing} por ahí."] },
+  {
+    "id": "thing.material.iron",
+    "lines": ["de hierro"]
+  },
+  {
+    "id": "thing.material.bronze",
+    "lines": ["de bronce"]
+  },
+  {
+    "id": "thing.material.wood",
+    "lines": ["de madera"]
+  },
+  {
+    "id": "thing.material.bamboo",
+    "lines": ["de bambú"]
+  },
+  {
+    "id": "thing.material.clay",
+    "lines": ["de barro"]
+  },
+  {
+    "id": "thing.material.stone",
+    "lines": ["de piedra"]
+  },
+  {
+    "id": "thing.material.cloth",
+    "lines": ["de tela"]
+  },
+  {
+    "id": "thing.material.jade",
+    "lines": ["de jade"]
+  },
+  {
+    "id": "thing.material.paper",
+    "lines": ["de papel"]
+  },
+  {
+    "id": "thing.unknown",
+    "lines": ["una cosa"]
+  },
+  {
+    "id": "thing.seen",
+    "lines": ["En el suelo hay {thing}.", "Ves {thing} por ahí."]
+  },
   {
     "id": "thing.looked",
     "lines": ["Te fijás bien en {thing}.", "Mirás de cerca {thing}."]
   },
-
-  { "id": "nothing", "lines": ["No pasa nada que notes.", "Todo sigue igual."] }
+  {
+    "id": "nothing",
+    "lines": ["No pasa nada que notes.", "Todo sigue igual."]
+  }
 ]

@@ -859,6 +859,8 @@ function pieces(text: string): { sep: string; text: string }[] {
 /** Los comandos fuera del personaje van con «!» adelante (`play-bang-commands`): «!salir», «!gente». */
 const BANG = /^!\s*/;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
+/** «Me propongo ser herrero»: proponerse algo a largo plazo (novel-goals-truth-act). */
+const RESOLVE = /^(?:me propongo|me prometo|me juro)\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const DIVINER =
   "(?:adivin[oa]s?|vident[ea]s?|or[aá]culo|astr[oó]log[oa]|augur|hechicer[oa]|bruj[oa])";
@@ -933,6 +935,13 @@ export function parseCommand(
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
   // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo
   // es lo decide el juego (discovery §14), acá solo se la reconoce como suponer.
+  const resolve = RESOLVE.exec(said);
+  if (resolve) {
+    return {
+      kind: "act",
+      plan: act("resolve", [{ role: "about", text: tidy(resolve[1] as string) }]),
+    };
+  }
   const idea = IDEA.exec(said);
   if (idea && FIELD_TALK.test(idea[1] as string)) {
     return { kind: "act", plan: act("ponder", [{ role: "about", text: tidy(idea[1] as string) }]) };
