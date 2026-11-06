@@ -22,6 +22,7 @@ export * from "./exposure.ts";
 export { FUNERALS, type FuneralOptions } from "./funerals.ts";
 export * from "./gathering.ts";
 export * from "./gathering-provider.ts";
+export * from "./goal-day.ts";
 export * from "./goal-death.ts";
 export * from "./goal-evidence.ts";
 export * from "./goal-watch.ts";

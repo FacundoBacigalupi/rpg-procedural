@@ -81,9 +81,10 @@ import {
   yieldFactor,
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
-import { type Decision, NPC_DECISION } from "./decide.ts";
+import { type Decision, NPC_DECISION, NPC_GOALS } from "./decide.ts";
 import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
+import { type GoalHour, goalHour } from "./goal-day.ts";
 import {
   fieldBoost,
   fieldIrrigationMm,
@@ -284,6 +285,9 @@ export interface FirewoodRoutine {
   readonly perHourG: number;
 }
 
+/** Una hora de un día delegado dada a una meta (novel-goals-truth-delegate). */
+export const GOAL_HOUR_EVENT = "routine.for_goal";
+
 /** Event de quien junta leña para la casa en la rutina. */
 export const GATHERED_WOOD_EVENT = "routine.gathered_wood";
 
@@ -413,6 +417,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PLAYER.name,
       PLAN_STATE.name,
       NPC_DECISION.name,
+      NPC_GOALS.name,
       SOIL.name,
       ENTITY.name,
       PERSON.name,
@@ -493,15 +498,43 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (tendOnly && !ROUTINE.meals.includes(hour) && !ROUTINE.drinkAlso.includes(hour)) {
         return {};
       }
-      const want: ReturnType<typeof planFor> = tendOnly
-        ? { activity: body.activity, at: "home", replaced: false }
-        : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
-            unwell,
-            larderLow,
-            hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
-            canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
-            canMove: o.npcMove === true,
-          });
+      // Los días delegados sirven a las metas que se propuso (novel-goals-truth-delegate): madrugar
+      // al campo o ir a la tarde a ver a la persona; agotado o dolorido manda el descanso.
+      const forGoal: GoalHour | undefined = delegated
+        ? goalHour(
+            truth.get(NPC_GOALS, me)?.items ?? [],
+            hour,
+            {
+              ageYears: age,
+              workAge: ROUTINE.workAge,
+              rested: !unwell,
+              able: (needs.pain ?? 0) < UNWELL_PAIN,
+            },
+            (w) => {
+              const b = truth.get(BODY_STATE, w);
+              return (
+                truth.get(PERSON, w) !== undefined &&
+                truth.get(ENTITY, w)?.endedAt === undefined &&
+                b !== undefined &&
+                !b.death
+              );
+            },
+          )
+        : undefined;
+      const want: ReturnType<typeof planFor> = forGoal
+        ? forGoal.kind === "work"
+          ? { activity: "moderate", at: "fields", replaced: true }
+          : { activity: "light", at: "home", replaced: true }
+        : tendOnly
+          ? { activity: body.activity, at: "home", replaced: false }
+          : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
+              unwell,
+              larderLow,
+              hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
+              canBoil:
+                o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
+              canMove: o.npcMove === true,
+            });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings = [];
@@ -521,6 +554,26 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (want.move && home) {
         const hexes = truth.get(PLACE, want.move as never)?.hexes ?? [];
         if (hexes.length > 0) there = { hex: nearestHex(o.map, here?.hex ?? home.hex, hexes) };
+      }
+      if (forGoal?.kind === "visit") {
+        const theirs = truth.get(PERSON, forGoal.whom)?.household;
+        const house = theirs && o.spaces.spaces.find((s) => s.key === houseKey(theirs));
+        if (house) there = { hex: house.hex, space: house.key };
+      }
+      if (forGoal) {
+        // La hora queda atada a la meta (regla 5): la crónica sabe cuánto le dio.
+        events.push({
+          kind: GOAL_HOUR_EVENT,
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: {
+            goal: forGoal.goal,
+            what: forGoal.kind,
+            ...(forGoal.kind === "visit" ? { whom: forGoal.whom } : {}),
+          },
+          emissions: {},
+          causes: [{ kind: "state", entity: me, key: "goals" }],
+        });
       }
       // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
       // adentro no se sale hasta que la arreglen (settlements �7).

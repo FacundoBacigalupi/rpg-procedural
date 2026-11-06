@@ -4,7 +4,9 @@ import {
   addGoal,
   dropGoal,
   GAME_CONTENT_KINDS,
+  GOAL_HOUR_EVENT,
   GOAL_SKETCHES,
+  goalHour,
   goalSketches,
   goalTarget,
   goalWatch,
@@ -13,7 +15,7 @@ import {
   sketchOf,
 } from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
-import type { ActionPlan } from "../sim/index.ts";
+import type { ActionPlan, Goal } from "../sim/index.ts";
 import { replayLifeAt } from "../tools/inspector/at.ts";
 import { type ReplayInput, replayInputFromStore } from "../tools/replay/index.ts";
 import { lifeConfig } from "./config.ts";
@@ -195,5 +197,68 @@ describe("metas del personaje (novel-goals-set)", () => {
     await session.say("ya no quiero vengar a mi madre");
     expect(goalsOf().map((g) => g.id)).toEqual(["resolve:wealth"]);
     expect(replayed()).toEqual(goalsOf());
+  }, 300_000);
+
+  it("puro (novel-goals-truth-delegate): madrugar por el trabajo, la tarde para la persona", () => {
+    const g = (id: string, weight: number, target?: string): Goal =>
+      ({
+        id,
+        layer: "long",
+        kind: "pursue",
+        weight,
+        originEventId: "event:1",
+        since: 0,
+        ...(target ? { target } : {}),
+      }) as unknown as Goal;
+    const alive = (w: string) => w !== "agent:9";
+    const ok = { ageYears: 30, workAge: 10, rested: true, able: true };
+    const rich = g("resolve:wealth", 0.5);
+    const land = g("resolve:land", 0.5);
+    const avenge = g("resolve:revenge:agent:7", 0.5, "agent:7");
+    const both = [land, rich, avenge];
+    expect(goalHour(both, 12, ok, alive)).toBeUndefined();
+    expect(goalHour(both, 5, ok, alive)).toBeUndefined();
+    // Mismo peso: desempata el id (land < wealth), sin importar el orden.
+    expect(goalHour(both, 6, ok, alive)).toEqual({ kind: "work", goal: land.id });
+    expect(goalHour([rich, land], 7.5, ok, alive)).toEqual({ kind: "work", goal: land.id });
+    expect(goalHour(both, 20, ok, alive)).toEqual({
+      kind: "visit",
+      goal: avenge.id,
+      whom: "agent:7",
+    });
+    // Agotado no madruga; dolorido no sale; un chico no trabaja de más; un muerto no se visita.
+    expect(goalHour(both, 6, { ...ok, rested: false }, alive)).toBeUndefined();
+    expect(goalHour(both, 18, { ...ok, able: false }, alive)).toBeUndefined();
+    expect(goalHour([rich], 6, { ...ok, ageYears: 8 }, alive)).toBeUndefined();
+    expect(goalHour([g("resolve:revenge:agent:9", 0.5, "agent:9")], 18, ok, alive)).toBeUndefined();
+    // Las metas que no son del jugador o no tienen forma de día no toman horas.
+    expect(
+      goalHour([g("resolve:cultivate", 0.5), g("core:wealth", 0.9)], 6, ok, alive),
+    ).toBeUndefined();
+  });
+
+  it("seed 1 (novel-goals-truth-delegate): los días saltados trabajan de más por la meta", async () => {
+    const config = lifeConfig({ ...base, seed: "1" });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    const life = session.life;
+    await session.say("quiero hacerme rico");
+    const from = life.now;
+    await session.say("sigo con mi vida una semana");
+    const hours = life.world.log
+      .all()
+      .filter((e) => e.kind === GOAL_HOUR_EVENT && e.tick > from && e.actors[0] === life.player);
+    expect(hours.length).toBeGreaterThanOrEqual(6);
+    expect(hours.every((e) => (e.data as { goal: string }).goal === "resolve:wealth")).toBe(true);
+    // Esas horas son de campo: el personaje cosecha antes de que empiece la jornada de la aldea.
+    const late = life.world.log
+      .all()
+      .filter(
+        (e) =>
+          e.kind === "routine.harvested" &&
+          e.actors[0] === life.player &&
+          hours.some((h) => h.tick === e.tick),
+      );
+    expect(late.length).toBeGreaterThan(0);
   }, 300_000);
 });
