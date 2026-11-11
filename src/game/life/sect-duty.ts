@@ -25,6 +25,8 @@ import {
 } from "../../sim/index.ts";
 
 export const SECT_DUTY_PROCESS = "life.sect_duty";
+/** Una hora de tareas de la rutina delegada en la sede (novel-sect-duty-routine). */
+export const ROUTINE_CHORE_EVENT = "routine.chore";
 
 /** La secta de cuya sede es el lugar donde está `who`, si es miembro de ella. */
 function seatOrgOf(truth: ReadonlyWorldTruth, who: AgentId): EntityRef | undefined {
@@ -38,7 +40,7 @@ function seatOrgOf(truth: ReadonlyWorldTruth, who: AgentId): EntityRef | undefin
 
 /** Quién hizo tareas, cuántas horas y qué dijo que hacía, de un `action.chore`. */
 function choreDone(e: Event): { who: AgentId; hours: number; said?: string } | undefined {
-  if (e.kind !== "action.chore") return undefined;
+  if (e.kind !== "action.chore" && e.kind !== ROUTINE_CHORE_EVENT) return undefined;
   const who = e.actors[0] as AgentId | undefined;
   const data = e.data as { seconds?: unknown; effect?: { what?: unknown } } | null;
   const seconds = data?.seconds;
@@ -72,7 +74,7 @@ export function sectDutyProcess(): ProcessDef {
         const points = org
           ? chorePoints(
               done.hours,
-              e.outcome as string | undefined,
+              e.kind === ROUTINE_CHORE_EVENT ? "success" : (e.outcome as string | undefined),
               typeof margin === "number" ? margin : 0,
             )
           : 0;

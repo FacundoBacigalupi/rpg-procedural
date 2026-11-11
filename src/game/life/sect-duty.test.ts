@@ -28,6 +28,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
+import { ROUTINE_CHORE_EVENT } from "./sect-duty.ts";
 import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -124,6 +125,41 @@ describe("tareas de discípulo", () => {
     life.turn(chore(me, 2), 1);
     expect(chores(from)[0]?.data).toMatchObject({ task: "guard", credited: true });
     expect(w.truth.get(SECT_CONTRIBUTION, me)?.hours).toBe(5);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 120_000);
+  it("el externo que ya subió, si delega el día, hace tareas en las horas de trabajo (routine)", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, { cultivation: true, sectSeatRegion: true });
+    const w = life.world;
+    const me = life.player;
+    const org = w.truth.ids(SECT)[0] as EntityRef;
+    const sect = w.truth.get(SECT, org);
+    if (!sect) throw new Error("sin secta");
+    const hex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    w.truth.set(SECT_MEMBER, me, { org, rank: "outer", since: life.now });
+    w.truth.set(LOCATION, me, { hex, space: sectSpaceKey(sect.seatPlace, "hall") });
+    const from = life.now;
+    const day: ActionPlan = {
+      actor: me,
+      source: "routine",
+      root: { kind: "do", verb: "wait", args: [{ role: "for", seconds: 24 * HOUR }], manner: [] },
+      manner: [],
+      causes: [{ kind: "state", entity: me, key: "intent" }],
+    };
+    life.turn(day, 1);
+    const hours = w.log
+      .all()
+      .filter((e) => e.kind === ROUTINE_CHORE_EVENT && e.actors[0] === me && e.tick >= from);
+    expect(hours.length).toBeGreaterThan(0);
+    const credited = w.log
+      .all()
+      .filter((e) => e.kind === SECT_CHORE_EVENT && e.actors[0] === me && e.tick >= from);
+    expect(credited.length).toBe(hours.length);
+    expect(credited.every((e) => (e.data as { credited?: boolean }).credited === true)).toBe(true);
+    expect(w.truth.get(SECT_CONTRIBUTION, me)?.hours).toBe(hours.length);
+    // Sigue en la sede: no bajó a los campos de la aldea.
+    const at = w.truth.get(LOCATION, me);
+    expect(at?.space?.startsWith(`sect:${sect.seatPlace}/`)).toBe(true);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   }, 120_000);
 });

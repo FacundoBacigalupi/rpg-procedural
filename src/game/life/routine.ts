@@ -104,6 +104,7 @@ import { harvestSeasonOf } from "./map.ts";
 import { ROUTINE_BREAK_EVENT, ROUTINE_MEDITATE_EVENT } from "./meditate.ts";
 import { PLAYER } from "./player.ts";
 import { routineToolStep } from "./routine-tools.ts";
+import { ROUTINE_CHORE_EVENT } from "./sect-duty.ts";
 import { SMITH } from "./smith.ts";
 import {
   cropStarts,
@@ -178,6 +179,11 @@ export const WATER_SKIN = table<WaterSkin>("life.water_skin");
 export interface SeatRoutine {
   readonly home: string;
   readonly work: string;
+  /**
+   * Las horas de trabajo son de tareas en `work` (`routine.chore`, que anota `life.sect_duty`) en vez
+   * de meditar: el discípulo externo que vive en la sede (novel-sect-duty-routine).
+   */
+  readonly chores?: boolean;
 }
 
 export interface RoutineOptions {
@@ -468,7 +474,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       ...(o.draft ? draftReads(o.draft) : []),
-      ...(o.seatOf ? [SECT_MEMBER.name, SECT.name] : []),
+      ...(o.seatOf ? [SECT_MEMBER.name, SECT.name, PLACE.name] : []),
     ],
     writes: [
       LOCATION.name,
@@ -597,7 +603,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         const work = o.spaces.spaces.find((s) => s.key === seat.work);
         if (work) there = { hex: work.hex, space: work.key };
         events.push({
-          kind: ROUTINE_MEDITATE_EVENT,
+          kind: seat.chores === true ? ROUTINE_CHORE_EVENT : ROUTINE_MEDITATE_EVENT,
           actors: [me],
           place: o.placeOf(truth, me),
           data: { seconds: 3600 },

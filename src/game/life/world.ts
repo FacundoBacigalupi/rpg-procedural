@@ -2912,7 +2912,9 @@ export function lifeWorld(
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.cultivation ? { sectLore: true } : {}),
           // Quien vive en la sede duerme en los dormitorios y medita en la cueva (hall-people-keep).
-          ...(parts.cultivation && parts.map.patches ? { seatOf: seatRoutineOf } : {}),
+          ...(parts.cultivation && parts.map.patches
+            ? { seatOf: (t, me) => seatRoutineOf(t, me, parts.map) }
+            : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
             : {}),

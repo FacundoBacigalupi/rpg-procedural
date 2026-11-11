@@ -158,19 +158,31 @@ export interface SectHallMind {
   readonly tastes: readonly TasteDef[];
 }
 
-/** La casa y el lugar de meditar de quien vive en la sede: los dormitorios y la cueva. */
+/**
+ * La casa y el lugar de las horas de trabajo de quien vive en la sede: los dormitorios y la cueva.
+ * El discípulo externo vive ahí solo si ya subió (con `map`: está en el parche de la sede), y sus
+ * horas de trabajo son de tareas en el portón (novel-sect-duty-routine).
+ */
 export function seatRoutineOf(
   truth: ReadonlyWorldTruth,
   me: AgentId,
-): { readonly home: string; readonly work: string } | undefined {
+  map?: LocalMap,
+): { readonly home: string; readonly work: string; readonly chores?: boolean } | undefined {
   const member = truth.get(SECT_MEMBER, me as unknown as EntityRef);
-  if (!member || member.rank === "outer" || !truth.has(SECT_HALL, member.org)) return undefined;
+  if (!member) return undefined;
   const sect = truth.get(SECT, member.org);
   if (!sect) return undefined;
-  return {
-    home: sectSpaceKey(sect.seatPlace, "dorm"),
-    work: sectSpaceKey(sect.seatPlace, "cave"),
-  };
+  const home = sectSpaceKey(sect.seatPlace, "dorm");
+  if (member.rank !== "outer") {
+    return truth.has(SECT_HALL, member.org)
+      ? { home, work: sectSpaceKey(sect.seatPlace, "cave") }
+      : undefined;
+  }
+  const seatHex = truth.get(PLACE, sect.seatPlace)?.hexes[0];
+  const here = truth.get(LOCATION, me)?.hex;
+  if (!map || seatHex === undefined || here === undefined) return undefined;
+  if (patchOf(map, here).base !== patchOf(map, seatHex).base) return undefined;
+  return { home, work: sectSpaceKey(sect.seatPlace, "gate"), chores: true };
 }
 
 /** Escritor de `SECT_HALL` y de la gente de la secta que materializa (cableado opt-in). */
