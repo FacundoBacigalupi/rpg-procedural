@@ -99,7 +99,15 @@ export type SelfCue =
   /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
   | "exchange_refused"
   /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
-  | "promoted";
+  | "promoted"
+  /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */
+  | "leave_granted"
+  /** Pidió permiso y no se lo dieron: no es de esa secta. */
+  | "leave_refused"
+  /** Volvió a la sede pasado el plazo y le descontaron aporte (`cultivation.sect_returned`). */
+  | "returned_late"
+  /** Volvió a la sede a tiempo. */
+  | "returned_on_time";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
@@ -1020,6 +1028,7 @@ function effectView(
     case "ponder":
     case "chore":
     case "redeem":
+    case "furlough":
     case "resolve":
     case "forge":
     case "hire":

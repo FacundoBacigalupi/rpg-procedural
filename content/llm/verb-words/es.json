@@ -436,6 +436,23 @@
     ]
   },
   {
+    "id": "furlough",
+    "example": "pido permiso para bajar a la aldea por diez días",
+    "tail": "diez días",
+    "forms": ["pido licencia", "pido permiso para bajar"],
+    "synonyms": [
+      {
+        "as": "pido licencia",
+        "words": [
+          "pido unos días de permiso",
+          "pido permiso para irme",
+          "pido permiso para salir",
+          "pido permiso para volver a la aldea"
+        ]
+      }
+    ]
+  },
+  {
     "id": "redeem",
     "example": "canjeo mis puntos por cuatro horas de cueva",
     "tail": "cuatro horas",

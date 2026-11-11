@@ -42,4 +42,16 @@ describe("la gramática y el acto de habla declarado", () => {
       plan: { verb: "redeem", args: [{ role: "what", text: "cueva" }] },
     });
   });
+
+  it("«pido permiso para bajar a la aldea por diez días» es el permiso de la secta", () => {
+    expect(parseCommand("pido permiso para bajar a la aldea por diez días")).toMatchObject({
+      kind: "act",
+      plan: { verb: "furlough", args: [{ role: "for", duration: { amount: 10, unit: "day" } }] },
+    });
+    expect(parseCommand("pido licencia")).toMatchObject({ plan: { verb: "furlough", args: [] } });
+    // El pase a la cueva sigue siendo canje.
+    expect(parseCommand("pido permiso para la cueva")).not.toMatchObject({
+      plan: { verb: "furlough" },
+    });
+  });
 });

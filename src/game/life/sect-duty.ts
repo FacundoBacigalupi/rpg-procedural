@@ -6,6 +6,8 @@
 // `cultivation.sect_chore`, causado por la acción. También lleva el pase a la cueva: las horas
 // meditadas adentro salen del pase (novel-sect-cave-pass) y `redeem` canjea puntos por horas de pase
 // (novel-sect-duty-exchange) con `cultivation.sect_exchange`, causado por el pedido y los puntos.
+// Y el permiso para bajar (novel-sect-seat-return-leave): `furlough` en la sede deja `SECT_LEAVE`
+// con `cultivation.sect_leave`; la ausencia la lleva `life.sect_absence` (`sect-leave.ts`).
 
 import type { AgentId, EntityRef, Event } from "../../core/index.ts";
 import {
@@ -21,6 +23,7 @@ import {
   exchangeHours,
   isSectCave,
   LOCATION,
+  leaveDays,
   PLACE,
   PROMOTION_CHORE_HOURS,
   PROMOTION_STAGE,
@@ -33,6 +36,8 @@ import {
   SECT_CHORE_EVENT,
   SECT_CONTRIBUTION,
   SECT_EXCHANGE_EVENT,
+  SECT_LEAVE,
+  SECT_LEAVE_EVENT,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
   type SectCavePass,
@@ -67,8 +72,9 @@ function choreDone(e: Event): { who: AgentId; hours: number; said?: string } | u
   return { who, hours: seconds / 3600, ...(typeof said === "string" ? { said } : {}) };
 }
 
-/** Escritor de `SECT_CONTRIBUTION` (cableado con el cultivo). */
-export function sectDutyProcess(): ProcessDef {
+/** Escritor de `SECT_CONTRIBUTION` (cableado con el cultivo); `dayTicks` para los días de permiso. */
+export function sectDutyProcess(o: { readonly dayTicks?: number } = {}): ProcessDef {
+  const day = o.dayTicks ?? 86_400;
   return {
     id: SECT_DUTY_PROCESS,
     system: "life",
@@ -85,7 +91,7 @@ export function sectDutyProcess(): ProcessDef {
       SECT_CAVE_PASS.name,
       CULTIVATION_STATE.name,
     ],
-    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name, SECT_MEMBER.name],
+    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name, SECT_MEMBER.name, SECT_LEAVE.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -102,6 +108,25 @@ export function sectDutyProcess(): ProcessDef {
       const maybe = new Map<AgentId, Event>();
       for (const e of ctx.recent) {
         if (e.kind === BREAKTHROUGH_EVENT && e.actors[0]) maybe.set(e.actors[0] as AgentId, e);
+        // El permiso para bajar (novel-sect-seat-return-leave): lo da la secta al que es de ella.
+        if (e.kind === "action.furlough" && e.outcome !== "failure") {
+          const who = e.actors[0] as AgentId | undefined;
+          if (!who) continue;
+          const wanted = (e.data as { effect?: { days?: unknown } } | null)?.effect?.days;
+          const org = seatOrgOf(ctx.truth, who);
+          const days = leaveDays(typeof wanted === "number" ? wanted : null);
+          const until = ctx.now + days * day;
+          if (org) changes.push(setComponent(SECT_LEAVE, who, { org, from: ctx.now, until }));
+          events.push({
+            kind: SECT_LEAVE_EVENT,
+            actors: [who],
+            place: e.place,
+            data: org ? { org, days, until } : { refused: "not_member" },
+            emissions: {},
+            causes: [{ kind: "event", event: e.id }],
+          });
+          continue;
+        }
         // El canje de aportes por horas de pase (novel-sect-duty-exchange).
         if (e.kind === "action.redeem" && e.outcome !== "failure") {
           const who = e.actors[0] as AgentId | undefined;

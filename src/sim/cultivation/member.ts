@@ -129,6 +129,65 @@ export function exchangeHours(
   return { hours, cost: hours * CAVE_PASS_POINTS_PER_HOUR };
 }
 
+/**
+ * El permiso para bajar de la sede (novel-sect-seat-return-leave): hasta cuándo puede estar afuera.
+ * Lo da la secta al que lo pide estando en su sede (`furlough`); vence solo.
+ */
+export interface SectLeave {
+  readonly org: EntityRef;
+  readonly from: Tick;
+  readonly until: Tick;
+}
+export const SECT_LEAVE = table<SectLeave>("cultivation.sect_leave");
+/** El pedido de permiso, dado o negado. */
+export const SECT_LEAVE_EVENT = "cultivation.sect_leave";
+/** Los días de permiso si no dice cuántos, y el máximo que da la secta (sin calibrar). */
+export const LEAVE_DEFAULT_DAYS = 7;
+export const LEAVE_MAX_DAYS = 30;
+
+/** Los días enteros de permiso que da la secta si se piden `wanted` (o los de siempre). */
+export function leaveDays(wanted: number | null): number {
+  return Math.min(LEAVE_MAX_DAYS, Math.max(1, Math.ceil(wanted ?? LEAVE_DEFAULT_DAYS)));
+}
+
+/**
+ * Lo que la secta sabe de dónde está el miembro (novel-sect-seat-return-leave): desde cuándo está
+ * en la sede o afuera, y, afuera, hasta cuándo tenía permiso y si ya se pasó. Nace la primera vez
+ * que está en el parche de la sede: al que todavía no subió no se le cuenta ausencia.
+ */
+export interface SectPresence {
+  readonly org: EntityRef;
+  readonly away: boolean;
+  readonly since: Tick;
+  /** Afuera con permiso: hasta cuándo. */
+  readonly until?: Tick;
+  /** Afuera y pasado del plazo (o del día de gracia sin permiso): la secta ya lo anotó. */
+  readonly overdue?: boolean;
+}
+export const SECT_PRESENCE = table<SectPresence>("cultivation.sect_presence");
+export const SECT_LEFT_EVENT = "cultivation.sect_left";
+export const SECT_OVERDUE_EVENT = "cultivation.sect_overdue";
+export const SECT_RETURNED_EVENT = "cultivation.sect_returned";
+/** Sin permiso, cuánto puede faltar antes de que cuente (una bajada a buscar algo). */
+export const ABSENCE_GRACE_DAYS = 1;
+/** Los puntos de aporte que se pierden por día pasado del plazo (sin calibrar). */
+export const ABSENCE_POINTS_PER_DAY = 2;
+
+/** Cuándo vence la ausencia: el permiso, o el día de gracia desde que se fue. */
+export function absenceDue(p: SectPresence, dayTicks: number): Tick {
+  return (p.until ?? p.since + ABSENCE_GRACE_DAYS * dayTicks) as Tick;
+}
+
+/** Los días pasados del plazo al volver `now` (fraccionarios, 0 si volvió a tiempo). */
+export function lateDays(p: SectPresence, now: Tick, dayTicks: number): number {
+  return Math.max(0, (now - absenceDue(p, dayTicks)) / dayTicks);
+}
+
+/** Los puntos que pierde por volver `late` días tarde, hasta lo que tiene. */
+export function absencePenalty(points: number, late: number): number {
+  return late <= 0 ? 0 : Math.min(Math.max(0, points), Math.ceil(late) * ABSENCE_POINTS_PER_DAY);
+}
+
 /** Los rangos que entran a la cueva sin pase. */
 export const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
 

@@ -155,6 +155,13 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.furlough",
+    "lines": [
+      "{who} pide permiso en las cuentas de la secta para bajar unos días.",
+      "Ves a {who} pidiendo licencia para salir de la sede."
+    ]
+  },
+  {
     "id": "percept.action.redeem",
     "lines": [
       "{who} canjea sus aportes en las cuentas de la secta.",
@@ -443,6 +450,14 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.furlough.success",
+    "lines": ["Pedís en las cuentas de la secta permiso para bajar unos días."]
+  },
+  {
+    "id": "outcome.furlough.unsure",
+    "lines": ["Pedís permiso para bajar."]
   },
   {
     "id": "outcome.redeem.success",
@@ -1191,6 +1206,28 @@
       "El encargado tacha puntos de tu aporte y te anota horas de pase a la cueva.",
       "Te descuentan aporte de las cuentas y te dan un pase de horas para la cueva."
     ]
+  },
+  {
+    "id": "self.leave_granted",
+    "lines": [
+      "El encargado te anota el permiso: podés bajar, pero tenés que volver para la fecha.",
+      "Te dan licencia por unos días y anotan para cuándo te esperan de vuelta."
+    ]
+  },
+  {
+    "id": "self.leave_refused",
+    "lines": ["El encargado ni abre el libro: acá no sos nadie para pedir permiso."]
+  },
+  {
+    "id": "self.returned_late",
+    "lines": [
+      "Volvés a la sede pasado el plazo: en las cuentas te descuentan aporte por los días de más.",
+      "Te reciben con el libro abierto: llegaste tarde y te tachan puntos de aporte."
+    ]
+  },
+  {
+    "id": "self.returned_on_time",
+    "lines": ["Volvés a la sede a tiempo; en las cuentas tachan tu ausencia sin decir nada."]
   },
   {
     "id": "self.exchange_refused",
