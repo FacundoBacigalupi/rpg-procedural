@@ -90,11 +90,22 @@ function plainTerms(
   }
   let text = fill(line, held, id);
   for (const a of vocabulary.avoid) {
-    const re = new RegExp(`(?<![\\p{L}\\uE000])${escapeRe(a.term)}(?![\\p{L}])`, "giu");
-    text = text.replace(re, a.say);
+    // Si la glosa ya trae su determinante («ese aliento…»), el artículo de la plantilla sobra.
+    const article = DETERMINER.test(a.say) ? "(?:(el|la|los|las|un|una|del|al)\\s+)?" : "()";
+    const re = new RegExp(`(?<![\\p{L}\\uE000])${article}${escapeRe(a.term)}(?![\\p{L}])`, "giu");
+    text = text.replace(re, (_m, art: string | undefined) => {
+      if (art === undefined || art === "") return a.say;
+      const lower = art.toLowerCase();
+      const lead = lower === "del" ? "de " : lower === "al" ? "a " : "";
+      const said = `${lead}${a.say}`;
+      return art[0] !== lower[0] ? capitalize(said) : said;
+    });
   }
   return text.replace(/(\d+)/g, (_, i: string) => quotes[Number(i)] as string);
 }
+
+/** Glosas que empiezan con su propio determinante. */
+const DETERMINER = /^(ese|esa|esos|esas|aquel|aquella|aquellos|aquellas|uno|una|unos|unas)\s/i;
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -105,6 +116,8 @@ export function renderView(
   book: TemplateBook,
   rng: Rng,
   vocabulary?: LexiconView,
+  /** El modo novela abre y cierra el salto con su frase (novel-narr-voice). */
+  style: { readonly novel?: boolean } = {},
 ): string {
   const labels = new Map(view.labels.map((l) => [l.localId, l]));
   const out: string[] = [];
@@ -141,7 +154,13 @@ export function renderView(
   const idle =
     view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
   const inward = view.mode === "dream" || view.mode === "montage";
-  if (view.mode !== undefined) say(`mode.${view.mode}`);
+  const novel = style.novel === true;
+  if (view.mode !== undefined)
+    say(
+      novel && book.has(`novel.mode.${view.mode}`)
+        ? `novel.mode.${view.mode}`
+        : `mode.${view.mode}`,
+    );
   const stretch = view.stretch;
   if (stretch !== undefined) {
     for (const d of stretch.did)
@@ -287,6 +306,8 @@ export function renderView(
     if (r.doubtful) say("reading.doubtful");
   }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
+  if (novel && view.mode !== undefined && book.has(`novel.close.${view.mode}`))
+    say(`novel.close.${view.mode}`);
   return out.join(" ");
 }
 

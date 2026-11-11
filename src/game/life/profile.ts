@@ -325,3 +325,117 @@ export function assertLifeDependencies(options: LifeOptions): void {
   const issues = validateLifeDependencies(options);
   if (issues.length > 0) throw new Error(issues.map((issue) => issue.message).join("; "));
 }
+
+// --- Grupos (novel-flags-groups-core) ---
+// El perfil son decenas de flags; para elegir una vida alcanza con pocos interruptores. Cada flag del
+// perfil está en exactamente un grupo (lo que no se nombra abajo es de `village`); `cultivation` y
+// `tech` quedan fuera del perfil, como antes.
+
+export const LIFE_GROUPS = [
+  "village",
+  "people",
+  "npcs",
+  "economy",
+  "body",
+  "livestock",
+  "cultivation",
+  "tech",
+] as const;
+export type LifeGroup = (typeof LIFE_GROUPS)[number];
+
+/** Los grupos que forman el perfil completo. */
+export const PROFILE_GROUPS: readonly LifeGroup[] = [
+  "village",
+  "people",
+  "npcs",
+  "economy",
+  "body",
+  "livestock",
+];
+
+const PEOPLE_KEYS: readonly (keyof LifeOptions)[] = [
+  "rumorGrievance",
+  "persistGoalLayers",
+  "persistImmediateGoals",
+  "closeGoalsOnDeath",
+  "recognizeGoalCompletion",
+  "recognizeGoalProgress",
+  "meaningPressure",
+  "craftGoals",
+  "relationDecay",
+  "speakActs",
+  "conception",
+  "births",
+];
+const ECONOMY_KEYS: readonly (keyof LifeOptions)[] = [
+  "debtKnowledge",
+  "scam",
+  "loanBondage",
+  "loanBondageAbuse",
+  "swapMaterials",
+  "moldHintsFromCatalog",
+  "tradeView",
+  "marks",
+  "marksExpose",
+  "marksGossip",
+  "marksReach",
+  "loanContagion",
+  "loanContagionEffects",
+  "loanWorkout",
+  "hire",
+  "takeBelieved",
+];
+const BODY_KEYS: readonly (keyof LifeOptions)[] = [
+  "waterSources",
+  "healthCulture",
+  "cravingCues",
+  "cueLocal",
+];
+
+/** El grupo de un flag: por lista o por prefijo; lo demás es de la aldea. */
+export function lifeGroupOf(key: keyof LifeOptions): LifeGroup {
+  if (key === "cultivation") return "cultivation";
+  if (key === "mortalTech") return "tech";
+  if (PEOPLE_KEYS.includes(key)) return "people";
+  if (ECONOMY_KEYS.includes(key)) return "economy";
+  if (BODY_KEYS.includes(key)) return "body";
+  if (key.startsWith("livestock") || key === "villageLivestock" || key === "npcCobblerLocalLeather")
+    return "livestock";
+  if (key.startsWith("npc") || key === "sleepers" || key === "errands") return "npcs";
+  return "village";
+}
+
+/** Lo que trae cada grupo solo (sin las dependencias de otros grupos). */
+export function groupOptions(group: LifeGroup): LifeOptions {
+  if (group === "cultivation") return { cultivation: true };
+  if (group === "tech") return { mortalTech: true };
+  const picked: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(structuredClone(FULL_PROFILE))) {
+    if (lifeGroupOf(key as keyof LifeOptions) === group) picked[key] = value;
+  }
+  return picked as LifeOptions;
+}
+
+/**
+ * Las opciones de una vida con estos grupos, más los que piden sus dependencias de cableado (un flag
+ * de un grupo que requiere uno de otro suma ese otro grupo). Devuelve también los grupos que quedaron.
+ */
+export function lifeGroupOptions(groups: readonly LifeGroup[]): {
+  readonly groups: readonly LifeGroup[];
+  readonly options: LifeOptions;
+} {
+  const chosen = new Set<LifeGroup>(groups);
+  for (;;) {
+    const options = Object.assign(
+      {},
+      ...LIFE_GROUPS.filter((g) => chosen.has(g)).map(groupOptions),
+    ) as LifeOptions;
+    const missing = validateLifeDependencies(options)
+      .map((issue) => issue.requires)
+      .filter((key): key is keyof LifeOptions => key in FULL_PROFILE)
+      .map(lifeGroupOf)
+      .filter((g) => !chosen.has(g));
+    if (missing.length === 0) return { groups: LIFE_GROUPS.filter((g) => chosen.has(g)), options };
+    for (const g of missing) chosen.add(g);
+  }
+}

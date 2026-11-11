@@ -95,9 +95,10 @@ function measureFullProfileSeed(
     : FULL_PROFILE;
   const withRescue = rescueSeeds ? { ...baseLife, loanSeeds: rescueSeeds } : baseLife;
   const withCommerce = config.commerce === true ? commerceLifeOptions(withRescue) : withRescue;
+  const withNatality = config.natality === true ? natalityLifeOptions(withCommerce) : withCommerce;
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: config.natality === true ? natalityLifeOptions(withCommerce) : withCommerce,
+    life: config.cultivation === true ? { ...withNatality, cultivation: true } : withNatality,
     ...frequencyOnly,
   };
   const processes = new Map<string, ProcessMeasurement>();

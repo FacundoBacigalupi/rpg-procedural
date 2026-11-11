@@ -112,6 +112,8 @@ describe("runCli", () => {
     await session(split, [...SCRIPT.slice(0, 2), "!salir"]);
     const back = await session(split, SCRIPT.slice(2), 999);
     expect(back).toMatch(/^Seguís donde quedaste\./);
+    // El recuento repite lo último ya leído, no lo rearma (novel-narr-recap).
+    expect(back).toContain("Donde lo dejaste: ");
 
     const straight = memory();
     await session(straight, SCRIPT);

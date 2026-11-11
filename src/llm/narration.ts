@@ -21,7 +21,16 @@ export type NarrationMode =
 /** El estilo de un pedido (narration §7): las preferencias del usuario más el idioma de salida. */
 export interface StyleSettings extends NarrationPrefs {
   readonly language: "es" | "en";
+  /** Modo novela (game-modes): más color y ritmo de capítulo; los hechos, los mismos. */
+  readonly novel?: boolean;
 }
+
+/** Lo que el modo novela le pide de más al narrador (novel-narr-voice): forma, nunca hechos. */
+const NOVEL_VOICE = [
+  "Novel mode: tell it like a chapter of a cultivation web novel. Vary the rhythm, open a",
+  "time skip with a transition and close it with a short line that lands; let the prose breathe.",
+  "The style is richer, the facts are exactly the same: nothing that is not in the request.",
+];
 
 export interface NarrationRequest {
   readonly view: PlayerView;
@@ -197,6 +206,7 @@ export function narratorSystem(style: StyleSettings): string {
     "  notice first, `mood` colors only the tone. Never add facts because of the mood.",
     "- `ambience` are textures you may use; you may also leave them out.",
     "- Quote heard words exactly as in `words` or `text`.",
+    ...(style.novel === true ? NOVEL_VOICE : []),
     DETAIL[style.detail],
     "Answer only with the narration.",
   ].join("\n");

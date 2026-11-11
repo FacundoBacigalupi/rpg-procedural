@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { feelOf, type Recap } from "../game/index.ts";
-import { renderRecap } from "./render.ts";
+import { RESUME_READ_CHARS, renderRecap, renderResume } from "./render.ts";
 
 describe("recuento al volver", () => {
   it("la valencia se resume en cómo le quedó", () => {
@@ -23,5 +23,18 @@ describe("recuento al volver", () => {
     expect(text).toContain("la muerte de alguien con Wu, ayer, y todavía pesa");
     expect(text).toContain("un regalo, hace 3 días, y fue bueno");
     expect(renderRecap({ recent: [] })).toBe("");
+  });
+
+  it("al retomar repite lo último leído, salta el título de capítulo y suma las metas", () => {
+    const last = "Capítulo 2 · Otoño del año 70\n\nPrimero algo.\n\nAl final, el río.";
+    const text = renderResume(last, "Recordás un regalo, ayer.", ["entrar a una secta"]);
+    expect(text.split("\n")).toEqual([
+      "Donde lo dejaste: Al final, el río.",
+      "Recordás un regalo, ayer.",
+      "Lo que te proponés: entrar a una secta.",
+    ]);
+    const long = renderResume("x".repeat(RESUME_READ_CHARS + 50), "", []);
+    expect(long).toBe(`Donde lo dejaste: …${"x".repeat(RESUME_READ_CHARS)}`);
+    expect(renderResume(undefined, "", [])).toBe("");
   });
 });

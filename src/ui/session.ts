@@ -150,6 +150,9 @@ import {
 } from "../tools/index.ts";
 import { type Hint, hintOf } from "./hints.ts";
 import {
+  CHAPTER_MIN_DAYS,
+  chapterHeading,
+  chaptersIn,
   elapsed,
   renderAbout,
   renderBook,
@@ -162,6 +165,7 @@ import {
   renderNotes,
   renderPeople,
   renderRecap,
+  renderResume,
   renderRoutineRules,
   renderStatus,
   renderSuggestion,
@@ -476,7 +480,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     );
     const request = narrationRequest(
       view,
-      styleOf(DEFAULT_NARRATION, "es"),
+      {
+        ...styleOf(DEFAULT_NARRATION, "es"),
+        ...(options.setup.game.mode === "novel" ? { novel: true } : {}),
+      },
       ambienceOf(view.scene, ambience),
       {
         voice: voiceOf(
@@ -547,9 +554,18 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   };
   const intro = await tell(null, life.now);
   const openingPeople = present;
-  if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
-  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
-  const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
+  const lastRead = store.narrations(1)[0]?.text;
+  if (lastRead === undefined) store.appendNarration(life.now, intro);
+  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12, novel-narr-recap):
+  // lo último leído, lo que recuerda y lo que se propone.
+  const back =
+    notices[0]?.startsWith("Seguís") === true
+      ? renderResume(
+          lastRead,
+          renderRecap(recapOf(life.world)),
+          goals.filter((g) => g.status === "active").map((g) => g.text),
+        )
+      : "";
   const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now, life.world.map.lonDeg)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
@@ -632,8 +648,20 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         ? [renderNotes(report.notes, nameOf, goalText)]
         : []),
     ].join("\n");
-    store.appendNarration(report.to, told);
-    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
+    // Un salto largo abre capítulo (novel-narr-chapters): la línea queda en la bitácora.
+    const map = life.world.map;
+    const heading =
+      report.to - report.from >= CHAPTER_MIN_DAYS * life.world.clock.day
+        ? chapterHeading(
+            chaptersIn(store.narrations()) + 1,
+            report.to,
+            map.lonDeg,
+            map.climate.latDeg,
+          )
+        : undefined;
+    const chapter = heading === undefined ? told : `${heading}\n\n${told}`;
+    store.appendNarration(report.to, chapter);
+    const text = `${chapter}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
     if (report.over) {
       return {
         text: `${text}\nTu vida terminó.\n\n${endingOf(life, store, options.epilogue === true)}`,

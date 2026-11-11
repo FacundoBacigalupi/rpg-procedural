@@ -1414,6 +1414,22 @@
     "lines": ["Dormís mal y soñás.", "En el sueño, todo viene a pedazos."]
   },
   {
+    "id": "novel.mode.montage",
+    "lines": [
+      "El tiempo corre como agua bajo el puente.",
+      "Los días se van uno tras otro, y nadie los cuenta.",
+      "Una estación se desliza sobre la anterior sin hacer ruido."
+    ]
+  },
+  {
+    "id": "novel.close.montage",
+    "lines": [
+      "Así pasan los días.",
+      "Y el mundo sigue andando, con vos adentro.",
+      "Y la vida sigue, sin apuro."
+    ]
+  },
+  {
     "id": "mode.montage",
     "lines": [
       "Pasa el tiempo, uno tras otro los días.",
@@ -1487,6 +1503,17 @@
   {
     "id": "stretch.kept.watered",
     "lines": ["Regás lo sembrado."]
+  },
+  {
+    "id": "stretch.kept.meditate",
+    "lines": [
+      "Después, ya en casa, te sentás quieto a respirar un rato largo.",
+      "Las noches son para sentarte quieto y respirar."
+    ]
+  },
+  {
+    "id": "stretch.kept.breakthrough",
+    "lines": ["Más de una noche, con el pecho lleno, empujás contra la pared que sentís adentro."]
   },
   {
     "id": "stretch.kept.ate",
