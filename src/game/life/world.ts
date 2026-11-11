@@ -33,6 +33,7 @@ import {
   type GarmentDef,
   type GoodDef,
   goodUnit,
+  HARVEST_GOOD,
   type HabitDef,
   HEARTH,
   HEARTH_BURN_G_PER_H,
@@ -235,7 +236,7 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
-import { sectHallProcess } from "./sect-hall.ts";
+import { SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
@@ -2494,6 +2495,19 @@ export function lifeWorld(
                     sectHallProcess({
                       map: parts.map,
                       yearTicks: parts.clock.year,
+                      dayTicks: parts.clock.day,
+                      ...(() => {
+                        const grain = parts.foods.find((f) => `good:${f.id}` === HARVEST_GOOD);
+                        return grain
+                          ? {
+                              store: {
+                                unit: HARVEST_GOOD,
+                                kcalPerGram: grain.kcalPerGram,
+                                days: SECT_STORE_DAYS,
+                              },
+                            }
+                          : {};
+                      })(),
                       traits: parts.traits,
                       bodyPlans: parts.plans,
                       ...(parts.form
@@ -2885,6 +2899,8 @@ export function lifeWorld(
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.cultivation ? { sectLore: true } : {}),
+          // Quien vive en la sede duerme en los dormitorios y medita en la cueva (hall-people-keep).
+          ...(parts.cultivation && parts.map.patches ? { seatOf: seatRoutineOf } : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
             : {}),

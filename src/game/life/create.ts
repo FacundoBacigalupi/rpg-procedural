@@ -205,6 +205,7 @@ import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
+import { SECT_UPKEEP } from "./sect-hall.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { FORGE_TRADE, seedSmith } from "./smith.ts";
 import { SOWN_FIELD } from "./sowing.ts";
@@ -1682,6 +1683,7 @@ export function ledgerConfigOf(
   livestockCheese = false,
   livestockSheep = false,
   livestockCow = false,
+  sectUpkeep = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1751,6 +1753,8 @@ export function ledgerConfigOf(
       ...(livestockFeed ? { [FED_SINK]: units } : {}),
       ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
       ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
+      // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
+      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD] } : {}),
     },
   };
 }
@@ -1922,6 +1926,7 @@ export function createLife(
         options.livestockCheese === true,
       options.villageLivestock === true && options.livestockSheep === true,
       options.villageLivestock === true && options.livestockCow === true,
+      options.cultivation === true && options.sectSeatRegion === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).

@@ -41,7 +41,7 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { knownEntities, knownSpaces } from "./known.ts";
 import { Life } from "./life.ts";
 import { qiPoolOf } from "./meditate.ts";
-import { SECT_HALL, SECT_HALL_EVENT } from "./sect-hall.ts";
+import { SECT_HALL, SECT_HALL_EVENT, SECT_UPKEEP_EVENT } from "./sect-hall.ts";
 import { PLAYER_TREK } from "./trek.ts";
 import { playerView } from "./view.ts";
 import { playerSkyOf } from "./weather-panel.ts";
@@ -185,8 +185,12 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     const drawn = w2.truth.get(QI_TAKEN, s2.seatPlace)?.drawn ?? 0;
     expect(drawn).toBeGreaterThan(0);
     expect(w2.truth.get(QI_TAKEN, plane)?.drawn ?? 0).toBe(0);
-    expect(w2.truth.get(CULTIVATION_STATE, me)?.qi ?? 0).toBeCloseTo(drawn, 3);
+    // La gente de la sede también toma de ahí (hall-people-keep): lo del jugador es lo que absorbió.
     const absorbed = w2.log.all().filter((e) => e.kind === ABSORBED_EVENT && e.actors[0] === me);
+    const mine = absorbed.reduce((t, e) => t + Number((e.data as { drawn?: number }).drawn), 0);
+    expect(mine).toBeGreaterThan(0);
+    expect(mine).toBeLessThanOrEqual(drawn + 1e-3);
+    expect(w2.truth.get(CULTIVATION_STATE, me)?.qi ?? 0).toBeCloseTo(mine, 3);
     expect((absorbed[0]?.data as { cell?: number } | undefined)?.cell).toBe(s2.seat.cell);
   });
 
@@ -285,6 +289,45 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     expect(twin.l.hash().total).toBe(l.hash().total);
     expect(w4.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w4.truth, log: w4.log })).toEqual([]);
+  });
+
+  it("la gente de la sede come de su despensa, duerme en el dormitorio y medita en la cueva (hall-people-keep)", () => {
+    const l = Life.create(3, content, options);
+    const w5 = l.world;
+    const org5 = w5.truth.ids(SECT)[0] as EntityRef;
+    const s5 = w5.truth.get(SECT, org5);
+    if (!s5) throw new Error("sin secta");
+    const goal = w5.truth.get(PLACE, s5.seatPlace)?.hexes[0] as number;
+    w5.truth.set(LOCATION, l.player, { hex: goal });
+    l.advanceTo(l.now + 2 * HOUR);
+    const born = w5.log.all().find((e) => e.kind === SECT_HALL_EVENT);
+    expect(Number((born?.data as { stored?: number } | undefined)?.stored)).toBeGreaterThan(0);
+    const people = new Set<string>(
+      (w5.truth.get(SECT_HALL, org5)?.people ?? []).map((x) => x.person as string),
+    );
+    expect(people.size).toBeGreaterThan(0);
+    const seen = new Set<string>();
+    for (let h = 0; h < 8 * 24; h++) {
+      l.advanceTo(l.now + HOUR);
+      for (const p of people) seen.add(w5.truth.get(LOCATION, p as EntityRef)?.space ?? "");
+    }
+    const seat = String(s5.seatPlace);
+    expect(seen.has(sectSpaceKey(seat, "dorm"))).toBe(true);
+    expect(seen.has(sectSpaceKey(seat, "cave"))).toBe(true);
+    expect([...seen].every((k) => k.startsWith(`sect:${seat}/`))).toBe(true);
+    const theirs = (kind: string) =>
+      w5.log.all().filter((e) => e.kind === kind && e.actors.some((a) => people.has(a as string)));
+    expect(theirs("routine.ate").length).toBeGreaterThanOrEqual(people.size * 3 * 7);
+    expect(theirs("routine.meditate").length).toBeGreaterThan(people.size * 7);
+    expect(theirs(ABSORBED_EVENT).length).toBeGreaterThan(0);
+    expect(w5.truth.get(QI_TAKEN, s5.seatPlace)?.drawn ?? 0).toBeGreaterThan(0);
+    // La despensa se repone cada semana desde la fuente declarada, sin romper la conservación.
+    expect(w5.log.all().some((e) => e.kind === SECT_UPKEEP_EVENT)).toBe(true);
+    for (const p of people) {
+      expect(w5.truth.get(BODY_STATE, p as EntityRef)?.death ?? null).toBeNull();
+    }
+    expect(w5.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w5.truth, log: w5.log })).toEqual([]);
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {
