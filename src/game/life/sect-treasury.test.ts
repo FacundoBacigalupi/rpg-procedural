@@ -15,7 +15,19 @@ import {
   holderAccount,
   loadContent,
 } from "../../core/index.ts";
-import { COPPER, checkInvariants, HARVEST_GOOD, LOCATION, PLACE, SECT } from "../../sim/index.ts";
+import {
+  COPPER,
+  checkInvariants,
+  HARVEST_GOOD,
+  LOCATION,
+  PLACE,
+  SECT,
+  SECT_MEMBER,
+  SECT_STIPEND_EVENT,
+  STIPEND_BY_RANK,
+  STIPEND_EVERY_DAYS,
+  stipendShares,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import {
@@ -25,6 +37,7 @@ import {
   SECT_UPKEEP_EVENT,
   treasuryAccount,
 } from "./sect-hall.ts";
+import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -84,4 +97,49 @@ describe("el tesoro de la secta", () => {
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   }, 180_000);
+
+  it("el sueldo es por rango; si el cobre no alcanza, todos cobran la misma fracción", () => {
+    expect(STIPEND_BY_RANK.outer).toBeLessThan(STIPEND_BY_RANK.inner);
+    expect(stipendShares([30, 60], 100)).toEqual({ shares: [30, 60], ratio: 1 });
+    expect(stipendShares([30, 60], 45)).toEqual({ shares: [15, 30], ratio: 0.5 });
+    expect(stipendShares([30, 60], 0)).toEqual({ shares: [0, 0], ratio: 0 });
+  });
+
+  it("al mes, cada miembro en la sede cobra su sueldo del tesoro y el personaje lo nota", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, { cultivation: true, sectSeatRegion: true });
+    const w = life.world;
+    const me = life.player;
+    const org = w.truth.ids(SECT)[0] as EntityRef;
+    const sect = w.truth.get(SECT, org);
+    if (!sect) throw new Error("sin secta");
+    const hex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    w.truth.set(SECT_MEMBER, me, { org, rank: "outer", since: life.now });
+    w.truth.set(LOCATION, me, { hex });
+    const purse = holderAccount(me as unknown as HolderRef);
+    const before = w.ledger.balance(purse, COPPER);
+    life.advanceTo(life.now + 2 * HOUR);
+    // Sin esperar un mes (sin agua ni comida, el personaje no duraría): el último pago fue hace uno.
+    const born = w.truth.get(SECT_HALL, org);
+    if (!born) throw new Error("sin sede");
+    w.truth.set(SECT_HALL, org, { ...born, paid: life.now - STIPEND_EVERY_DAYS * w.clock.day });
+    const from = life.now;
+    life.advanceTo(life.now + 2 * HOUR);
+    const paid = w.log.all().filter((e) => e.kind === SECT_STIPEND_EVENT);
+    expect(paid.length).toBe(1);
+    const [pay] = paid;
+    if (!pay) throw new Error("sin sueldo");
+    const i = pay.actors.indexOf(me);
+    expect(i).toBeGreaterThanOrEqual(0);
+    const shares = (pay.data as { shares: number[] }).shares;
+    expect(shares[i]).toBe(STIPEND_BY_RANK.outer);
+    expect(pay.data).not.toHaveProperty("cut");
+    expect(w.ledger.balance(purse, COPPER)).toBeGreaterThanOrEqual(before + STIPEND_BY_RANK.outer);
+    // La gente de la sede cobra por su rango.
+    const hall = w.truth.get(SECT_HALL, org);
+    for (const { person } of hall?.people ?? []) expect(pay.actors).toContain(person);
+    expect(playerView(w, [], { heardSince: from }).self.cues).toContain("stipend_paid");
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 300_000);
 });

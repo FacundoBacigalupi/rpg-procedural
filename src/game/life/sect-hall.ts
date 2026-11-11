@@ -72,16 +72,20 @@ import {
   type SchemaDef,
   SECT,
   SECT_MEMBER,
+  SECT_STIPEND_EVENT,
   SELF_IMAGES,
   type SectRank,
   SKILL_STATE,
   type SkillCatalog,
+  STIPEND_BY_RANK,
+  STIPEND_EVERY_DAYS,
   type StateChange,
   sectSpaceKey,
   seedPersonCulture,
   seedSelfImages,
   setComponent,
   standardize,
+  stipendShares,
   TALENT,
   TASTES_OF,
   type TasteDef,
@@ -102,6 +106,8 @@ export interface SectHall {
   readonly people: readonly { readonly slot: number; readonly person: AgentId }[];
   /** La última vez que se repuso la despensa. */
   readonly stocked?: Tick;
+  /** La última vez que se pagó el sueldo (novel-sect-duty-stipend); sin ella, desde `at`. */
+  readonly paid?: Tick;
 }
 export const SECT_HALL = table<SectHall>("life.sect_hall");
 
@@ -140,10 +146,12 @@ export interface SectStore {
 export const SECT_TRIBUTE_EVENT = "life.sect_tribute";
 /** Cuánto más de lo que comen sus vivos entra de tributo: el tesoro crece despacio. */
 export const TRIBUTE_SURPLUS = 1.25;
-/** Cobre por cabeza y por semana que entra de tributo. */
-export const TRIBUTE_COIN_PER_HEAD = 20;
+/** Cobre por cabeza y por semana que entra de tributo (sin calibrar: cubre los sueldos con algo de sobra). */
+export const TRIBUTE_COIN_PER_HEAD = 40;
 /** Con cuántos días de comida en el tesoro, además de la despensa, llega la secta a la carne. */
 export const TREASURY_RESERVE_DAYS = 30;
+/** Con cuántas semanas de tributo en cobre llega el tesoro a la carne. */
+export const ENDOWMENT_COIN_WEEKS = 12;
 
 /** La cuenta del tesoro de la secta: su propia tenencia en el ledger. */
 export function treasuryAccount(org: EntityRef): LedgerAccount {
@@ -210,7 +218,15 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "settle",
-    reads: [PLAYER.name, LOCATION.name, SECT.name, SECT_HALL.name, PLACE.name, ENTITY.name],
+    reads: [
+      PLAYER.name,
+      LOCATION.name,
+      SECT.name,
+      SECT_HALL.name,
+      PLACE.name,
+      ENTITY.name,
+      SECT_MEMBER.name,
+    ],
     writes: [
       SECT_HALL.name,
       ENTITY.name,
@@ -237,10 +253,24 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
         const hall = truth.get(SECT_HALL, org);
         const sect = truth.get(SECT, org);
         if (!hall || !sect || !o.store || !ctx.ledger) continue;
-        if (hall.stocked !== undefined && ctx.now - hall.stocked < STORE_EVERY_DAYS * o.dayTicks) {
-          continue;
+        // El sueldo del mes, con el cobre que ya había en el tesoro.
+        const payday =
+          o.store.coin !== undefined &&
+          ctx.now - (hall.paid ?? hall.at) >= STIPEND_EVERY_DAYS * o.dayTicks;
+        if (payday && o.store.coin)
+          payStipend(truth, org, sect.seatPlace, o.store.coin, ctx.ledger, events, postings);
+        const restocking =
+          hall.stocked === undefined || ctx.now - hall.stocked >= STORE_EVERY_DAYS * o.dayTicks;
+        if (payday || restocking) {
+          changes.push(
+            setComponent(SECT_HALL, org, {
+              ...hall,
+              ...(restocking ? { stocked: ctx.now } : {}),
+              ...(payday ? { paid: ctx.now } : {}),
+            }),
+          );
         }
-        changes.push(setComponent(SECT_HALL, org, { ...hall, stocked: ctx.now }));
+        if (!restocking) continue;
         const alive = aliveIn(truth, hall);
         const tribute = {
           grams: Math.ceil(dailyGrams(o.store, alive) * STORE_EVERY_DAYS * TRIBUTE_SURPLUS),
@@ -371,7 +401,7 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             house,
             {
               grams: grams + reserve,
-              coin: o.store.coin ? people.length * TRIBUTE_COIN_PER_HEAD * 4 : 0,
+              coin: o.store.coin ? people.length * TRIBUTE_COIN_PER_HEAD * ENDOWMENT_COIN_WEEKS : 0,
               endowment: true,
             },
             grams,
@@ -447,6 +477,59 @@ function mindOf(
 
 function seatRef(place: EntityRef): PlaceRef {
   return { kind: "place", place: place as unknown as PlaceId };
+}
+
+/**
+ * Paga el sueldo del mes desde el tesoro a la bolsa de cada miembro vivo que está en la sede, por
+ * rango; si el cobre no alcanza, todos cobran la misma fracción (novel-sect-duty-stipend).
+ */
+function payStipend(
+  truth: ReadonlyWorldTruth,
+  org: EntityRef,
+  seat: EntityRef,
+  coin: LedgerUnit,
+  ledger: { balance(account: LedgerAccount, unit: LedgerUnit): number },
+  events: EventDraft[],
+  postings: PostingDraft[],
+): void {
+  const hexes = new Set(truth.get(PLACE, seat)?.hexes ?? []);
+  const members = (truth.ids(SECT_MEMBER) as EntityRef[]).flatMap((who) => {
+    const m = truth.get(SECT_MEMBER, who);
+    if (m?.org !== org || truth.get(ENTITY, who)?.endedAt !== undefined) return [];
+    const hex = truth.get(LOCATION, who)?.hex;
+    return hex !== undefined && hexes.has(hex) ? [{ who, want: STIPEND_BY_RANK[m.rank] }] : [];
+  });
+  if (members.length === 0) return;
+  const treasury = treasuryAccount(org);
+  const have = Math.floor(ledger.balance(treasury, coin));
+  const wanted = members.reduce((a, m) => a + m.want, 0);
+  const { shares, ratio } = stipendShares(
+    members.map((m) => m.want),
+    have,
+  );
+  const at = events.length;
+  const transfers = members.flatMap((m, i) => {
+    const amount = shares[i] ?? 0;
+    return amount > 0
+      ? [{ unit: coin, from: treasury, to: holderAccount(m.who as unknown as HolderRef), amount }]
+      : [];
+  });
+  if (transfers.length > 0) postings.push({ event: draftEvent(at), transfers });
+  events.push({
+    kind: SECT_STIPEND_EVENT,
+    actors: members.map((m) => m.who as unknown as AgentId),
+    place: seatRef(seat),
+    data: {
+      org,
+      coin,
+      shares,
+      wanted,
+      paid: shares.reduce((a, b) => a + b, 0),
+      ...(ratio < 1 ? { cut: ratio } : {}),
+    },
+    emissions: {},
+    causes: [{ kind: "state", entity: org, key: SECT_HALL.name }],
+  });
 }
 
 /** Cuántos de la gente de la sede siguen vivos. */

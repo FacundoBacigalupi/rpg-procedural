@@ -54,6 +54,7 @@ import {
   SECT_LORE,
   SECT_MEMBER,
   SECT_SCHOOL,
+  SECT_STIPEND_EVENT,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
   SENSED_QI_EVENT,
@@ -714,6 +715,14 @@ export function playerView(
   if (chore) {
     const credited = (chore.data as { credited?: unknown } | null)?.credited === true;
     cues.add(credited ? "chore_credited" : "chore_unpaid");
+  }
+  const stipend =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_STIPEND_EVENT);
+  if (stipend) {
+    const cut = (stipend.data as { cut?: unknown } | null)?.cut !== undefined;
+    cues.add(cut ? "stipend_cut" : "stipend_paid");
   }
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);

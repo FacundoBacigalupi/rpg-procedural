@@ -85,7 +85,11 @@ export type SelfCue =
   /** Hizo tareas en la sede y se las anotaron (`cultivation.sect_chore`, novel-sect-duty-chore). */
   | "chore_credited"
   /** Hizo tareas de la secta sin ser de ella: nadie se las anota. */
-  | "chore_unpaid";
+  | "chore_unpaid"
+  /** Cobró el sueldo del mes de la secta (`cultivation.sect_stipend`, novel-sect-duty-stipend). */
+  | "stipend_paid"
+  /** Cobró, pero menos: el tesoro no alcanzaba. */
+  | "stipend_cut";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

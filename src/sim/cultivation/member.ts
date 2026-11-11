@@ -70,6 +70,32 @@ export interface SectContribution {
 
 export const SECT_CONTRIBUTION = table<SectContribution>("cultivation.sect_contribution");
 
+/** El sueldo del mes desde el tesoro de la secta (novel-sect-duty-stipend). */
+export const SECT_STIPEND_EVENT = "cultivation.sect_stipend";
+/** Cada cuántos días se paga el sueldo. */
+export const STIPEND_EVERY_DAYS = 30;
+/** El sueldo de cada rango en cobre por mes (sin calibrar). */
+export const STIPEND_BY_RANK: Readonly<Record<MemberRank, number>> = {
+  outer: 30,
+  inner: 60,
+  elder: 150,
+  master: 300,
+};
+
+/**
+ * Lo que recibe cada uno si en el tesoro hay `have`: lo pedido si alcanza; si no, todos recortados
+ * por la misma fracción (hacia abajo, en cobre entero), así nunca sale más de lo que hay.
+ */
+export function stipendShares(
+  want: readonly number[],
+  have: number,
+): { readonly shares: readonly number[]; readonly ratio: number } {
+  const total = want.reduce((a, b) => a + b, 0);
+  if (total <= have) return { shares: want, ratio: 1 };
+  const ratio = total > 0 ? Math.max(0, have) / total : 0;
+  return { shares: want.map((x) => Math.floor(x * ratio)), ratio: Math.round(ratio * 100) / 100 };
+}
+
 /** Qué tarea es: la que dice quien la hace («barro», «hago guardia», «leña») o la del lugar. */
 export function choreOf(said: string | undefined, space: string | undefined): SectChore {
   const s = (said ?? "").toLowerCase();
