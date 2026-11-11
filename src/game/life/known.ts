@@ -309,7 +309,8 @@ export function knownEntities(
   }
   for (const id of w.truth.ids(PLACE)) {
     const p = w.truth.get(PLACE, id);
-    if (!p) continue;
+    // La sede solo se nombra si se la oyó (abajo, con lo que se sabe de la secta).
+    if (!p || p.kind === "sect") continue;
     const proper = w.truth.get(PLACE_NAME, id)?.form;
     const names = [
       ...(PLACE_NAMES[p.detail ?? p.kind] ?? PLACE_NAMES[p.kind] ?? []),
@@ -327,17 +328,20 @@ export function knownEntities(
       via: [],
     });
   }
-  // La sede de la secta, si la tiene oída (novel-cult-sect-known): lejos, nombrable, no presente.
+  // La sede de la secta, si la tiene oída (novel-cult-sect-known): nombrable; con la región
+  // (novel-sect-seat-switch) tiene hexes y se puede ir caminando, como a los lugares de la aldea.
   const lore = w.truth.get(SECT_LORE, w.player);
   if (lore) {
     const proper = w.truth.get(PLACE_NAME, lore.seat)?.form;
+    const seat = w.truth.get(PLACE, lore.seat);
     out.push({
       ref: lore.seat,
       kind: "place",
       names: ["la secta", "la sede de la secta", ...(proper === undefined ? [] : [proper])],
       features: [],
       relations: [],
-      present: false,
+      present: seat !== undefined && here !== undefined && seat.hexes.includes(here.hex),
+      ...(seat === undefined ? {} : { hexes: seat.hexes }),
       via: [],
     });
   }
