@@ -133,11 +133,17 @@ export function patchOf(map: LocalMap, hex: number): PatchSpan {
 
 /**
  * Une parches en un mapa (puro): los de `home` conservan sus índices y los de cada otro se
- * corren a continuación, con los vecinos desplazados y sin aristas entre parches. El clima,
- * la longitud y la oscilación del mapa siguen siendo los de `home`; cada parche guarda los suyos
- * en `patches`. Un parche cuya celda ya está en el mapa no se suma dos veces.
+ * corren a continuación (en orden, cada uno empieza donde terminó el anterior), con los vecinos
+ * desplazados. `links` son las aristas entre parches, en índices del mapa unido: los hexes que se
+ * tocan de verdad en el borde de dos celdas (novel-sect-seat-road). El clima, la longitud y la
+ * oscilación del mapa siguen siendo los de `home`; cada parche guarda los suyos en `patches`. Un
+ * parche cuya celda ya está en el mapa no se suma dos veces.
  */
-export function joinMaps(home: LocalMap, others: readonly LocalMap[]): LocalMap {
+export function joinMaps(
+  home: LocalMap,
+  others: readonly LocalMap[],
+  links: readonly (readonly [number, number])[] = [],
+): LocalMap {
   const spans = [...patchesOf(home)];
   const neighbors = [...home.neighbors];
   const crossSeconds = [...home.crossSeconds];
@@ -156,6 +162,11 @@ export function joinMaps(home: LocalMap, others: readonly LocalMap[]): LocalMap 
     water?.push(...(m.water ?? new Array<number>(size).fill(0)));
   }
   if (spans.length === 1) return home;
+  for (const [a, b] of links) {
+    if (a === b || neighbors[a] === undefined || neighbors[b] === undefined) continue;
+    if (!neighbors[a].includes(b)) neighbors[a] = [...neighbors[a], b];
+    if (!neighbors[b].includes(a)) neighbors[b] = [...neighbors[b], a];
+  }
   return {
     ...home,
     neighbors,
@@ -164,6 +175,32 @@ export function joinMaps(home: LocalMap, others: readonly LocalMap[]): LocalMap 
     ...(elevationM ? { elevationM } : {}),
     ...(water ? { water } : {}),
     patches: spans,
+  };
+}
+
+/**
+ * El mapa restringido a `keep` (puro): esos hexes, en ese orden, renumerados desde 0, con solo los
+ * vecinos que también quedan. Para la franja de una celda que solo se cruza (novel-sect-seat-road).
+ */
+export function subMap(map: LocalMap, keep: readonly number[]): LocalMap {
+  const index = new Map(keep.map((h, i) => [h, i]));
+  const pick = <T>(xs: readonly T[] | undefined): T[] | undefined =>
+    xs ? keep.map((h) => xs[h] as T) : undefined;
+  const elevationM = pick(map.elevationM);
+  const water = pick(map.water);
+  const { patches: _patches, ...rest } = map;
+  return {
+    ...rest,
+    neighbors: keep.map((h) =>
+      (map.neighbors[h] ?? []).flatMap((n) => {
+        const i = index.get(n);
+        return i === undefined ? [] : [i];
+      }),
+    ),
+    crossSeconds: pick(map.crossSeconds) as number[],
+    forest: pick(map.forest) as boolean[],
+    ...(elevationM ? { elevationM } : {}),
+    ...(water ? { water } : {}),
   };
 }
 
