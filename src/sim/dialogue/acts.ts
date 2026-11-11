@@ -16,6 +16,8 @@ export type SpeechAct = SpeechBody & {
 type SpeechBody =
   | { readonly kind: "greet" }
   | { readonly kind: "farewell" }
+  /** Le pregunta el nombre o se presenta (novel-names-introduce): el oyente dice el suyo, o no. */
+  | { readonly kind: "introduce" }
   /**
    * ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). `via` es
    * la maniobra con que se pregunta (dialogue §11): sin ella, de frente; si el otro guarda un secreto
@@ -180,6 +182,15 @@ const GREET = /\b(hola|buen dia|buenos dias|buenas tardes|buenas noches|buenas|s
 /** ¿El texto (ya normalizado) abre con un saludo en algún lado? Declara el acto de saludar. */
 export function greets(norm: string): boolean {
   return GREET.test(norm);
+}
+
+/** Preguntar el nombre o presentarse (sin tildes: el texto llega normalizado). */
+const INTRODUCE =
+  /\b(como te llamas|como se llama usted|como te dicen|como le dicen|cual es tu nombre|cual es su nombre|me llamo|mi nombre es|me presento|quien sos|quien eres|quien es usted)\b/;
+
+/** Si el texto pregunta el nombre o presenta a quien habla. */
+export function introduces(norm: string): boolean {
+  return INTRODUCE.test(norm);
 }
 
 const FAREWELL = /\b(adios|chau|chao|hasta luego|hasta manana|nos vemos|me voy|que te vaya bien)\b/;
@@ -543,6 +554,7 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
       claim: prophecy,
     };
   }
+  if (INTRODUCE.test(norm)) return { kind: "introduce" };
   if (SOURCE_ASK.test(norm)) return { kind: "source", about: blur ? null : who };
   if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who, ...viaOf(norm) };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {

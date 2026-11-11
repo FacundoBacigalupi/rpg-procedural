@@ -18,6 +18,7 @@ import {
   sensorAcuity,
 } from "../../sim/index.ts";
 import type { Acquaintance } from "../view/index.ts";
+import { KNOWN_NAMES } from "./known-names.ts";
 
 /** Lo mínimo del mundo para saber quién es el personaje y qué ve. */
 export interface Witness {
@@ -46,6 +47,13 @@ export function acquaintances(w: Pick<Witness, "truth" | "player">): Map<AgentId
     const p = w.truth.get(PERSON, id);
     if (!p) continue;
     if (p.household === me.household) out.set(id, known(id, sexed(id, "hermana", "hermano")));
+  }
+  // Los que se le presentaron (novel-names-introduce): con el nombre que oyó, no con el de la verdad.
+  const met = w.truth.get(KNOWN_NAMES, w.player)?.people ?? {};
+  for (const id of Object.keys(met).sort() as AgentId[]) {
+    const heard = met[id];
+    if (out.has(id) || !heard) continue;
+    out.set(id, { name: heard.name, relation: sexed(id, "conocida", "conocido") });
   }
   return out;
 }

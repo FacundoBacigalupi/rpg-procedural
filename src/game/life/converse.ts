@@ -152,8 +152,10 @@ import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-econo
 import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { TOLD_CLAIMS_KEY, type ToldClaim, toldAliveClaims } from "./knowing.ts";
+import { KNOWN_NAMES, learnName } from "./known-names.ts";
 import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
+import { PLAYER } from "./player.ts";
 import { rentsOf } from "./rents.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
@@ -1223,6 +1225,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
     phase: "decide",
     reads: [
       PENDING.name,
+      PLAYER.name,
+      KNOWN_NAMES.name,
       OPEN_DEALS.name,
       BELIEFS.name,
       HEARD.name,
@@ -1255,6 +1259,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       ...(o.projectSharedEffects || o.toldClaims ? [] : [HEARD.name]),
       KNOWN_DEEDS.name,
       RUMORS.name,
+      KNOWN_NAMES.name,
       ...(o.projectSharedEffects ? [] : [FACE.name]),
     ],
     run(ctx: ProcessContext) {
@@ -1544,6 +1549,19 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         else if (o.projectSharedEffects)
           conversationEffects.push({ kind: "heard", actor: me, claim: reply.accepted });
         else changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
+      }
+      // Se presentó (novel-names-introduce): el personaje que preguntó guarda el nombre que oyó.
+      if (reply.line === "introduce" && truth.has(PLAYER, speaker)) {
+        const name = givenName(truth, me);
+        if (name !== undefined) {
+          changes.push(
+            setComponent(
+              KNOWN_NAMES,
+              speaker,
+              learnName(truth.get(KNOWN_NAMES, speaker), me, name, ctx.now),
+            ),
+          );
+        }
       }
       // Lo que soltó entero queda como dicho en quien preguntó (con quién y cuándo, no como verdad).
       if (reply.told) {
