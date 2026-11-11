@@ -19,6 +19,7 @@ import {
   type BodyPlanDef,
   type BondDef,
   bodyProcess,
+  COPPER,
   type ConcernWords,
   type CurdRule,
   cheeseProcess,
@@ -2506,6 +2507,7 @@ export function lifeWorld(
                                 unit: HARVEST_GOOD,
                                 kcalPerGram: grain.kcalPerGram,
                                 days: SECT_STORE_DAYS,
+                                coin: COPPER,
                               },
                             }
                           : {};

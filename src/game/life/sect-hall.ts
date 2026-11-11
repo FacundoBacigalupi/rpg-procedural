@@ -132,6 +132,22 @@ export interface SectStore {
   readonly unit: LedgerUnit;
   readonly kcalPerGram: number;
   readonly days: number;
+  /** El dinero del tributo (novel-sect-duty-treasury); sin él, el tesoro es solo de grano. */
+  readonly coin?: LedgerUnit;
+}
+
+/** El tributo de cada semana (novel-sect-duty-treasury). */
+export const SECT_TRIBUTE_EVENT = "life.sect_tribute";
+/** Cuánto más de lo que comen sus vivos entra de tributo: el tesoro crece despacio. */
+export const TRIBUTE_SURPLUS = 1.25;
+/** Cobre por cabeza y por semana que entra de tributo. */
+export const TRIBUTE_COIN_PER_HEAD = 20;
+/** Con cuántos días de comida en el tesoro, además de la despensa, llega la secta a la carne. */
+export const TREASURY_RESERVE_DAYS = 30;
+
+/** La cuenta del tesoro de la secta: su propia tenencia en el ledger. */
+export function treasuryAccount(org: EntityRef): LedgerAccount {
+  return holderAccount(org as unknown as HolderRef);
 }
 
 export interface SectHallOptions {
@@ -224,18 +240,26 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
         if (hall.stocked !== undefined && ctx.now - hall.stocked < STORE_EVERY_DAYS * o.dayTicks) {
           continue;
         }
-        const grams = topUp(o.store, truth, ctx.ledger, hall);
         changes.push(setComponent(SECT_HALL, org, { ...hall, stocked: ctx.now }));
-        if (grams <= 0) continue;
-        postings.push(upkeep(o.store.unit, hall.house, grams, events.length));
-        events.push({
-          kind: SECT_UPKEEP_EVENT,
-          actors: [],
-          place: seatRef(sect.seatPlace),
-          data: { org, good: o.store.unit, grams },
-          emissions: {},
-          causes: [{ kind: "state", entity: org, key: SECT.name }],
-        });
+        const alive = aliveIn(truth, hall);
+        const tribute = {
+          grams: Math.ceil(dailyGrams(o.store, alive) * STORE_EVERY_DAYS * TRIBUTE_SURPLUS),
+          coin: o.store.coin ? alive * TRIBUTE_COIN_PER_HEAD : 0,
+        };
+        restock(
+          o.store,
+          org,
+          sect.seatPlace,
+          hall.house,
+          tribute,
+          topUp(o.store, truth, ctx.ledger, hall, alive),
+          {
+            balance: ctx.ledger.balance(treasuryAccount(org), o.store.unit),
+            events,
+            postings,
+            causes: [{ kind: "state", entity: org, key: SECT.name }],
+          },
+        );
       }
       const plan = o.bodyPlans.find((p) => p.id === "human");
       const here = (truth.ids(PLAYER) as AgentId[])
@@ -325,7 +349,7 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
         const grams =
           o.store && ctx.ledger ? topUp(o.store, truth, ctx.ledger, hall, people.length) : 0;
         changes.push(setComponent(SECT_HALL, org, o.store ? { ...hall, stocked: ctx.now } : hall));
-        if (o.store && grams > 0) postings.push(upkeep(o.store.unit, house, grams, events.length));
+        const born = events.length;
         events.push({
           kind: SECT_HALL_EVENT,
           actors: people.map((x) => x.person),
@@ -337,6 +361,28 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             { kind: "state", entity: who.p, key: LOCATION.name },
           ],
         });
+        // El tesoro llega a la carne con la despensa y una reserva; de ahí se llena la despensa.
+        if (o.store && ctx.ledger) {
+          const reserve = Math.ceil(dailyGrams(o.store, people.length) * TREASURY_RESERVE_DAYS);
+          restock(
+            o.store,
+            org,
+            sect.seatPlace,
+            house,
+            {
+              grams: grams + reserve,
+              coin: o.store.coin ? people.length * TRIBUTE_COIN_PER_HEAD * 4 : 0,
+              endowment: true,
+            },
+            grams,
+            {
+              balance: ctx.ledger.balance(treasuryAccount(org), o.store.unit),
+              events,
+              postings,
+              causes: [{ kind: "event", event: draftEvent(born) }],
+            },
+          );
+        }
       }
       if (changes.length === 0 && events.length === 0) return {};
       return { changes, events, ...(postings.length > 0 ? { postings } : {}) };
@@ -403,31 +449,116 @@ function seatRef(place: EntityRef): PlaceRef {
   return { kind: "place", place: place as unknown as PlaceId };
 }
 
+/** Cuántos de la gente de la sede siguen vivos. */
+function aliveIn(truth: ReadonlyWorldTruth, hall: SectHall): number {
+  return hall.people.filter(
+    (x) => truth.get(ENTITY, x.person as unknown as EntityRef)?.endedAt === undefined,
+  ).length;
+}
+
+/** Los gramos que comen por día `alive` personas. */
+function dailyGrams(store: SectStore, alive: number): number {
+  return (alive * 3 * MEAL_KCAL) / store.kcalPerGram;
+}
+
 /** Los gramos que faltan para que la despensa tenga `days` días de comida de los vivos. */
 function topUp(
   store: SectStore,
   truth: ReadonlyWorldTruth,
   ledger: { balance(account: LedgerAccount, unit: LedgerUnit): number },
   hall: SectHall,
-  alive = hall.people.filter(
-    (x) => truth.get(ENTITY, x.person as unknown as EntityRef)?.endedAt === undefined,
-  ).length,
+  alive = aliveIn(truth, hall),
 ): number {
-  const want = Math.ceil(((alive * 3 * MEAL_KCAL) / store.kcalPerGram) * store.days);
+  const want = Math.ceil(dailyGrams(store, alive) * store.days);
   const have = ledger.balance(holderAccount(hall.house as unknown as HolderRef), store.unit);
   return Math.max(0, want - have);
 }
 
-function upkeep(unit: LedgerUnit, house: HouseholdId, grams: number, at: number): PostingDraft {
-  return {
-    event: draftEvent(at),
-    transfers: [
-      {
-        unit,
-        from: externalAccount(SECT_UPKEEP),
-        to: holderAccount(house as unknown as HolderRef),
-        amount: grams,
+/**
+ * Entra el tributo al tesoro de la secta (desde la fuente externa `sect.upkeep`) y de ahí sale lo
+ * que falta en la despensa, hasta donde alcance: si el tesoro no da, la despensa queda corta y se
+ * anota cuánto (novel-sect-duty-treasury).
+ */
+function restock(
+  store: SectStore,
+  org: EntityRef,
+  seat: EntityRef,
+  house: HouseholdId,
+  tribute: { readonly grams: number; readonly coin: number; readonly endowment?: boolean },
+  want: number,
+  out: {
+    readonly balance: number;
+    readonly events: EventDraft[];
+    readonly postings: PostingDraft[];
+    readonly causes: EventDraft["causes"];
+  },
+): void {
+  const treasury = treasuryAccount(org);
+  let causes = out.causes;
+  if (tribute.grams > 0 || tribute.coin > 0) {
+    const at = out.events.length;
+    out.postings.push({
+      event: draftEvent(at),
+      transfers: [
+        ...(tribute.grams > 0
+          ? [
+              {
+                unit: store.unit,
+                from: externalAccount(SECT_UPKEEP),
+                to: treasury,
+                amount: tribute.grams,
+              },
+            ]
+          : []),
+        ...(store.coin && tribute.coin > 0
+          ? [
+              {
+                unit: store.coin,
+                from: externalAccount(SECT_UPKEEP),
+                to: treasury,
+                amount: tribute.coin,
+              },
+            ]
+          : []),
+      ],
+    });
+    out.events.push({
+      kind: SECT_TRIBUTE_EVENT,
+      actors: [],
+      place: seatRef(seat),
+      data: {
+        org,
+        good: store.unit,
+        grams: tribute.grams,
+        ...(store.coin ? { coin: store.coin, amount: tribute.coin } : {}),
+        ...(tribute.endowment ? { endowment: true } : {}),
       },
-    ],
-  };
+      emissions: {},
+      causes,
+    });
+    causes = [{ kind: "event", event: draftEvent(at) }];
+  }
+  const pay = Math.min(want, out.balance + tribute.grams);
+  if (want <= 0) return;
+  const at = out.events.length;
+  if (pay > 0)
+    out.postings.push({
+      event: draftEvent(at),
+      transfers: [
+        {
+          unit: store.unit,
+          from: treasury,
+          to: holderAccount(house as unknown as HolderRef),
+          amount: pay,
+        },
+      ],
+    });
+  out.events.push({
+    kind: SECT_UPKEEP_EVENT,
+    actors: [],
+    place: seatRef(seat),
+    data: { org, good: store.unit, grams: pay, ...(pay < want ? { short: want - pay } : {}) },
+    emissions: {},
+    causes,
+  });
 }

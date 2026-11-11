@@ -1754,7 +1754,7 @@ export function ledgerConfigOf(
       ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
       ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
       // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
-      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD] } : {}),
+      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER] } : {}),
     },
   };
 }
