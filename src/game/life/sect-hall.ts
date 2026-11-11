@@ -13,7 +13,12 @@
 // despensa de la sede. Al materializarse llega con lo que la secta tenía guardado para ellos, y cada
 // semana se repone desde `sect.upkeep` (fuente externa declarada solo con la región) hasta
 // `store.days` días de comida de los vivos. La rutina los lleva a dormir a los dormitorios y a meditar
-// en la cueva (`RoutineOptions.seatOf`). Hablarles es `-talk`.
+// en la cueva (`RoutineOptions.seatOf`).
+//
+// Su mente (novel-sect-seat-hall-people-talk): con `mind`, cada uno llega con lo que la siembra le da
+// a un aldeano adulto (mente de base desde su temperamento, cultura de la comunidad, habilidades y
+// autoimagen de su crianza, gustos), con los mismos caminos que el nacimiento y con el evento de la
+// materialización como causa; así `speak` y los demás sistemas los leen como a cualquiera.
 
 import {
   type AgentId,
@@ -26,6 +31,7 @@ import {
   type LedgerUnit,
   type PlaceId,
   type PlaceRef,
+  type PlanetClock,
   Rng,
   type Tick,
 } from "../../core/index.ts";
@@ -33,6 +39,7 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   CULTIVATION_STATE,
+  type TraitDef as CultureTraitDef,
   createEntity,
   draftEvent,
   ENTITY,
@@ -46,26 +53,44 @@ import {
   type LocalMap,
   MEAL_KCAL,
   type MemberRank,
+  MIND,
   massOf,
   type NameRules,
   nameNewborn,
   newBody,
+  newMind,
+  newTastes,
   PERSON,
+  PERSON_CULTURE,
   PERSON_NAME,
   PLACE,
   type PostingDraft,
   type ProcessDef,
   patchOf,
+  practicesOfKind,
   type ReadonlyWorldTruth,
+  type SchemaDef,
   SECT,
   SECT_MEMBER,
+  SELF_IMAGES,
   type SectRank,
+  SKILL_STATE,
+  type SkillCatalog,
   type StateChange,
   sectSpaceKey,
+  seedPersonCulture,
+  seedSelfImages,
   setComponent,
+  standardize,
   TALENT,
+  TASTES_OF,
+  type TasteDef,
   type Trait,
   table,
+  tasteWorld,
+  upbringingSkills,
+  villageCulture,
+  villageReligion,
 } from "../../sim/index.ts";
 import { PLAYER } from "./player.ts";
 
@@ -120,6 +145,17 @@ export interface SectHallOptions {
   readonly names?: NameRules;
   /** La despensa de la sede (novel-sect-seat-hall-people-keep); sin ella, nada que comer. */
   readonly store?: SectStore;
+  /** Con esto llegan con mente, cultura, habilidades y gustos (novel-sect-seat-hall-people-talk). */
+  readonly mind?: SectHallMind;
+}
+
+/** Lo que hace falta para darles la mente de un adulto de la siembra. */
+export interface SectHallMind {
+  readonly clock: PlanetClock;
+  readonly schemas: readonly SchemaDef[];
+  readonly cultureTraits: readonly CultureTraitDef[];
+  readonly skills: SkillCatalog;
+  readonly tastes: readonly TasteDef[];
 }
 
 /** La casa y el lugar de meditar de quien vive en la sede: los dormitorios y la cueva. */
@@ -159,6 +195,9 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
       SECT_MEMBER.name,
       LOCATION.name,
       PERSON_NAME.name,
+      ...(o.mind
+        ? [MIND.name, PERSON_CULTURE.name, SKILL_STATE.name, SELF_IMAGES.name, TASTES_OF.name]
+        : []),
     ],
     run(ctx) {
       const truth = ctx.truth;
@@ -263,6 +302,10 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             if (given) usedGiven.add(given.toLowerCase());
             changes.push(setComponent(PERSON_NAME, key, name));
           }
+          if (o.mind)
+            changes.push(
+              ...mindOf(o.mind, o.traits, truth, key, slot, innate, rng, event, ctx.now),
+            );
           people.push({ slot: slot.slot, person: id });
         }
         // Lo que la secta tenía guardado para ellos pasa con ellos (simulation §6, paso 4).
@@ -287,6 +330,61 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
       return { changes, events, ...(postings.length > 0 ? { postings } : {}) };
     },
   };
+}
+
+/** La mente, la cultura, las habilidades y los gustos de un adulto que llega de una ranura. */
+function mindOf(
+  m: SectHallMind,
+  traits: readonly Trait[],
+  truth: ReadonlyWorldTruth,
+  key: EntityRef,
+  slot: { readonly sex: "female" | "male"; readonly born: Tick },
+  innate: Readonly<Record<string, number>>,
+  rng: Rng,
+  event: ReturnType<typeof draftEvent>,
+  now: Tick,
+): StateChange[] {
+  const out: StateChange[] = [
+    setComponent(MIND, key, newMind(m.schemas, innate, rng.fork("psyche"), event as never)),
+  ];
+  const community = villageCulture(truth);
+  if (community) {
+    out.push(
+      setComponent(
+        PERSON_CULTURE,
+        key,
+        seedPersonCulture(
+          {
+            community,
+            traits: m.cultureTraits,
+            parents: [],
+            since: slot.born,
+            originEventId: event as never,
+          },
+          rng.fork("person-culture"),
+        ),
+      ),
+    );
+  }
+  const z = standardize(innate, traits, slot.sex);
+  const skills = upbringingSkills(m.skills, z, slot.born, now, m.clock);
+  out.push(
+    setComponent(SKILL_STATE, key, skills),
+    setComponent(SELF_IMAGES, key, seedSelfImages(m.skills, skills, z, now)),
+    setComponent(
+      TASTES_OF,
+      key,
+      newTastes(
+        m.tastes,
+        tasteWorld(m.tastes, practicesOfKind(villageReligion(truth), "taboo")),
+        innate,
+        undefined,
+        rng.fork("tastes"),
+        event as never,
+      ),
+    ),
+  );
+  return out;
 }
 
 function seatRef(place: EntityRef): PlaceRef {

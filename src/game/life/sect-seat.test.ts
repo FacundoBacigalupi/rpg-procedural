@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  type AgentId,
   type ContentSource,
   type EntityRef,
   type EventId,
@@ -23,7 +24,9 @@ import {
   hexPath,
   type IntentDraft,
   LOCATION,
+  MIND,
   PERSON,
+  PERSON_CULTURE,
   PERSON_NAME,
   PLACE,
   PLACE_QI,
@@ -34,8 +37,11 @@ import {
   SECT,
   SECT_MEMBER,
   SECT_SITE_SPACES,
+  SELF_IMAGES,
+  SKILL_STATE,
   sectSpaceKey,
   TALENT,
+  TASTES_OF,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { knownEntities, knownSpaces } from "./known.ts";
@@ -328,6 +334,51 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     }
     expect(w5.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w5.truth, log: w5.log })).toEqual([]);
+  });
+
+  it("llegan con mente, cultura, habilidades y gustos, y contestan si se les habla (hall-people-talk)", () => {
+    const l = Life.create(3, content, options);
+    const w6 = l.world;
+    const org6 = w6.truth.ids(SECT)[0] as EntityRef;
+    const s6 = w6.truth.get(SECT, org6);
+    if (!s6) throw new Error("sin secta");
+    const goal = w6.truth.get(PLACE, s6.seatPlace)?.hexes[0] as number;
+    w6.truth.set(LOCATION, l.player, { hex: goal });
+    l.advanceTo(l.now + 2 * HOUR);
+    const born = w6.log.all().find((e) => e.kind === SECT_HALL_EVENT);
+    const people = (w6.truth.get(SECT_HALL, org6)?.people ?? []).map(
+      (x) => x.person as unknown as EntityRef,
+    );
+    for (const p of people) {
+      for (const t of [MIND, PERSON_CULTURE, SKILL_STATE, SELF_IMAGES, TASTES_OF]) {
+        expect(w6.truth.has(t, p)).toBe(true);
+      }
+      expect(w6.truth.get(MIND, p)?.originEventId).toBe(born?.id);
+    }
+    const other = people[1] as unknown as AgentId;
+    const at = w6.truth.get(LOCATION, other as unknown as EntityRef);
+    if (at) w6.truth.set(LOCATION, l.player, at);
+    const report = l.turn(
+      {
+        actor: l.player,
+        source: "player",
+        root: {
+          kind: "do",
+          verb: "speak",
+          args: [
+            { role: "to", entity: other },
+            { role: "content", text: "Hola" },
+          ],
+          manner: [],
+        },
+        manner: [],
+        causes: [{ kind: "state", entity: l.player, key: "intent" }],
+      },
+      1,
+    );
+    const reply = report.events.find((e) => e.kind === "action.speak" && e.actors[0] === other);
+    expect(reply?.actors).toEqual([other, l.player]);
+    expect(checkInvariants({ truth: w6.truth, log: w6.log })).toEqual([]);
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {

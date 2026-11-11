@@ -2511,7 +2511,17 @@ export function lifeWorld(
                       traits: parts.traits,
                       bodyPlans: parts.plans,
                       ...(parts.form
-                        ? { language: parts.form.language, names: nameRules(parts) }
+                        ? {
+                            language: parts.form.language,
+                            names: nameRules(parts),
+                            mind: {
+                              clock: parts.clock,
+                              schemas: parts.schemas,
+                              cultureTraits: parts.cultureTraits,
+                              skills: parts.skills,
+                              tastes: parts.tastes,
+                            },
+                          }
                         : {}),
                     }),
                   ]
