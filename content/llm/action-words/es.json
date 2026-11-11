@@ -295,6 +295,13 @@
     "weak": ["secta", "portón", "patio"]
   },
   {
+    "id": "furlough",
+    "kind": "action",
+    "stems": ["licenc", "permis"],
+    "forms": [],
+    "weak": ["bajar", "aldea"]
+  },
+  {
     "id": "redeem",
     "kind": "action",
     "stems": ["canj", "pase"],

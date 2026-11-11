@@ -93,6 +93,7 @@ describe("catálogo", () => {
       "eat",
       "filter",
       "forge",
+      "furlough",
       "gather",
       "give",
       "hire",

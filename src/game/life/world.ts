@@ -239,6 +239,7 @@ import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sectDutyProcess } from "./sect-duty.ts";
 import { SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
+import { sectAbsenceProcess } from "./sect-leave.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
@@ -2491,10 +2492,12 @@ export function lifeWorld(
                 ...(parts.map.patches ? { map: parts.map } : {}),
               }),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
-              sectDutyProcess(),
+              sectDutyProcess({ dayTicks: parts.clock.day }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
+                    // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
+                    sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
                     sectHallProcess({
                       map: parts.map,
                       yearTicks: parts.clock.year,
