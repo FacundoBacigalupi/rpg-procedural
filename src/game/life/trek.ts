@@ -17,6 +17,7 @@ import {
   type ActionCatalog,
   BODY_STATE,
   type BodyPlanDef,
+  climateMapAt,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -263,7 +264,7 @@ export function trekProcess(o: TrekOptions): ProcessDef {
           };
         }
         const prevSeq = trekSeq(state?.seq ?? 0) - 1;
-        const hour = Math.floor(localHour(o.clock, ctx.now, o.map.lonDeg));
+        const hour = Math.floor(localHour(o.clock, ctx.now, climateMapAt(o.map, here).lonDeg));
         // Hora de comida con provisiones encima: come y sigue.
         const carried = prov ? (ctx.ledger?.balance(pocket, ledgerUnit(prov.unit)) ?? 0) : 0;
         if (

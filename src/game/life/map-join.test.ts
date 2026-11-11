@@ -4,7 +4,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { loadContent } from "../../core/index.ts";
-import { hexPath, joinMaps, type LocalMap, patchesOf, patchOf, subMap } from "../../sim/index.ts";
+import {
+  climateMapAt,
+  hexPath,
+  joinMaps,
+  type LocalMap,
+  patchesOf,
+  patchOf,
+  subMap,
+} from "../../sim/index.ts";
 import { BIOMES, generatePlanet, ring, villageSite } from "../../worldgen/index.ts";
 import { cellMapOf, cellPath, localMapOf, regionMapOf } from "./map.ts";
 
@@ -62,6 +70,20 @@ describe("parches unidos", () => {
     ]);
     expect(patchOf(joined, 5).climate.annualMeanC).toBe(2);
     expect(joined.climate).toBe(home.climate);
+  });
+
+  it("el clima del parche de un hex: el mismo mapa en la aldea, la vista del parche afuera", () => {
+    const home = line(1, 4);
+    const joined = joinMaps(home, [line(2, 3, 50)]);
+    expect(climateMapAt(joined, 2)).toBe(joined);
+    expect(climateMapAt(joined, undefined)).toBe(joined);
+    expect(climateMapAt(home, 2)).toBe(home);
+    const far = climateMapAt(joined, 5);
+    expect(far).toBe(climateMapAt(joined, 6));
+    expect(far.climate.annualMeanC).toBe(2);
+    expect(far.lonDeg).toBe(2);
+    expect(far.cell).toBe(2);
+    expect(far.neighbors).toBe(joined.neighbors);
   });
 
   it("sin otros parches, o con la misma celda, el mapa queda igual", () => {

@@ -19,6 +19,7 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { PLAYER_TREK } from "./trek.ts";
 import { playerView } from "./view.ts";
+import { playerSkyOf } from "./weather-panel.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -110,6 +111,8 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     // El turno en que llega, el narrador lo sabe.
     const last = trek.at(-1)?.tick ?? walker.now;
     expect(playerView(ww, [], { heardSince: last }).self.cues).toContain("trek_arrived");
+    // En la sede, el tiempo es el de su celda (novel-sect-seat-weather).
+    expect(playerSkyOf(ww).climate).toBe(patchOf(ww.map, goal).climate);
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {

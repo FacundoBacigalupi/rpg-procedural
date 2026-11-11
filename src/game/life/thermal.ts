@@ -31,6 +31,7 @@ import {
   type BodyPlanDef,
   type Clothing,
   CORE_NORMAL_C,
+  climateMapAt,
   type DayWeather,
   draftEvent,
   ENTITY,
@@ -383,6 +384,8 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
         const indoor = node?.indoor ?? false;
         const agent = id as AgentId;
+        // El tiempo del parche donde está (novel-sect-seat-weather): en la sede, el de su celda.
+        const sky = climateMapAt(o.map, ctx.truth.get(LOCATION, id)?.hex);
         const had = ctx.truth.get(THERMAL, id);
         let core = had?.coreC ?? CORE_NORMAL_C;
         const hydration = sweatHydration(
@@ -399,12 +402,12 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         let sweatH = 0;
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
-          const outC = outdoorTempC(o.map, o.clock, o.seed, at);
-          const flat = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor, node, o.shelter);
+          const outC = outdoorTempC(sky, o.clock, o.seed, at);
+          const flat = envOf(weatherAt(sky, o.clock, o.seed, at), outC, indoor, node, o.shelter);
           const base0 = o.altitude
             ? altitudeEnv(
                 flat,
-                o.altitude.baseM,
+                sky === o.map ? o.altitude.baseM : (sky.baseElevationM ?? o.altitude.baseM),
                 o.altitude.altitudeOf(ctx.truth, agent),
                 o.altitude.qiC?.(ctx.truth, agent) ?? 0,
                 indoor ? INDOOR_LEAK : 1,

@@ -97,7 +97,7 @@ import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
 import { TREK_EVENT } from "./trek.ts";
-import { seasonOf } from "./weather-panel.ts";
+import { playerSkyOf, seasonOf } from "./weather-panel.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -160,7 +160,8 @@ function attentionOf(steps: readonly StepRecord[]): number {
 export function itemsSeen(w: LifeWorld, steps: readonly StepRecord[] = []): Percept[] {
   const now = w.scheduler.now;
   const observer = playerObserver(w, attentionOf(steps), now);
-  const day = skyLight(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const day = skyLight(skyMap, w.clock, w.seed, now);
   const rng = Rng.root(w.seed).fork("view-items", now);
   const out: Percept[] = [];
   for (const id of w.truth.ids(ITEM_LOOK)) {
@@ -602,8 +603,9 @@ export function playerView(
   const at = w.truth.get(LOCATION, w.player);
   const body = w.truth.get(BODY_STATE, w.player);
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
-  const hour = localHour(w.clock, now, w.map.lonDeg);
-  const day = skyLight(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const hour = localHour(w.clock, now, skyMap.lonDeg);
+  const day = skyLight(skyMap, w.clock, w.seed, now);
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);
@@ -803,8 +805,8 @@ export function playerView(
             {
               memories: w.truth.get(MEMORIES, w.player)?.items ?? [],
               seasons: {
-                from: seasonOf(yearPhase(w.clock, options.heardSince), w.map.climate.latDeg),
-                to: seasonOf(yearPhase(w.clock, now), w.map.climate.latDeg),
+                from: seasonOf(yearPhase(w.clock, options.heardSince), skyMap.climate.latDeg),
+                to: seasonOf(yearPhase(w.clock, now), skyMap.climate.latDeg),
               },
               ...(options.goals !== undefined ? { goals: options.goals } : {}),
             },
@@ -820,7 +822,7 @@ export function playerView(
       hour,
       light: node ? spaceLight(node, day) : day,
       marks: marksAt(w.truth, at, now, node ? spaceLight(node, day) : day, (made) =>
-        rainBetween(w.map, w.clock, w.seed, made, now),
+        rainBetween(skyMap, w.clock, w.seed, made, now),
       ),
     },
     percepts: told,

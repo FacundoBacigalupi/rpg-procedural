@@ -107,6 +107,7 @@ export interface PatchSpan {
   readonly lonDeg: number;
   readonly climate: ClimateNormals;
   readonly baseElevationM?: number;
+  readonly oscillation?: LocalMap["oscillation"];
 }
 
 function spanOf(map: LocalMap, base: number): PatchSpan {
@@ -117,7 +118,42 @@ function spanOf(map: LocalMap, base: number): PatchSpan {
     lonDeg: map.lonDeg,
     climate: map.climate,
     ...(map.baseElevationM === undefined ? {} : { baseElevationM: map.baseElevationM }),
+    ...(map.oscillation === undefined ? {} : { oscillation: map.oscillation }),
   };
+}
+
+const climateViews = new WeakMap<LocalMap, Map<number, LocalMap>>();
+
+/**
+ * El mapa con el clima del parche de `hex` (novel-sect-seat-weather): la misma grilla con la
+ * celda, la longitud, las normales, la altura base y la oscilación de ese parche, para que el
+ * tiempo (`sim/weather`) y la hora local salgan de donde está quien lo vive. En el primer parche
+ * (o sin parches) es el mismo mapa; las vistas se guardan, así cada parche es siempre el mismo
+ * objeto (las memorias por mapa siguen sirviendo).
+ */
+export function climateMapAt(map: LocalMap, hex: number | undefined): LocalMap {
+  if (hex === undefined || map.patches === undefined) return map;
+  const span = patchOf(map, hex);
+  if (span.base === 0) return map;
+  let views = climateViews.get(map);
+  if (views === undefined) {
+    views = new Map();
+    climateViews.set(map, views);
+  }
+  let view = views.get(span.base);
+  if (view === undefined) {
+    const { baseElevationM: _b, oscillation: _o, ...rest } = map;
+    view = {
+      ...rest,
+      cell: span.cell,
+      lonDeg: span.lonDeg,
+      climate: span.climate,
+      ...(span.baseElevationM === undefined ? {} : { baseElevationM: span.baseElevationM }),
+      ...(span.oscillation === undefined ? {} : { oscillation: span.oscillation }),
+    };
+    views.set(span.base, view);
+  }
+  return view;
 }
 
 /** Los parches del mapa; sin `patches`, uno solo que lo cubre entero. */

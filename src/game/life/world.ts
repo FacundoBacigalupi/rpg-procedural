@@ -22,6 +22,7 @@ import {
   type ConcernWords,
   type CurdRule,
   cheeseProcess,
+  climateMapAt,
   type Demography,
   type DietDef,
   type DimensionDef,
@@ -2336,7 +2337,10 @@ export function lifeWorld(
             ? {
                 altitude: {
                   baseM: parts.map.baseElevationM ?? 0,
-                  altitudeOf: altitudeOf ?? (() => parts.map.baseElevationM ?? 0),
+                  altitudeOf:
+                    altitudeOf ??
+                    ((t: ReadonlyWorldTruth, w: AgentId) =>
+                      climateMapAt(parts.map, t.get(LOCATION, w)?.hex).baseElevationM ?? 0),
                   ...(parts.ambientQi
                     ? {
                         qiC: (t: ReadonlyWorldTruth, w: AgentId) =>

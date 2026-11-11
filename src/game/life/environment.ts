@@ -24,6 +24,7 @@ import {
   weatherAt,
 } from "../../sim/index.ts";
 import { ambientOf } from "./ambient.ts";
+import { playerSkyOf } from "./weather-panel.ts";
 import type { LifeWorld } from "./world.ts";
 
 export type Channel = Sense;
@@ -67,12 +68,13 @@ const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
 function sensed(w: LifeWorld, day: DayWeather, now: Tick): Raw[] {
   const at = w.truth.get(LOCATION, w.player);
+  const skyMap = playerSkyOf(w);
   const node =
     at?.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
   const indoor = node?.indoor ?? false;
   const out: Raw[] = [];
 
-  const sky = skyLight(w.map, w.clock, w.seed, now);
+  const sky = skyLight(skyMap, w.clock, w.seed, now);
   const light = node ? spaceLight(node, sky) : sky;
   out.push({
     channel: "sight",
@@ -120,7 +122,8 @@ export function environmentPanel(
   const now = w.scheduler.now;
   const at = w.truth.get(LOCATION, w.player);
   const here = `${at?.hex}/${at?.space ?? ""}`;
-  const day = weatherAt(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const day = weatherAt(skyMap, w.clock, w.seed, now);
   const raw = sensed(w, day, now);
   const keyOf = (r: Raw): string => `${here}|${r.channel}|${r.kind}`;
   forgetExcept(memory, new Set(raw.map(keyOf)));

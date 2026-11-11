@@ -61,7 +61,7 @@ import { knownEntities } from "./known.ts";
 import { type Outfit, outfitOf } from "./outfit.ts";
 import type { BurdenLevel, CharacterPanel } from "./panels.ts";
 import { MAX_CLEAR_PERCEPTS } from "./view.ts";
-import { type AirFeel, type SeasonName, weatherPanel } from "./weather-panel.ts";
+import { type AirFeel, playerSkyOf, type SeasonName, weatherPanel } from "./weather-panel.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** El momento del día, con los crepúsculos de `daylight` (5-7 y 17-19). */
@@ -566,17 +566,18 @@ export function hudPanel(
   const node =
     at?.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
   const indoor = node?.indoor ?? false;
-  const hour = localHour(w.clock, now, w.map.lonDeg);
-  const sky = skyLight(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const hour = localHour(w.clock, now, skyMap.lonDeg);
+  const sky = skyLight(skyMap, w.clock, w.seed, now);
   const light = node ? spaceLight(node, sky) : sky;
-  const day = weatherAt(w.map, w.clock, w.seed, now);
+  const day = weatherAt(skyMap, w.clock, w.seed, now);
   const weather = weatherPanel(w);
   const clear = seen.filter((p) => p.detail !== "vague");
   const fire = fireIn(w, at?.space, indoor);
   const lightBand: Hud["light"] = light < 0.15 ? "dark" : light < 0.5 ? "dim" : "bright";
   const phase = dayPhase(hour);
   const look = skyLook(day.cloud, day.precip.kind, indoor);
-  const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(w.map), 0, now) : null;
+  const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(skyMap), 0, now) : null;
   const outfit = outfitOf(w);
   return {
     hour,
