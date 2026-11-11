@@ -81,7 +81,11 @@ export type SelfCue =
   /** Llegó al final de la marcha. */
   | "trek_arrived"
   /** Se rindió: un mes de marcha sin llegar. */
-  | "trek_gave_up";
+  | "trek_gave_up"
+  /** Hizo tareas en la sede y se las anotaron (`cultivation.sect_chore`, novel-sect-duty-chore). */
+  | "chore_credited"
+  /** Hizo tareas de la secta sin ser de ella: nadie se las anota. */
+  | "chore_unpaid";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
@@ -998,6 +1002,7 @@ function effectView(
   switch (e.kind) {
     case "none":
     case "ponder":
+    case "chore":
     case "resolve":
     case "forge":
     case "hire":

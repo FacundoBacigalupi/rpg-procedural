@@ -236,6 +236,7 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
+import { sectDutyProcess } from "./sect-duty.ts";
 import { SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
@@ -2489,6 +2490,7 @@ export function lifeWorld(
                 ...(parts.map.patches ? { map: parts.map } : {}),
               }),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
+              sectDutyProcess(),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [

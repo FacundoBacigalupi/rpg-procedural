@@ -155,6 +155,10 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.chore",
+    "lines": ["{who} está con las tareas de la sede.", "Ves a {who} cumpliendo con sus tareas."]
+  },
+  {
     "id": "percept.action.meditate",
     "lines": [
       "{who} medita, quieto, con los ojos cerrados.",
@@ -425,6 +429,25 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.chore.success",
+    "lines": [
+      "Hacés tu parte del trabajo de la sede sin que nadie tenga que decirte nada.",
+      "Las horas se van en la tarea; cuando terminás, queda hecho y bien hecho."
+    ]
+  },
+  {
+    "id": "outcome.chore.partial",
+    "lines": ["Cumplís con la tarea a medias: algo queda sin hacer."]
+  },
+  {
+    "id": "outcome.chore.failure",
+    "lines": ["La tarea no sale: se te va el rato y no queda nada que mostrar."]
+  },
+  {
+    "id": "outcome.chore.unsure",
+    "lines": ["Hacés tus tareas un rato."]
   },
   {
     "id": "outcome.meditate.success",
@@ -1132,6 +1155,17 @@
       "Se te fue el conocimiento, y volvés en vos sin saber cuánto pasó.",
       "Te desmayaste por el clima y recién ahora volvés en vos."
     ]
+  },
+  {
+    "id": "self.chore_credited",
+    "lines": [
+      "Alguien de la secta anota tus horas: cuentan para tu aporte.",
+      "Tu trabajo queda anotado a tu nombre en las cuentas de la secta."
+    ]
+  },
+  {
+    "id": "self.chore_unpaid",
+    "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },
   {
     "id": "self.sensed_qi",

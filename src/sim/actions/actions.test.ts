@@ -83,6 +83,7 @@ describe("catálogo", () => {
     expect(catalog.verbs.map((v) => v.id).sort()).toEqual([
       "boil",
       "breakthrough",
+      "chore",
       "consult",
       "consume",
       "cook",

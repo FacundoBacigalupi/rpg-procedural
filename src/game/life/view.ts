@@ -48,6 +48,7 @@ import {
   type ReadonlyWorldTruth,
   rainBetween,
   realmOf,
+  SECT_CHORE_EVENT,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
   SECT_LORE,
@@ -706,6 +707,14 @@ export function playerView(
           (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
         );
   if (broke) cues.add(breakCue(broke));
+  const chore =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CHORE_EVENT);
+  if (chore) {
+    const credited = (chore.data as { credited?: unknown } | null)?.credited === true;
+    cues.add(credited ? "chore_credited" : "chore_unpaid");
+  }
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

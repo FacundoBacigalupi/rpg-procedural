@@ -46,3 +46,48 @@ export function summonedLore(
     learnedAt: before?.learnedAt ?? now,
   };
 }
+
+/** Las tareas de discípulo en la sede (novel-sect-duty-chore, organizations §6). */
+export type SectChore = "sweep" | "guard" | "firewood";
+
+export const SECT_CHORE_EVENT = "cultivation.sect_chore";
+
+/** Cuántos puntos da una hora de tarea bien hecha (sin calibrar). */
+export const CHORE_POINTS_PER_HOUR = 1;
+
+/**
+ * Los puntos de contribución de un miembro: un derecho contra la secta, no una cosa (organizations
+ * §6). Se ganan con tareas y, cuando haya con qué, se canjean contra el tesoro.
+ */
+export interface SectContribution {
+  readonly org: EntityRef;
+  readonly points: number;
+  /** Las horas de tarea que se le anotaron, en total. */
+  readonly hours: number;
+  /** La última vez que se le anotó algo. */
+  readonly last: Tick;
+}
+
+export const SECT_CONTRIBUTION = table<SectContribution>("cultivation.sect_contribution");
+
+/** Qué tarea es: la que dice quien la hace («barro», «hago guardia», «leña») o la del lugar. */
+export function choreOf(said: string | undefined, space: string | undefined): SectChore {
+  const s = (said ?? "").toLowerCase();
+  if (/barr|limpi|escoba/.test(s)) return "sweep";
+  if (/guardia|vigil|porton|portón/.test(s)) return "guard";
+  if (/leña|lena/.test(s)) return "firewood";
+  if (space?.endsWith("/gate")) return "guard";
+  if (space?.startsWith("sect:")) return "sweep";
+  return "firewood";
+}
+
+/**
+ * Los puntos que da una tarea según cuánto duró y cómo salió (a medias, la mitad; mal, nada). El
+ * resultado excepcional cuenta según el signo del margen.
+ */
+export function chorePoints(hours: number, outcome: string | undefined, margin = 0): number {
+  const good =
+    outcome === "success" || outcome === "discovered" || (outcome === "critical" && margin > 0);
+  const k = good ? 1 : outcome === "partial" ? 0.5 : 0;
+  return Math.round(hours * CHORE_POINTS_PER_HOUR * k * 100) / 100;
+}

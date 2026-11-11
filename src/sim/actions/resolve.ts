@@ -754,6 +754,11 @@ export type VerbEffect =
       readonly paid: { readonly unit: LedgerUnit; readonly amount: number } | null;
     }
   | {
+      /** Una tarea de la secta, con lo que dijo que hacía («barro»); `game` la anota (novel-sect-duty-chore). */
+      readonly kind: "chore";
+      readonly what: string | null;
+    }
+  | {
       /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
       readonly kind: "ponder";
       readonly about: string | null;
@@ -1058,6 +1063,12 @@ const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal })
  */
 const ponder: Resolver = (c) => ({
   effect: { kind: "ponder", about: argText(c, "about") },
+  seconds: c.nominal,
+});
+
+/** Las tareas de la secta: deja qué dijo que hacía; qué tarea es y qué se le anota lo decide `game`. */
+const chore: Resolver = (c) => ({
+  effect: { kind: "chore", what: argText(c, "what") },
   seconds: c.nominal,
 });
 
@@ -2914,6 +2925,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   milk,
   ponder,
   resolve: resolveGoal,
+  chore,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

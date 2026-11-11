@@ -399,6 +399,43 @@
     ]
   },
   {
+    "id": "chore",
+    "example": "hago mis tareas cuatro horas",
+    "tail": "cuatro horas",
+    "forms": [
+      "hago mis tareas",
+      "hacer mis tareas",
+      "barro",
+      "barrer",
+      "hago guardia",
+      "hacer guardia"
+    ],
+    "synonyms": [
+      {
+        "as": "hago mis tareas",
+        "words": [
+          "hago las tareas",
+          "cumplo mis tareas",
+          "cumplo con mis tareas",
+          "hago mis deberes",
+          "trabajo para la secta",
+          "sirvo a la secta",
+          "hago el trabajo de discípulo"
+        ]
+      },
+      {
+        "as": "barro",
+        "words": ["limpio el patio", "limpio el salón", "friego el piso", "paso la escoba"],
+        "tail": ""
+      },
+      {
+        "as": "hago guardia",
+        "words": ["monto guardia", "hago la guardia", "vigilo el portón", "cuido el portón"],
+        "tail": ""
+      }
+    ]
+  },
+  {
     "id": "wait",
     "example": "espero media hora",
     "tail": "media hora",

@@ -586,6 +586,20 @@ const VERBS: readonly {
     },
   },
   {
+    // Las tareas de la secta (novel-sect-duty-chore): qué tarea, si la dice; si no, la del lugar.
+    re: /^(?:hago mis tareas|hacer mis tareas|barro|barrer|hago guardia|hacer guardia)\b/i,
+    build: (rest, _ctx, all) => {
+      const d = duration(rest);
+      const what = /^barr/i.test(all) ? "barrer" : /^hac\w*\s+guardia/i.test(all) ? "guardia" : "";
+      return {
+        node: act("chore", [
+          ...(d ? [{ role: "for", duration: d.duration }] : []),
+          ...(what ? [{ role: "what", text: what }] : []),
+        ]),
+      };
+    },
+  },
+  {
     re: /^(?:espero|esperar|aguardo|aguardar|me quedo(?:\s+\p{L}+)?\s+esperando)/iu,
     build: (rest) => {
       const d = duration(rest);
