@@ -57,6 +57,13 @@ export const SENSE_RATE = 0.05;
 export const QI_FACTOR_RANGE = [0.25, 4] as const;
 
 /** Cuánto multiplica el qi del lugar: la raíz de su nivel contra la media, acotado. */
+/**
+ * Cuánto más rinde meditar en la cueva de cultivo de una sede (novel-sect-cave-vein): está cavada
+ * sobre el nudo de la veta, donde el qi de la celda se junta. Toma de la misma reserva, así que no
+ * crea qi: lo saca más rápido (sin calibrar).
+ */
+export const CAVE_FOCUS = 1.5;
+
 export function qiFactor(qi: PlaceQi | undefined): number {
   if (!qi || qi.reference <= 0) return 1;
   const [lo, hi] = QI_FACTOR_RANGE;

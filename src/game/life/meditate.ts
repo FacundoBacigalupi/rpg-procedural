@@ -31,12 +31,14 @@ import {
   BREAKTHROUGH_EVENT,
   breakOutcome,
   breakPreparation,
+  CAVE_FOCUS,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
   type CultivationLaw,
   type CultivationState,
   type EventDraft,
+  isSectCave,
   LOCATION,
   type LocalMap,
   MAX_MERIDIAN_DAMAGE,
@@ -221,7 +223,8 @@ export function meditateProcess(o: {
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
       CULTIVATION_TECHNIQUE.name,
-      ...(pooled ? [LOCATION.name, PLACE.name] : []),
+      LOCATION.name,
+      ...(pooled ? [PLACE.name] : []),
     ],
     writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
     run(ctx) {
@@ -278,7 +281,10 @@ export function meditateProcess(o: {
         const calm = calmOf(plans, ctx.truth.get(BODY_STATE, m.who));
         const poolId = poolFor(m.who);
         const pool = pools.get(poolId) as { place?: PlaceQi; factor: number; taken?: QiTaken };
-        const { place, factor } = pool;
+        const { place } = pool;
+        // En la cueva de la sede, sobre el nudo de la veta, la misma reserva rinde más.
+        const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
+        const factor = pool.factor * focus;
         const taken = pool.taken;
         const method = ctx.truth.get(CULTIVATION_TECHNIQUE, m.who)?.factor ?? 1;
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
@@ -310,7 +316,15 @@ export function meditateProcess(o: {
             kind: ABSORBED_EVENT,
             actors: [m.who],
             place: e.place,
-            data: { drawn, qi: next.qi, capacity, match, purity, cell: place.cell },
+            data: {
+              drawn,
+              qi: next.qi,
+              capacity,
+              match,
+              purity,
+              cell: place.cell,
+              ...(focus > 1 ? { focus } : {}),
+            },
             emissions: {},
             causes: [
               { kind: "event", event: e.id },

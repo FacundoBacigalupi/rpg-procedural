@@ -698,7 +698,11 @@ export function playerView(
     options.heardSince === undefined
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === ABSORBED_EVENT);
-  if (absorbed) cues.add(absorbCue(absorbed));
+  if (absorbed) {
+    cues.add(absorbCue(absorbed));
+    // En la cueva de la sede, el qi se junta (novel-sect-cave-vein).
+    if ((absorbed.data as { focus?: unknown } | null)?.focus !== undefined) cues.add("qi_dense");
+  }
   const broke =
     options.heardSince === undefined
       ? undefined

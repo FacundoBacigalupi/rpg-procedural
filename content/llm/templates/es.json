@@ -1181,6 +1181,13 @@
     ]
   },
   {
+    "id": "self.qi_dense",
+    "lines": [
+      "En la cueva el qi se junta, espeso: entra más rápido que afuera.",
+      "Acá adentro, sobre la veta, el qi te llega más denso que en el patio."
+    ]
+  },
+  {
     "id": "self.sensed_qi",
     "lines": [
       "En la quietud, algo se mueve: una corriente tibia, apenas, entre vos y el aire. No es el viento.",

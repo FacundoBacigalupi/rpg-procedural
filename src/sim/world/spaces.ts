@@ -391,6 +391,11 @@ export function sectSpaceKey(place: string, part: SectSiteSpace): SpaceKey {
   return `sect:${place}/${part}`;
 }
 
+/** Si `space` es la cueva de cultivo de una sede (novel-sect-cave-vein). */
+export function isSectCave(space: string | undefined): boolean {
+  return space !== undefined && space.startsWith("sect:") && space.endsWith("/cave");
+}
+
 /**
  * La sede de una secta como sitio (novel-sect-seat-hall-spaces): un patio tras el portón, al aire
  * libre (se une al campo del hex); el salón de piedra que da al patio; los dormitorios de los

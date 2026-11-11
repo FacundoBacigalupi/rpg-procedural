@@ -46,6 +46,8 @@ export type SelfCue =
   | "blacked_out"
   /** Meditando sintió el qi por primera vez (`cultivation.sensed_qi`, novel-cult-meditate). */
   | "sensed_qi"
+  /** Absorbió en la cueva de la sede, donde el qi de la veta se junta (novel-sect-cave-vein). */
+  | "qi_dense"
   /** Meditando, el qi entra al cuerpo (`cultivation.absorbed`, novel-cult-absorb). */
   | "qi_flows"
   /** El qi se resiste: se parece poco a su raíz. */

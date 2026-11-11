@@ -17,6 +17,7 @@ import {
   ABSORBED_EVENT,
   type ActionPlan,
   BODY_STATE,
+  CAVE_FOCUS,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   checkInvariants,
@@ -198,6 +199,61 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     expect(mine).toBeLessThanOrEqual(drawn + 1e-3);
     expect(w2.truth.get(CULTIVATION_STATE, me)?.qi ?? 0).toBeCloseTo(mine, 3);
     expect((absorbed[0]?.data as { cell?: number } | undefined)?.cell).toBe(s2.seat.cell);
+  });
+
+  it("en la cueva, sobre la veta, la misma reserva rinde más que en el salón (cave-vein)", () => {
+    const run = (part: "hall" | "cave") => {
+      const l = Life.create(3, content, options);
+      const w = l.world;
+      const me = l.player;
+      const sect = w.truth.get(SECT, w.truth.ids(SECT)[0] as EntityRef);
+      if (!sect) throw new Error("sin secta");
+      const t = w.truth.get(TALENT, me);
+      if (!t) throw new Error("sin talento");
+      w.truth.set(TALENT, me, {
+        ...t,
+        innate: { ...t.innate, spirit_root: 3, root_wood: 3, comprehension: 0.7 },
+      });
+      w.truth.set(CULTIVATION_STATE, me, {
+        sensitivity: 2,
+        hours: 100,
+        sensed: { at: 0 as Tick, event: "e0" as EventId },
+      });
+      const hex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+      w.truth.set(LOCATION, me, { hex, space: sectSpaceKey(sect.seatPlace, part) });
+      const body = w.truth.get(BODY_STATE, me);
+      if (body) w.truth.set(BODY_STATE, me, { ...body, sleepDebt: 0, fatigue: 0, water: 0 });
+      const from = l.now;
+      l.turn(
+        {
+          actor: me,
+          source: "player",
+          root: {
+            kind: "do",
+            verb: "meditate",
+            args: [{ role: "for", seconds: 2 * HOUR }],
+            manner: [],
+          },
+          manner: [],
+          causes: [{ kind: "state", entity: me, key: "intent" }],
+        },
+        1,
+      );
+      const absorbed = w.log.all().filter((e) => e.kind === ABSORBED_EVENT && e.actors[0] === me);
+      return {
+        drawn: absorbed.reduce((x, e) => x + Number((e.data as { drawn?: number }).drawn), 0),
+        focus: absorbed.map((e) => (e.data as { focus?: number }).focus),
+        cues: playerView(w, [], { heardSince: from }).self.cues,
+      };
+    };
+    const hall = run("hall");
+    const cave = run("cave");
+    expect(hall.drawn).toBeGreaterThan(0);
+    expect(cave.drawn).toBeGreaterThan(hall.drawn);
+    expect(hall.focus.every((f) => f === undefined)).toBe(true);
+    expect(cave.focus.every((f) => f === CAVE_FOCUS)).toBe(true);
+    expect(cave.cues).toContain("qi_dense");
+    expect(hall.cues).not.toContain("qi_dense");
   });
 
   it("la sede tiene portón, salón, dormitorios y cueva; estando ahí se va a la cueva (hall-spaces)", () => {
