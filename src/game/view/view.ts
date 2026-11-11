@@ -97,7 +97,9 @@ export type SelfCue =
   /** Canjeó aportes por horas de pase a la cueva (`cultivation.sect_exchange`, novel-sect-duty-exchange). */
   | "exchange_done"
   /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
-  | "exchange_refused";
+  | "exchange_refused"
+  /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
+  | "promoted";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

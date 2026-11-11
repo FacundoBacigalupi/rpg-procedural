@@ -83,6 +83,30 @@ export const SECT_CAVE_PASS = table<SectCavePass>("cultivation.sect_cave_pass");
 /** Se le acabaron las horas del pase. */
 export const SECT_CAVE_PASS_SPENT_EVENT = "cultivation.sect_cave_pass_spent";
 
+/** El ascenso de externo a interno (novel-sect-duty-rank, organizations §6). */
+export const SECT_PROMOTED_EVENT = "cultivation.sect_promoted";
+/** Las horas de tarea anotadas que pide la secta para subir a interno (sin calibrar). */
+export const PROMOTION_CHORE_HOURS = 240;
+/** Los umbrales del qi cruzados que pide la secta para subir a interno. */
+export const PROMOTION_STAGE = 1;
+
+/**
+ * Si el miembro externo ya subiría a interno: aportó las horas de tarea en esa secta y cruzó el
+ * tramo de cultivo pedido. Las horas no se gastan al canjear (los puntos sí).
+ */
+export function promotionDue(
+  member: SectMember | undefined,
+  contribution: SectContribution | undefined,
+  stage: number,
+): boolean {
+  return (
+    member?.rank === "outer" &&
+    contribution?.org === member.org &&
+    contribution.hours >= PROMOTION_CHORE_HOURS &&
+    stage >= PROMOTION_STAGE
+  );
+}
+
 /** El canje de aportes por horas de pase (novel-sect-duty-exchange). */
 export const SECT_EXCHANGE_EVENT = "cultivation.sect_exchange";
 /** Cuántos puntos de contribución cuesta una hora de cueva (sin calibrar). */

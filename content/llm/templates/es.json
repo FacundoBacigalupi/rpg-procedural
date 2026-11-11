@@ -1197,6 +1197,13 @@
     "lines": ["El encargado mira las cuentas y niega con la cabeza: no hay canje para vos."]
   },
   {
+    "id": "self.promoted",
+    "lines": [
+      "Te llaman al salón: por tu aporte y por lo que avanzaste, desde hoy sos discípulo interno. La cueva queda abierta para vos.",
+      "La secta te sube de rango: dejás de ser externo y pasás a los internos, con su sueldo y la cueva."
+    ]
+  },
+  {
     "id": "self.chore_unpaid",
     "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },

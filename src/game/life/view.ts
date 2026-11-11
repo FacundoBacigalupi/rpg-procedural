@@ -55,6 +55,7 @@ import {
   SECT_JOINED_EVENT,
   SECT_LORE,
   SECT_MEMBER,
+  SECT_PROMOTED_EVENT,
   SECT_SCHOOL,
   SECT_STIPEND_EVENT,
   SECT_TRIAL_EVENT,
@@ -743,6 +744,11 @@ export function playerView(
     const refused = (exchange.data as { refused?: unknown } | null)?.refused !== undefined;
     cues.add(refused ? "exchange_refused" : "exchange_done");
   }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT)
+  )
+    cues.add("promoted");
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

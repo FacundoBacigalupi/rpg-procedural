@@ -9,8 +9,10 @@
 
 import type { AgentId, EntityRef, Event } from "../../core/index.ts";
 import {
+  BREAKTHROUGH_EVENT,
   CAVE_RANKS,
   CHORE_POINTS_PER_HOUR,
+  CULTIVATION_STATE,
   choreOf,
   chorePoints,
   deleteComponent,
@@ -20,7 +22,10 @@ import {
   isSectCave,
   LOCATION,
   PLACE,
+  PROMOTION_CHORE_HOURS,
+  PROMOTION_STAGE,
   type ProcessDef,
+  promotionDue,
   type ReadonlyWorldTruth,
   SECT,
   SECT_CAVE_PASS,
@@ -29,6 +34,7 @@ import {
   SECT_CONTRIBUTION,
   SECT_EXCHANGE_EVENT,
   SECT_MEMBER,
+  SECT_PROMOTED_EVENT,
   type SectCavePass,
   type SectContribution,
   type StateChange,
@@ -77,8 +83,9 @@ export function sectDutyProcess(): ProcessDef {
       LOCATION.name,
       SECT_CONTRIBUTION.name,
       SECT_CAVE_PASS.name,
+      CULTIVATION_STATE.name,
     ],
-    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name],
+    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name, SECT_MEMBER.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -91,7 +98,10 @@ export function sectDutyProcess(): ProcessDef {
           : ctx.truth.get(SECT_CAVE_PASS, who as unknown as EntityRef);
       const pointsOf = (who: AgentId) =>
         rows.get(who) ?? ctx.truth.get(SECT_CONTRIBUTION, who as unknown as EntityRef);
+      // Quién pudo haber llegado al ascenso en esta corrida, y por qué evento.
+      const maybe = new Map<AgentId, Event>();
       for (const e of ctx.recent) {
+        if (e.kind === BREAKTHROUGH_EVENT && e.actors[0]) maybe.set(e.actors[0] as AgentId, e);
         // El canje de aportes por horas de pase (novel-sect-duty-exchange).
         if (e.kind === "action.redeem" && e.outcome !== "failure") {
           const who = e.actors[0] as AgentId | undefined;
@@ -184,6 +194,7 @@ export function sectDutyProcess(): ProcessDef {
             last: ctx.now,
           };
           rows.set(done.who, row);
+          maybe.set(done.who, e);
         }
         events.push({
           kind: SECT_CHORE_EVENT,
@@ -198,6 +209,35 @@ export function sectDutyProcess(): ProcessDef {
           },
           emissions: {},
           causes: [{ kind: "event", event: e.id }],
+        });
+      }
+      // El ascenso (novel-sect-duty-rank): externo en su sede con las horas de tarea y el tramo.
+      for (const [who, e] of maybe) {
+        const ref = who as unknown as EntityRef;
+        const member = ctx.truth.get(SECT_MEMBER, ref);
+        const stage = ctx.truth.get(CULTIVATION_STATE, ref)?.stage ?? 0;
+        const contribution = pointsOf(who);
+        if (!member || seatOrgOf(ctx.truth, who) !== member.org) continue;
+        if (!promotionDue(member, contribution, stage)) continue;
+        changes.push(setComponent(SECT_MEMBER, who, { ...member, rank: "inner" }));
+        events.push({
+          kind: SECT_PROMOTED_EVENT,
+          actors: [who],
+          place: e.place,
+          data: {
+            org: member.org,
+            from: "outer",
+            to: "inner",
+            hours: contribution?.hours ?? 0,
+            stage,
+            needs: { hours: PROMOTION_CHORE_HOURS, stage: PROMOTION_STAGE },
+          },
+          emissions: { sight: 0.3 },
+          causes: [
+            { kind: "event", event: e.id },
+            { kind: "state", entity: who, key: SECT_CONTRIBUTION.name },
+            { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+          ],
         });
       }
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));

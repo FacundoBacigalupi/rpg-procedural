@@ -28,6 +28,7 @@ const TURNING_KINDS: ReadonlySet<string> = new Set([
   "law.default",
   "contract.pledge_broken",
   "cultivation.sect_trial",
+  "cultivation.sect_promoted",
 ]);
 
 /** Cuántos capítulos como máximo y cuánto separa dos cortes. */
