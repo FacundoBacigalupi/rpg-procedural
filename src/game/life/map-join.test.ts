@@ -1,12 +1,12 @@
 // Parches unidos (novel-sect-seat-patch): el mapa de la aldea con el de otra celda a continuación,
-// sin aristas cruzadas y con los índices de la aldea intactos.
+// con los índices de la aldea intactos; y la región cosida por tierra (novel-sect-seat-road).
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { loadContent } from "../../core/index.ts";
-import { hexPath, joinMaps, type LocalMap, patchesOf, patchOf } from "../../sim/index.ts";
+import { hexPath, joinMaps, type LocalMap, patchesOf, patchOf, subMap } from "../../sim/index.ts";
 import { BIOMES, generatePlanet, ring, villageSite } from "../../worldgen/index.ts";
-import { cellMapOf, localMapOf } from "./map.ts";
+import { cellMapOf, cellPath, localMapOf, regionMapOf } from "./map.ts";
 
 const biomes = loadContent(
   [BIOMES],
@@ -86,5 +86,53 @@ describe("parches unidos", () => {
     expect(seat?.cell).toBe(planet.grid.cellId(next as number));
     expect(seat?.base).toBe(village.neighbors.length);
     expect(a.neighbors.length).toBe((seat?.base ?? 0) + (seat?.size ?? 0));
+  });
+});
+
+describe("región por tierra", () => {
+  const planet = generatePlanet({ seed: 7, biomes });
+  const site = villageSite(planet);
+  const village = localMapOf(planet, site);
+  const home = { map: village, patch: site.patch };
+  const at = (hops: number) =>
+    ring(planet.grid, site.patch.cell, hops).filter(([, d]) => d === hops)[0]?.[0] as number;
+
+  it("las aristas extra unen parches y subMap renumera", () => {
+    const joined = joinMaps(line(1, 3), [line(2, 3)], [[2, 3]]);
+    expect(joined.neighbors[2]).toEqual([1, 3]);
+    expect(joined.neighbors[3]).toEqual([4, 2]);
+    expect(hexPath(joined, 0, 5)).toEqual([1, 2, 3, 4, 5]);
+    expect(subMap(line(1, 5), [1, 2, 4]).neighbors).toEqual([[1], [0], []]);
+  });
+
+  it("a un salto: la celda vecina entera, cosida por el borde, y se llega caminando", () => {
+    const to = at(1);
+    const region = regionMapOf(planet, home, to);
+    expect(JSON.stringify(region)).toBe(JSON.stringify(regionMapOf(planet, home, to)));
+    expect(region.neighbors.slice(0, village.neighbors.length).flat().length).toBeGreaterThan(
+      village.neighbors.flat().length,
+    );
+    expect(region.crossSeconds.slice(0, village.crossSeconds.length)).toEqual(village.crossSeconds);
+    const seat = patchesOf(region)[1];
+    expect(seat?.cell).toBe(planet.grid.cellId(to));
+    const far = (seat?.base ?? 0) + (seat?.size ?? 0) - 1;
+    const path = hexPath(region, site.hex, far);
+    expect(path.length).toBeGreaterThan(0);
+    expect(patchOf(region, path[path.length - 1] as number).cell).toBe(seat?.cell);
+  });
+
+  it("a dos saltos: la celda de en medio solo con su franja, y el camino la cruza", () => {
+    const to = at(2);
+    const cells = cellPath(planet, site.patch.cell, to);
+    expect(cells.length).toBe(3);
+    const region = regionMapOf(planet, home, to);
+    const [, mid, seat] = patchesOf(region);
+    expect(mid?.cell).toBe(planet.grid.cellId(cells[1] as number));
+    expect(mid?.size).toBeGreaterThan(0);
+    expect(mid?.size).toBeLessThan(500);
+    expect(seat?.cell).toBe(planet.grid.cellId(to));
+    const path = hexPath(region, site.hex, seat?.base ?? 0);
+    expect(path.some((h) => patchOf(region, h).cell === mid?.cell)).toBe(true);
+    expect(regionMapOf(planet, home, site.patch.cell)).toBe(village);
   });
 });
