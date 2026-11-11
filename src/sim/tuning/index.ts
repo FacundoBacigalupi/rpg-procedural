@@ -142,6 +142,7 @@ export const ScenarioLife = z.strictObject({
   villageShrine: z.boolean().optional(),
   mortalTech: z.boolean().optional(),
   cultivation: z.boolean().optional(),
+  sectSeatRegion: z.boolean().optional(),
   tasteDemand: z.boolean().optional(),
   npcRoadStops: z.boolean().optional(),
   npcRoadCobbler: z.boolean().optional(),
