@@ -1009,6 +1009,54 @@
     "evidence": 0.5
   },
   {
+    "id": "redeem",
+    "name": "canjear aportes en la secta",
+    "domain": "social",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      },
+      {
+        "role": "what",
+        "kind": "text",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [
+      {
+        "kind": "position",
+        "at": ["sect"]
+      }
+    ],
+    "occupies": {
+      "voice": "full"
+    },
+    "duration": {
+      "kind": "fixed",
+      "seconds": 600
+    },
+    "checkpoint": 600,
+    "emissions": {
+      "sight": 0.2,
+      "sound": 0.3
+    },
+    "serves": {
+      "status": 0.1
+    },
+    "resolver": "redeem",
+    "ease": 1,
+    "failureModes": [
+      {
+        "id": "not_here",
+        "factor": "position"
+      }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "wait",
     "name": "esperar",
     "domain": "time",

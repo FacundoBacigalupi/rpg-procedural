@@ -155,6 +155,13 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.redeem",
+    "lines": [
+      "{who} canjea sus aportes en las cuentas de la secta.",
+      "Ves a {who} pidiendo un pase a cambio de sus puntos."
+    ]
+  },
+  {
     "id": "percept.action.chore",
     "lines": ["{who} está con las tareas de la sede.", "Ves a {who} cumpliendo con sus tareas."]
   },
@@ -436,6 +443,14 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.redeem.success",
+    "lines": ["Pedís en las cuentas de la secta canjear tus aportes."]
+  },
+  {
+    "id": "outcome.redeem.unsure",
+    "lines": ["Pedís canjear tus aportes."]
   },
   {
     "id": "outcome.chore.success",
@@ -1169,6 +1184,17 @@
       "Alguien de la secta anota tus horas: cuentan para tu aporte.",
       "Tu trabajo queda anotado a tu nombre en las cuentas de la secta."
     ]
+  },
+  {
+    "id": "self.exchange_done",
+    "lines": [
+      "El encargado tacha puntos de tu aporte y te anota horas de pase a la cueva.",
+      "Te descuentan aporte de las cuentas y te dan un pase de horas para la cueva."
+    ]
+  },
+  {
+    "id": "self.exchange_refused",
+    "lines": ["El encargado mira las cuentas y niega con la cabeza: no hay canje para vos."]
   },
   {
     "id": "self.chore_unpaid",

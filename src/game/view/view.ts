@@ -93,7 +93,11 @@ export type SelfCue =
   /** Cobró, pero menos: el tesoro no alcanzaba. */
   | "stipend_cut"
   /** Se le acabaron las horas del pase a la cueva (novel-sect-cave-pass). */
-  | "cave_pass_spent";
+  | "cave_pass_spent"
+  /** Canjeó aportes por horas de pase a la cueva (`cultivation.sect_exchange`, novel-sect-duty-exchange). */
+  | "exchange_done"
+  /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
+  | "exchange_refused";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
@@ -1013,6 +1017,7 @@ function effectView(
     case "none":
     case "ponder":
     case "chore":
+    case "redeem":
     case "resolve":
     case "forge":
     case "hire":

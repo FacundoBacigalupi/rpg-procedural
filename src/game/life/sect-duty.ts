@@ -3,15 +3,20 @@
 // lugar (el portón: guardia; los salones: barrer; afuera: leña). Al terminar, si quien la hizo es de
 // la secta y la hizo en su sede, se le anotan puntos de contribución (`SECT_CONTRIBUTION`, un
 // derecho contra la secta) por las horas y por cómo salió; si no, trabajó de balde. Cada tarea deja
-// `cultivation.sect_chore`, causado por la acción.
+// `cultivation.sect_chore`, causado por la acción. También lleva el pase a la cueva: las horas
+// meditadas adentro salen del pase (novel-sect-cave-pass) y `redeem` canjea puntos por horas de pase
+// (novel-sect-duty-exchange) con `cultivation.sect_exchange`, causado por el pedido y los puntos.
 
 import type { AgentId, EntityRef, Event } from "../../core/index.ts";
 import {
+  CAVE_RANKS,
   CHORE_POINTS_PER_HOUR,
   choreOf,
   chorePoints,
   deleteComponent,
   type EventDraft,
+  type ExchangeRefusal,
+  exchangeHours,
   isSectCave,
   LOCATION,
   PLACE,
@@ -22,7 +27,9 @@ import {
   SECT_CAVE_PASS_SPENT_EVENT,
   SECT_CHORE_EVENT,
   SECT_CONTRIBUTION,
+  SECT_EXCHANGE_EVENT,
   SECT_MEMBER,
+  type SectCavePass,
   type SectContribution,
   type StateChange,
   setComponent,
@@ -76,18 +83,71 @@ export function sectDutyProcess(): ProcessDef {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const rows = new Map<AgentId, SectContribution>();
-      const passes = new Map<AgentId, number>();
+      // `null`: el pase se acabó y se borra.
+      const passes = new Map<AgentId, SectCavePass | null>();
+      const passOf = (who: AgentId) =>
+        passes.has(who)
+          ? (passes.get(who) ?? undefined)
+          : ctx.truth.get(SECT_CAVE_PASS, who as unknown as EntityRef);
+      const pointsOf = (who: AgentId) =>
+        rows.get(who) ?? ctx.truth.get(SECT_CONTRIBUTION, who as unknown as EntityRef);
       for (const e of ctx.recent) {
+        // El canje de aportes por horas de pase (novel-sect-duty-exchange).
+        if (e.kind === "action.redeem" && e.outcome !== "failure") {
+          const who = e.actors[0] as AgentId | undefined;
+          if (!who) continue;
+          const wanted = (e.data as { effect?: { hours?: unknown } } | null)?.effect?.hours;
+          const org = seatOrgOf(ctx.truth, who);
+          const member = ctx.truth.get(SECT_MEMBER, who as unknown as EntityRef);
+          const have = pointsOf(who);
+          const points = have?.org === org ? (have?.points ?? 0) : 0;
+          const { hours, cost } = exchangeHours(points, typeof wanted === "number" ? wanted : null);
+          const refused: ExchangeRefusal | undefined = !org
+            ? "not_member"
+            : member && CAVE_RANKS.has(member.rank)
+              ? "no_need"
+              : hours <= 0
+                ? "no_points"
+                : undefined;
+          if (!refused && org && have) {
+            rows.set(who, { ...have, points: round2(have.points - cost), last: ctx.now });
+            const pass = passOf(who);
+            const kept = pass?.org === org ? pass : undefined;
+            passes.set(who, {
+              org,
+              hours: round2((kept?.hours ?? 0) + hours),
+              since: kept?.since ?? ctx.now,
+            });
+          }
+          events.push({
+            kind: SECT_EXCHANGE_EVENT,
+            actors: [who],
+            place: e.place,
+            data: {
+              ...(org ? { org } : {}),
+              wanted: typeof wanted === "number" ? wanted : null,
+              ...(refused ? { refused, hours: 0, points: 0 } : { hours, points: cost }),
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: e.id },
+              ...(refused
+                ? []
+                : [{ kind: "state" as const, entity: who, key: SECT_CONTRIBUTION.name }]),
+            ],
+          });
+          continue;
+        }
         // Las horas meditadas en la cueva salen del pase de quien entró con uno (novel-sect-cave-pass).
         const sat = meditation(e);
         if (sat && isSectCave(ctx.truth.get(LOCATION, sat.who)?.space)) {
-          const pass = ctx.truth.get(SECT_CAVE_PASS, sat.who as unknown as EntityRef);
+          const pass = passOf(sat.who);
           const member = ctx.truth.get(SECT_MEMBER, sat.who as unknown as EntityRef);
           const ranked = member?.org === pass?.org && member?.rank !== "outer";
           if (pass && !ranked) {
-            const left = round2((passes.get(sat.who) ?? pass.hours) - sat.hours);
-            if ((passes.get(sat.who) ?? pass.hours) > 0) {
-              passes.set(sat.who, Math.max(0, left));
+            const left = round2(pass.hours - sat.hours);
+            if (pass.hours > 0) {
+              passes.set(sat.who, left > 0 ? { ...pass, hours: left } : null);
               if (left <= 0)
                 events.push({
                   kind: SECT_CAVE_PASS_SPENT_EVENT,
@@ -115,7 +175,7 @@ export function sectDutyProcess(): ProcessDef {
             )
           : 0;
         if (org) {
-          const before = rows.get(done.who) ?? ctx.truth.get(SECT_CONTRIBUTION, done.who);
+          const before = pointsOf(done.who);
           const same = before?.org === org ? before : undefined;
           const row: SectContribution = {
             org,
@@ -141,14 +201,10 @@ export function sectDutyProcess(): ProcessDef {
         });
       }
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));
-      for (const [who, hours] of passes) {
-        const pass = ctx.truth.get(SECT_CAVE_PASS, who as unknown as EntityRef);
-        if (!pass) continue;
-        changes.push(
-          hours > 0
-            ? setComponent(SECT_CAVE_PASS, who, { ...pass, hours })
-            : deleteComponent(SECT_CAVE_PASS, who as unknown as EntityRef),
-        );
+      for (const [who, pass] of passes) {
+        if (pass) changes.push(setComponent(SECT_CAVE_PASS, who, pass));
+        else if (ctx.truth.has(SECT_CAVE_PASS, who as unknown as EntityRef))
+          changes.push(deleteComponent(SECT_CAVE_PASS, who as unknown as EntityRef));
       }
       return { changes, events };
     },

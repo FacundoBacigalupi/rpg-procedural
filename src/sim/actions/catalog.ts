@@ -96,6 +96,7 @@ export const RESOLVERS = [
   "ponder",
   "resolve",
   "chore",
+  "redeem",
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];
 

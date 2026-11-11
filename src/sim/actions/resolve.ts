@@ -764,6 +764,12 @@ export type VerbEffect =
       readonly what: string | null;
     }
   | {
+      /** Un pedido de canje de aportes (novel-sect-duty-exchange): las horas de pase que pidió, si dijo. */
+      readonly kind: "redeem";
+      readonly hours: number | null;
+      readonly what: string | null;
+    }
+  | {
       /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
       readonly kind: "ponder";
       readonly about: string | null;
@@ -1076,6 +1082,18 @@ const chore: Resolver = (c) => ({
   effect: { kind: "chore", what: argText(c, "what") },
   seconds: c.nominal,
 });
+
+/** El canje de aportes: deja cuántas horas pidió y qué; si alcanza lo decide `game`. */
+const redeem: Resolver = (c) => {
+  const a = c.input.node.args.find((x) => x.role === "for");
+  const hours = a && "seconds" in a ? a.seconds / 3600 : null;
+  // Pedir sale siempre: lo que decide es la secta, no una tirada.
+  return {
+    effect: { kind: "redeem", hours, what: argText(c, "what") },
+    seconds: c.nominal,
+    verdict: { outcome: "success", failure: null, believed: "success" },
+  };
+};
 
 /** Proponerse algo: deja las palabras y la persona, si la nombró; la meta la arma `game`. */
 const resolveGoal: Resolver = (c) => ({
@@ -2939,6 +2957,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   ponder,
   resolve: resolveGoal,
   chore,
+  redeem,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

@@ -264,8 +264,8 @@ describe("el borrador según el catálogo", () => {
     expect(a).toContain('"const":"take"');
     // Exclusión plan/speech y actos cerrados: 34 212 inline; referencias compartidas: 25 411.
     // El `target` opcional de `look` (play-refs-objects-look) lo lleva a ~27 040; el verbo `use`
-    // (use-core), a ~27 930; `kindle` y `douse` (hearth-tend), a ~28 780; el `with` de `gather` y `work` (use-tools-arg), a ~29 690; `slaughter` (livestock-slaughter), a ~30 250; `resolve` (novel-goals-truth-act), a ~31 830; `meditate` y `breakthrough` (novel-cult-*), a ~32 710.
-    expect(a.length).toBeLessThan(33_500);
+    // (use-core), a ~27 930; `kindle` y `douse` (hearth-tend), a ~28 780; el `with` de `gather` y `work` (use-tools-arg), a ~29 690; `slaughter` (livestock-slaughter), a ~30 250; `resolve` (novel-goals-truth-act), a ~31 830; `meditate` y `breakthrough` (novel-cult-*), a ~32 710; `chore` y `redeem` (novel-sect-duty-*), a ~34 070.
+    expect(a.length).toBeLessThan(34_500);
     expect(a).toContain('"anyOf"');
     expect(a).toContain('"$defs"');
   });

@@ -83,8 +83,30 @@ export const SECT_CAVE_PASS = table<SectCavePass>("cultivation.sect_cave_pass");
 /** Se le acabaron las horas del pase. */
 export const SECT_CAVE_PASS_SPENT_EVENT = "cultivation.sect_cave_pass_spent";
 
+/** El canje de aportes por horas de pase (novel-sect-duty-exchange). */
+export const SECT_EXCHANGE_EVENT = "cultivation.sect_exchange";
+/** Cuántos puntos de contribución cuesta una hora de cueva (sin calibrar). */
+export const CAVE_PASS_POINTS_PER_HOUR = 2;
+/** Las horas que se piden si no se dice cuántas. */
+export const REDEEM_DEFAULT_HOURS = 4;
+/** Por qué la secta no canjea. */
+export type ExchangeRefusal = "not_member" | "no_need" | "no_points";
+
+/**
+ * Cuántas horas enteras de pase da la secta si se piden `wanted` (o las de siempre) y hay `points`:
+ * lo pedido o lo que alcance, lo menor; y los puntos que se descuentan.
+ */
+export function exchangeHours(
+  points: number,
+  wanted: number | null,
+): { readonly hours: number; readonly cost: number } {
+  const want = Math.max(1, Math.floor(wanted ?? REDEEM_DEFAULT_HOURS));
+  const hours = Math.max(0, Math.min(want, Math.floor(points / CAVE_PASS_POINTS_PER_HOUR)));
+  return { hours, cost: hours * CAVE_PASS_POINTS_PER_HOUR };
+}
+
 /** Los rangos que entran a la cueva sin pase. */
-const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
+export const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
 
 /**
  * Si la secta no deja a `who` entrar a `space`: es la cueva de su sede y no tiene rango interno o

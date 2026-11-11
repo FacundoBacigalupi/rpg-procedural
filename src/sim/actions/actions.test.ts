@@ -103,6 +103,7 @@ describe("catálogo", () => {
       "milk",
       "move",
       "ponder",
+      "redeem",
       "resolve",
       "rest",
       "search",

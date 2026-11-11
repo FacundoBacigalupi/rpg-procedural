@@ -50,6 +50,7 @@ import {
   realmOf,
   SECT_CAVE_PASS_SPENT_EVENT,
   SECT_CHORE_EVENT,
+  SECT_EXCHANGE_EVENT,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
   SECT_LORE,
@@ -734,6 +735,14 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CAVE_PASS_SPENT_EVENT)
   )
     cues.add("cave_pass_spent");
+  const exchange =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_EXCHANGE_EVENT);
+  if (exchange) {
+    const refused = (exchange.data as { refused?: unknown } | null)?.refused !== undefined;
+    cues.add(refused ? "exchange_refused" : "exchange_done");
+  }
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

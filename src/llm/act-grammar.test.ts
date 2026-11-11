@@ -26,4 +26,20 @@ describe("la gramática y el acto de habla declarado", () => {
       what: "plata",
     });
   });
+
+  it("«canjeo mis puntos por tres horas de cueva» es el canje de aportes", () => {
+    expect(parseCommand("canjeo mis puntos por tres horas de cueva")).toMatchObject({
+      kind: "act",
+      plan: {
+        verb: "redeem",
+        args: [
+          { role: "for", duration: { amount: 3, unit: "hour" } },
+          { role: "what", text: "cueva" },
+        ],
+      },
+    });
+    expect(parseCommand("pido un pase")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "cueva" }] },
+    });
+  });
 });
