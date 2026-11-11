@@ -2481,7 +2481,11 @@ export function lifeWorld(
         resolveGoalProcess(parts.goalSketches ?? []),
         ...(parts.cultivation
           ? [
-              meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year }),
+              meditateProcess({
+                bodyPlans: parts.plans,
+                yearTicks: parts.clock.year,
+                ...(parts.map.patches ? { map: parts.map } : {}),
+              }),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
             ]
           : []),

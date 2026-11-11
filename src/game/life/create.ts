@@ -96,6 +96,7 @@ import {
   PERSON,
   type Person,
   PLACE,
+  PLACE_QI,
   PLANS,
   type PlaceFeature,
   type PlaceQi,
@@ -103,6 +104,7 @@ import {
   PRESSURE_CURVES,
   patchesOf,
   pickTrajectory,
+  QI_TAKEN,
   RECIPES,
   REGISTERS,
   RELATION_BONDS,
@@ -2173,6 +2175,9 @@ export function createLife(
         : undefined;
       if (seatHex !== undefined) {
         truth.set(PLACE, sect.sect.seatPlace, { kind: "sect", hexes: [seatHex] });
+        // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
+        truth.set(PLACE_QI, sect.sect.seatPlace, sect.sect.seat.qi);
+        truth.set(QI_TAKEN, sect.sect.seatPlace, { taken: 0, drawn: 0, at: pop.now });
       }
     }
     // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.

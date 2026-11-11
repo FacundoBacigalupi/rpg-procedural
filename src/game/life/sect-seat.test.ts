@@ -4,19 +4,34 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, type EntityRef, loadContent } from "../../core/index.ts";
 import {
+  type ContentSource,
+  type EntityRef,
+  type EventId,
+  HOUR,
+  loadContent,
+  type Tick,
+} from "../../core/index.ts";
+import {
+  ABSORBED_EVENT,
   type ActionPlan,
+  BODY_STATE,
+  CULTIVATION_LAW,
+  CULTIVATION_STATE,
   checkInvariants,
   hexPath,
   LOCATION,
   PLACE,
+  PLACE_QI,
   patchesOf,
   patchOf,
+  QI_TAKEN,
   SECT,
+  TALENT,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
+import { qiPoolOf } from "./meditate.ts";
 import { PLAYER_TREK } from "./trek.ts";
 import { playerView } from "./view.ts";
 import { playerSkyOf } from "./weather-panel.ts";
@@ -113,6 +128,56 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     expect(playerView(ww, [], { heardSince: last }).self.cues).toContain("trek_arrived");
     // En la sede, el tiempo es el de su celda (novel-sect-seat-weather).
     expect(playerSkyOf(ww).climate).toBe(patchOf(ww.map, goal).climate);
+  });
+
+  it("meditar en la sede toma de la reserva de su celda, no de la de la aldea (hall-qi)", () => {
+    const life2 = Life.create(3, content, options);
+    const w2 = life2.world;
+    const me = life2.player;
+    const org2 = w2.truth.ids(SECT)[0] as EntityRef;
+    const s2 = w2.truth.get(SECT, org2);
+    if (!s2) throw new Error("sin secta");
+    const plane = w2.truth.ids(CULTIVATION_LAW)[0] as EntityRef;
+    expect(w2.truth.get(PLACE_QI, s2.seatPlace)?.cell).toBe(s2.seat.cell);
+    expect(qiPoolOf(w2.truth, w2.map, plane, me)).toBe(plane);
+    // Ya sintiendo el qi, de pie en la sede.
+    const t = w2.truth.get(TALENT, me);
+    if (!t) throw new Error("sin talento");
+    w2.truth.set(TALENT, me, {
+      ...t,
+      innate: { ...t.innate, spirit_root: 3, root_wood: 3, comprehension: 0.7 },
+    });
+    w2.truth.set(CULTIVATION_STATE, me, {
+      sensitivity: 2,
+      hours: 100,
+      sensed: { at: 0 as Tick, event: "e0" as EventId },
+    });
+    const goal = w2.truth.get(PLACE, s2.seatPlace)?.hexes[0] as number;
+    w2.truth.set(LOCATION, me, { hex: goal });
+    expect(qiPoolOf(w2.truth, w2.map, plane, me)).toBe(s2.seatPlace);
+    const body = w2.truth.get(BODY_STATE, me);
+    if (body) w2.truth.set(BODY_STATE, me, { ...body, sleepDebt: 0, fatigue: 0, water: 0 });
+    life2.turn(
+      {
+        actor: me,
+        source: "player",
+        root: {
+          kind: "do",
+          verb: "meditate",
+          args: [{ role: "for", seconds: 4 * HOUR }],
+          manner: [],
+        },
+        manner: [],
+        causes: [{ kind: "state", entity: me, key: "intent" }],
+      },
+      1,
+    );
+    const drawn = w2.truth.get(QI_TAKEN, s2.seatPlace)?.drawn ?? 0;
+    expect(drawn).toBeGreaterThan(0);
+    expect(w2.truth.get(QI_TAKEN, plane)?.drawn ?? 0).toBe(0);
+    expect(w2.truth.get(CULTIVATION_STATE, me)?.qi ?? 0).toBeCloseTo(drawn, 3);
+    const absorbed = w2.log.all().filter((e) => e.kind === ABSORBED_EVENT && e.actors[0] === me);
+    expect((absorbed[0]?.data as { cell?: number } | undefined)?.cell).toBe(s2.seat.cell);
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {
