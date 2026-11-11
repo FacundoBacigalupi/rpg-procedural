@@ -4,6 +4,8 @@
 import { type PlanetClock, Rng, type Seed } from "../../core/index.ts";
 import { anomalyOfMap, harvestSeason, type LocalMap } from "../../sim/index.ts";
 import {
+  localPatch,
+  localTerrain,
   oceanBasins,
   oscillationSite,
   type Planet,
@@ -26,7 +28,7 @@ const SLOPE_FACTOR = 8;
  */
 export function localMapOf(
   planet: Planet,
-  site: VillageSite,
+  site: Pick<VillageSite, "patch" | "terrain">,
   noOscillation: boolean = false,
   noFlood: boolean = false,
 ): LocalMap {
@@ -79,6 +81,15 @@ export function localMapOf(
       windNorth: planet.climate.windNorth[patch.cell] as number,
     },
   };
+}
+
+/**
+ * El `LocalMap` de cualquier celda del planeta (novel-sect-seat-patch): el mismo armado que el de
+ * la aldea, desde el parche fino y su terreno. Para unirlo al de la aldea, `joinMaps`.
+ */
+export function cellMapOf(planet: Planet, cell: number): LocalMap {
+  const patch = localPatch(planet, cell);
+  return localMapOf(planet, { patch, terrain: localTerrain(planet, patch) });
 }
 
 /**
