@@ -5,7 +5,7 @@
 // Las configurables por el usuario y la delegación llegan con las rutinas (Fase 3).
 
 import type { AgentId, Event, EventId, Tick } from "../../core/index.ts";
-import { BODY_STATE } from "../../sim/index.ts";
+import { BODY_STATE, SECT_HERALD_EVENT, SECT_LORE, SECT_VISIT_EVENT } from "../../sim/index.ts";
 import { ALARMING_SIGNS, alarmingSignsOf } from "./alarms.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
 import { perceivedDetail } from "./perceive.ts";
@@ -118,6 +118,19 @@ export function alarmingSigns(w: LifeWorld): Set<string> {
   return alarmingSignsOf(plan, body, deficiencyStagesOf(w.truth, w.player, w.deficiencySigns));
 }
 
+/**
+ * Las noticias sin actor que el personaje no ve pero sabe (novel-cult-sect-goals): el aviso de la
+ * secta le dejó la fecha en la creencia, y el día de la bajada sabe que llegaron porque la esperaba.
+ */
+function learns(w: LifeWorld, e: Event): boolean {
+  const lore = w.truth.get(SECT_LORE, w.player);
+  if (lore?.visitAt === undefined) return false;
+  const d = (e.data ?? {}) as { visitAt?: number; start?: number };
+  if (e.kind === SECT_HERALD_EVENT) return lore.visitAt === d.visitAt;
+  if (e.kind === SECT_VISIT_EVENT) return lore.visitAt === d.start;
+  return false;
+}
+
 /** Lo que el evento de otro le hace al personaje en el cuerpo (un golpe que lo alcanza). */
 function touches(e: Event, me: AgentId): boolean {
   if (e.actors[0] === me || !e.actors.includes(me)) return false;
@@ -151,6 +164,14 @@ export function fixedInterrupt(
     const who = e.actors[0] as AgentId | undefined;
     if (touches(e, me))
       return { kind: "attacked", tick: e.tick, event: e.id, ...(who ? { who } : {}) };
+    if (!who && routine !== null && learns(w, e)) {
+      const rule = routine.watch.find((r) => matches(r.on, e, me));
+      if (rule !== undefined) {
+        const heard: Interrupt = { kind: "watched", tick: e.tick, event: e.id, rule: rule.on };
+        if (rule.action === "stop") return heard;
+        notes?.push(heard);
+      }
+    }
     if (!who || who === me) continue;
     if (e.kind === "action.speak") {
       const data = e.data as {

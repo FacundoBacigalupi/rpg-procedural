@@ -19,6 +19,7 @@ const CAUSE: Readonly<Record<string, string>> = {
 
 const STEP: Readonly<Record<string, string>> = {
   "combat.fight": "una pelea",
+  "cultivation.sect_trial": "la prueba de la secta",
   "body.collapsed": "un desmayo",
   "body.wound_infected": "una herida que se infectó",
   "body.wound_healed": "una herida que cerró",
@@ -33,6 +34,7 @@ const CLOSER: Readonly<Record<string, string>> = {
   "body.wound_infected": "hasta que una herida se infectó",
   "body.amputated": "hasta que perdió un miembro",
   "law.default": "hasta una deuda sin pagar",
+  "cultivation.sect_trial": "hasta que la secta le leyó la raíz",
   death: "hasta el final",
 };
 

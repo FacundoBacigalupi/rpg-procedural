@@ -38,6 +38,7 @@ export * from "./known.ts";
 export * from "./life.ts";
 export * from "./map.ts";
 export * from "./marks.ts";
+export * from "./meditate.ts";
 export { LABOR } from "./midwife.ts";
 export * from "./nickname.ts";
 export { NPC_JOURNEY } from "./npc-verbs.ts";

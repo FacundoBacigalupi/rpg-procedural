@@ -17,6 +17,12 @@
     "watch": {
       "events": ["cultivation."],
       "action": "stop"
+    },
+    "suggest": {
+      "verb": "move",
+      "place": "la plaza",
+      "when": "sect_visit",
+      "say": "ir a la plaza, que bajó la secta"
     }
   },
   {

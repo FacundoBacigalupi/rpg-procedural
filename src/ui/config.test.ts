@@ -33,6 +33,16 @@ describe("perfil de la CLI y la web", () => {
     expect(config(["--profile", "basic", "--tech"]).setup.life).toEqual({ mortalTech: true });
   });
 
+  it("--cultivation suma el cultivo al setup (con o sin perfil) y sin él no aparece", () => {
+    expect(config([]).setup.life).not.toHaveProperty("cultivation");
+    const full = config(["--cultivation"]).setup.life;
+    expect(full).toEqual({ ...FULL_PROFILE, cultivation: true });
+    expect(ScenarioLife.parse(full)).toEqual({ ...FULL_PROFILE, cultivation: true });
+    expect(config(["--profile", "basic", "--cultivation"]).setup.life).toEqual({
+      cultivation: true,
+    });
+  });
+
   it("rechaza nombres de perfil desconocidos", () => {
     expect(() => config(["--profile", "ful"])).toThrow("perfil inválido");
   });

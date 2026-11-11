@@ -222,6 +222,8 @@ export function narratorUserMessage(request: NarrationRequest): string {
     mode: request.mode,
     scene: v.scene,
     self: v.self.cues,
+    ...(v.self.realm !== undefined ? { realm: v.self.realm } : {}),
+    ...(v.self.technique !== undefined ? { technique: v.self.technique } : {}),
     outcomes: v.outcomes,
     ...(v.thoughts.length > 0 ? { thoughts: v.thoughts } : {}),
     ...(v.tastes.length > 0 ? { tastes: v.tastes } : {}),

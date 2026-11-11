@@ -276,9 +276,16 @@
   {
     "id": "ponder",
     "kind": "action",
-    "stems": ["pens", "piens", "medit", "reflexion", "cavil", "rumi"],
+    "stems": ["pens", "piens", "reflexion", "cavil", "rumi"],
     "forms": [],
     "weak": ["vuelta", "queda"]
+  },
+  {
+    "id": "meditate",
+    "kind": "action",
+    "stems": ["medit", "trance"],
+    "forms": [],
+    "weak": ["qi"]
   },
   {
     "id": "resolve",
@@ -286,6 +293,20 @@
     "stems": ["propon", "propus", "propues", "propós"],
     "forms": [],
     "weak": ["meta"]
+  },
+  {
+    "id": "breakthrough",
+    "kind": "action",
+    "stems": ["ruptur", "umbral"],
+    "forms": [],
+    "weak": ["qi", "romp", "romper"]
+  },
+  {
+    "id": "cultivation.breakthrough",
+    "kind": "action",
+    "stems": ["ruptur", "umbral", "arremolin"],
+    "forms": [],
+    "weak": ["qi", "sangre"]
   },
   {
     "id": "body.died",

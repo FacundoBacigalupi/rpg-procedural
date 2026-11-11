@@ -155,6 +155,13 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.meditate",
+    "lines": [
+      "{who} medita, quieto, con los ojos cerrados.",
+      "Ves a {who} meditando, con la respiración lenta."
+    ]
+  },
+  {
     "id": "percept.action.wait",
     "lines": ["{who} espera, quieto.", "Ves a {who} esperando."]
   },
@@ -261,6 +268,20 @@
   {
     "id": "percept.action.body.died",
     "lines": ["{who} cae sin vida.", "Ves a {who} caer muerto."]
+  },
+  {
+    "id": "percept.action.breakthrough",
+    "lines": [
+      "{who} está sentado, tenso, como empujando una ruptura desde adentro.",
+      "Ves a {who} quieto y rígido, apretando algo contra un umbral que no se ve."
+    ]
+  },
+  {
+    "id": "percept.action.cultivation.breakthrough",
+    "lines": [
+      "Alrededor de {who} el aire se arremolina de golpe, y después se aquieta.",
+      "Algo pasa con {who}: una ruptura que se nota en el aire, como un tirón."
+    ]
   },
   {
     "id": "percept.action.family.birth",
@@ -404,6 +425,44 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.meditate.success",
+    "lines": [
+      "Te quedás quieto, respirando despacio. No pasa nada que puedas nombrar.",
+      "Cerrás los ojos y seguís el aire que entra y sale. El tiempo se estira."
+    ]
+  },
+  {
+    "id": "outcome.meditate.partial",
+    "lines": ["Te sentás a meditar, pero la cabeza se te va a otras cosas."]
+  },
+  {
+    "id": "outcome.meditate.failure",
+    "lines": ["Intentás aquietarte, pero no hay caso: el cuerpo no se queda quieto."]
+  },
+  {
+    "id": "outcome.meditate.unsure",
+    "lines": ["Meditás un rato."]
+  },
+  {
+    "id": "outcome.breakthrough.success",
+    "lines": [
+      "Concentrás todo el qi que tenés adentro y lo empujás contra el umbral.",
+      "Te sentás derecho, respirás hondo y empujás el qi hacia la ruptura."
+    ]
+  },
+  {
+    "id": "outcome.breakthrough.partial",
+    "lines": ["Empujás hacia la ruptura, pero la cabeza no termina de aquietarse."]
+  },
+  {
+    "id": "outcome.breakthrough.failure",
+    "lines": ["La ruptura no llega: el umbral sigue lejos, borroso."]
+  },
+  {
+    "id": "outcome.breakthrough.unsure",
+    "lines": ["Intentás la ruptura."]
   },
   {
     "id": "outcome.wait.success",
@@ -1072,6 +1131,162 @@
     "lines": [
       "Se te fue el conocimiento, y volvés en vos sin saber cuánto pasó.",
       "Te desmayaste por el clima y recién ahora volvés en vos."
+    ]
+  },
+  {
+    "id": "self.sensed_qi",
+    "lines": [
+      "En la quietud, algo se mueve: una corriente tibia, apenas, entre vos y el aire. No es el viento.",
+      "Por primera vez sentís algo que no sabías que estaba: un hilo de calor que va y viene con la respiración."
+    ]
+  },
+  {
+    "id": "self.break_success",
+    "lines": [
+      "Algo cede adentro, como una compuerta. El qi baja de golpe y encuentra lugar donde antes había pared.",
+      "La pared que sentías se abre. Respirás y el cuerpo entero parece más hondo que antes."
+    ]
+  },
+  {
+    "id": "self.break_stalled",
+    "lines": [
+      "Empujás y empujás, pero la pared no cede. Te quedás con el qi apretado y la frente mojada.",
+      "No pasa. El qi se arremansa contra el mismo borde de siempre."
+    ]
+  },
+  {
+    "id": "self.break_backlash",
+    "lines": [
+      "El qi se te vuelve en contra: un golpe por dentro, sabor a sangre en la boca, y lo acumulado se escapa.",
+      "Algo se tuerce adentro. Te dobla un dolor que corre por los canales, y sentís cómo se va lo que habías acumulado."
+    ]
+  },
+  {
+    "id": "self.break_nothing",
+    "lines": ["Empujás hacia adentro, pero no hay nada que empujar: ni corriente, ni pared."]
+  },
+  {
+    "id": "self.sect_coming",
+    "lines": [
+      "Corre la voz por la aldea: en unos días bajan los inmortales de la secta a la plaza, a llevarse a los chicos que tengan raíz.",
+      "Lo dicen en todas las casas: dentro de una semana la secta baja a la plaza a probar a los chicos."
+    ]
+  },
+  {
+    "id": "self.sect_here",
+    "lines": [
+      "Hoy la secta está en la plaza: gente de ropas claras que no son de acá, quieta, mirando a los chicos que les traen.",
+      "Bajaron los de la secta. En la plaza se juntan las familias con sus chicos, en silencio."
+    ]
+  },
+  {
+    "id": "self.trial_accepted",
+    "lines": [
+      "Ponés la mano sobre la piedra y se enciende. El de la secta te mira un rato largo y asiente: te quieren.",
+      "La piedra brilla bajo tu palma, más de lo que esperabas. Te dicen que tenés raíz y que la secta te acepta."
+    ]
+  },
+  {
+    "id": "self.sect_joined",
+    "lines": [
+      "Te anotan entre los suyos: discípulo de afuera. Te dicen hacia dónde queda la sede, cuántas jornadas a pie, y que tenés un mes para presentarte.",
+      "Ya sos de la secta, dicen, aunque sea de los de afuera. Te explican el camino a la sede con cuidado y te dan un mes para subir."
+    ]
+  },
+  {
+    "id": "self.technique_taught",
+    "lines": [
+      "Antes de que te vayas, uno de ellos te hace respirar como respiran ellos, despacio, hasta que te sale: {technique}, dice que se llama.",
+      "Te enseñan ahí mismo una forma de respirar y te la hacen repetir: {technique}. Es lo primero que se aprende allá arriba, dicen."
+    ]
+  },
+  {
+    "id": "self.realm",
+    "lines": ["Para la secta, eso es {realm}.", "Los de la secta lo llaman {realm}."]
+  },
+  {
+    "id": "self.realm_layer",
+    "lines": [
+      "Para la secta, eso es la {ordinal} {word} de {realm}.",
+      "Los de la secta dirían que estás en la {ordinal} {word} de {realm}."
+    ]
+  },
+  {
+    "id": "ordinal.f.1",
+    "lines": ["primera"]
+  },
+  {
+    "id": "ordinal.f.2",
+    "lines": ["segunda"]
+  },
+  {
+    "id": "ordinal.f.3",
+    "lines": ["tercera"]
+  },
+  {
+    "id": "ordinal.f.4",
+    "lines": ["cuarta"]
+  },
+  {
+    "id": "ordinal.f.5",
+    "lines": ["quinta"]
+  },
+  {
+    "id": "ordinal.f.6",
+    "lines": ["sexta"]
+  },
+  {
+    "id": "ordinal.f.7",
+    "lines": ["séptima"]
+  },
+  {
+    "id": "ordinal.f.8",
+    "lines": ["octava"]
+  },
+  {
+    "id": "ordinal.f.9",
+    "lines": ["novena"]
+  },
+  {
+    "id": "self.trial_rejected",
+    "lines": [
+      "La piedra brilla apenas, turbia, con varios colores mezclados. El de la secta niega con la cabeza: una raíz que no sirve.",
+      "Algo se enciende en la piedra, pero poco. Te dicen que no, sin mirarte mucho, y llaman al siguiente."
+    ]
+  },
+  {
+    "id": "self.trial_dark",
+    "lines": [
+      "Ponés la mano sobre la piedra y no pasa nada. Ni una luz. El de la secta ya está mirando al siguiente.",
+      "La piedra queda fría y oscura bajo tu palma. Sin raíz, dicen, y te apartan con un gesto."
+    ]
+  },
+  {
+    "id": "self.qi_flows",
+    "lines": [
+      "Con cada respiración, algo tibio entra y se queda, como agua que encuentra su cauce.",
+      "El hilo de calor ya no se te escapa: entra y baja despacio hacia el vientre."
+    ]
+  },
+  {
+    "id": "self.qi_resists",
+    "lines": [
+      "El qi de este lugar no se deja: lo sentís, pero se te resbala como si no fuera para vos.",
+      "Lo que hay en el aire te roza y se aparta; apenas un poco se queda."
+    ]
+  },
+  {
+    "id": "self.qi_pressure",
+    "lines": [
+      "Hay una presión sorda bajo el ombligo, como un odre que se va llenando.",
+      "Algo adentro se tensa: cada vez entra menos y aprieta más."
+    ]
+  },
+  {
+    "id": "self.qi_full",
+    "lines": [
+      "Estás lleno: el qi llega hasta un borde que no cede, y lo que sigue entrando se te vuelve a ir.",
+      "Adentro hay una pared. Por más que respires, no entra nada más."
     ]
   },
   {

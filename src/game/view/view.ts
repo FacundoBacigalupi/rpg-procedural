@@ -43,10 +43,49 @@ export type SelfCue =
   /** Le falta una parte del cuerpo (`Scar.lost`): lo sabe y lo ve. */
   | "maimed"
   /** Perdió el conocimiento por el frío o el calor y volvió en sí (`body.collapsed` por causa térmica). */
-  | "blacked_out";
+  | "blacked_out"
+  /** Meditando sintió el qi por primera vez (`cultivation.sensed_qi`, novel-cult-meditate). */
+  | "sensed_qi"
+  /** Meditando, el qi entra al cuerpo (`cultivation.absorbed`, novel-cult-absorb). */
+  | "qi_flows"
+  /** El qi se resiste: se parece poco a su raíz. */
+  | "qi_resists"
+  /** El recipiente aprieta: cerca del tope. */
+  | "qi_pressure"
+  /** Lleno: no entra más. */
+  | "qi_full"
+  /** La ruptura pasó: el umbral cedió (`cultivation.breakthrough`, novel-cult-break). */
+  | "break_success"
+  /** La ruptura no pasó: la pared no cede. */
+  | "break_stalled"
+  /** Retroceso: el qi se volvió en contra y se escapó. */
+  | "break_backlash"
+  /** Intentó romper sin sentir el qi: no hay nada que empujar. */
+  | "break_nothing"
+  /** Oyó el aviso: en unos días baja la secta a la plaza a buscar discípulos (novel-cult-sect-visit). */
+  | "sect_coming"
+  /** La gente de la secta está en la plaza. */
+  | "sect_here"
+  /** Lo midieron con la piedra y lo aceptan (`cultivation.sect_trial`, novel-cult-sect-trial). */
+  | "trial_accepted"
+  /** La piedra brilló poco: una raíz que la secta no quiere. */
+  | "trial_rejected"
+  /** La piedra no brilló: sin raíz, según ella. */
+  | "trial_dark"
+  /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
+  | "sect_joined"
+  /** Los de la secta le enseñaron su técnica de entrada (`self.technique` la nombra). */
+  | "technique_taught";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
+  /**
+   * El reino y la capa en que la escuela de su secta pone su tramo, solo el turno en que importa
+   * (rompió o entró): lo que el narrador nombra (novel-cult-school).
+   */
+  readonly realm?: { readonly name: string; readonly layer?: number; readonly word?: string };
+  /** El nombre de la técnica que le enseñaron, el turno en que se la enseñaron. */
+  readonly technique?: string;
 }
 
 /** Lo que el personaje piensa o siente este turno (narration §7, modo introspección). */
@@ -603,6 +642,9 @@ export interface ViewInput {
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
+  /** El reino y la técnica del turno, si los hay (`SelfView`). */
+  readonly selfRealm?: SelfView["realm"];
+  readonly selfTechnique?: string;
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
@@ -812,7 +854,11 @@ export function buildPlayerView(input: ViewInput): PlayerView {
 
   const things = thingViews(input.things ?? [], input.fixtures ?? [], input.steps);
   const view = {
-    self: { cues: [...(input.self ?? [])] },
+    self: {
+      cues: [...(input.self ?? [])],
+      ...(input.selfRealm ? { realm: input.selfRealm } : {}),
+      ...(input.selfTechnique !== undefined ? { technique: input.selfTechnique } : {}),
+    },
     scene: sceneView(input.scene),
     percepts,
     ...(things.length > 0 ? { things } : {}),

@@ -42,9 +42,12 @@ import {
   SKILL_STATE,
   SKILLS,
   SkillCatalog,
+  TALENT,
+  TALENTS,
   TASTES,
   TASTES_OF,
   TRAITS,
+  talentOf,
   WorldTruth,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -213,6 +216,49 @@ describe("nacer vivo (puro)", () => {
     const t = world(false);
     t.set(BIRTH, mother as EntityRef, { dueAt: 280 * DAY, child: "agent:50" as AgentId });
     expect(run(t).events ?? []).toEqual([]);
+  });
+
+  it("con el cultivo, el hijo hereda el talento de los padres con el parto como origen (novel-cult-law)", () => {
+    const talents = content.all(TALENTS);
+    const withTalent = birthProcess({
+      clock: { day: DAY, year: 365 * DAY } as never,
+      traits,
+      talents,
+      bodyPlans,
+      placeOf: () => place,
+    });
+    const t = world(false);
+    for (const [id, sex] of [
+      [mother, "female"],
+      [father, "male"],
+    ] as const) {
+      t.set(
+        TALENT,
+        id as EntityRef,
+        talentOf(talents, sex, undefined, Rng.root(1).fork(id), "event:1" as EventId),
+      );
+    }
+    const r = withTalent.run({
+      truth: t,
+      now: 282 * DAY,
+      rng: Rng.root(3),
+      newId: () => "agent:99",
+    } as unknown as ProcessContext);
+    expect(withTalent.reads).toContain(TALENT.name);
+    expect(withTalent.writes).toContain(TALENT.name);
+    const row = (r.changes ?? []).find(
+      (c) => (c as { table: string }).table === TALENT.name,
+    ) as unknown as {
+      entity: string;
+      value: {
+        genome: { parents: string[]; originEventId: string };
+        innate: Record<string, number>;
+      };
+    };
+    expect(row.value.genome.parents).toEqual([mother, father]);
+    expect(Object.keys(row.value.innate).sort()).toEqual(talents.map((x) => x.id).sort());
+    // Sin el cultivo, nada del talento.
+    expect(tables(run(world(false)).changes)).not.toContain(TALENT.name);
   });
 
   it("mismo seed, mismo hijo", () => {

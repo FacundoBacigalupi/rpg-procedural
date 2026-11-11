@@ -153,6 +153,9 @@ export function validateNarration(
   ].join(" ");
   const known = new Set<string>(words(quoted));
   for (const w of view.lexicon) for (const x of words(w)) known.add(x);
+  // Lo que la escuela le enseñó a nombrar (novel-cult-school): su reino y su técnica.
+  for (const n of [view.self.realm?.name, view.self.technique])
+    if (n !== undefined) for (const x of words(n)) known.add(x);
   for (const l of view.labels)
     if (l.name !== undefined) for (const x of words(l.name)) known.add(x);
   for (const w of properWords(plain)) {

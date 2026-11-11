@@ -1,0 +1,90 @@
+[
+  {
+    "id": "spirit_root",
+    "species": "human",
+    "name": "Raíz espiritual",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.6
+  },
+  {
+    "id": "meridians",
+    "species": "human",
+    "name": "Meridianos",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "comprehension",
+    "species": "human",
+    "name": "Comprensión",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.4
+  },
+  {
+    "id": "root_wood",
+    "species": "human",
+    "name": "Afinidad de la raíz con madera",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.5
+  },
+  {
+    "id": "root_fire",
+    "species": "human",
+    "name": "Afinidad de la raíz con fuego",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.5
+  },
+  {
+    "id": "root_earth",
+    "species": "human",
+    "name": "Afinidad de la raíz con tierra",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.5
+  },
+  {
+    "id": "root_metal",
+    "species": "human",
+    "name": "Afinidad de la raíz con metal",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.5
+  },
+  {
+    "id": "root_water",
+    "species": "human",
+    "name": "Afinidad de la raíz con agua",
+    "group": "aptitude",
+    "mean": 0,
+    "sd": 1,
+    "min": -4,
+    "max": 4,
+    "heritability": 0.5
+  }
+]

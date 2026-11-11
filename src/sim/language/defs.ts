@@ -14,6 +14,7 @@ export const PLACE_FEATURES = [
   "groundwater",
   "forest",
   "fields",
+  "mountain",
 ] as const;
 export type PlaceFeature = (typeof PLACE_FEATURES)[number];
 

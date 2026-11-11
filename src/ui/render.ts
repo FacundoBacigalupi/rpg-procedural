@@ -21,7 +21,7 @@ import {
   TONE_MARK,
   type WeatherPanel,
 } from "../game/index.ts";
-import type { ConditionKind, Fact, PurposeId } from "../sim/index.ts";
+import type { Compass8, ConditionKind, Fact, PurposeId } from "../sim/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -397,6 +397,17 @@ const PURPOSE_TEXT: Readonly<Record<PurposeId, string>> = {
   duty: "cumplir con su deber",
 };
 
+const COMPASS_TEXT: Readonly<Record<Compass8, string>> = {
+  n: "el norte",
+  ne: "el noreste",
+  e: "el este",
+  se: "el sureste",
+  s: "el sur",
+  sw: "el suroeste",
+  w: "el oeste",
+  nw: "el noroeste",
+};
+
 const ABOUT_SURETY: Readonly<Record<AboutPanel["aliveSurety"], string>> = {
   sure: "",
   unsure: " (no del todo seguro)",
@@ -423,7 +434,13 @@ export function renderAbout(p: AboutPanel): string {
         `Por lo que le viste hacer, te parece que anda por ${PURPOSE_TEXT[p.purpose.motive]}${ABOUT_SURETY[p.purpose.surety]}.`,
       );
   } else if (p.where.state === "here") lines.push(`Estás en ${p.name}.`);
-  else lines.push(`Conocés ${p.name}, pero no tenés más para decir.`);
+  else if (p.hearsay !== undefined) {
+    const h = p.hearsay;
+    const far = h.days === 1 ? "a una jornada de camino" : `a unas ${h.days} jornadas de camino`;
+    lines.push(
+      `Lo sabés de oídas: queda hacia ${COMPASS_TEXT[h.bearing]}, ${far}, y ahí viven los inmortales de una secta${ABOUT_SURETY[h.surety]}.`,
+    );
+  } else lines.push(`Conocés ${p.name}, pero no tenés más para decir.`);
   const owe = p.book.filter((l) => l.direction === "i-owe");
   const owed = p.book.filter((l) => l.direction === "owed-to-me");
   const entry = (l: BookLine) => {
