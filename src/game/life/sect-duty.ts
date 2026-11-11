@@ -10,12 +10,16 @@ import {
   CHORE_POINTS_PER_HOUR,
   choreOf,
   chorePoints,
+  deleteComponent,
   type EventDraft,
+  isSectCave,
   LOCATION,
   PLACE,
   type ProcessDef,
   type ReadonlyWorldTruth,
   SECT,
+  SECT_CAVE_PASS,
+  SECT_CAVE_PASS_SPENT_EVENT,
   SECT_CHORE_EVENT,
   SECT_CONTRIBUTION,
   SECT_MEMBER,
@@ -23,6 +27,7 @@ import {
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
+import { meditation } from "./meditate.ts";
 
 export const SECT_DUTY_PROCESS = "life.sect_duty";
 /** Una hora de tareas de la rutina delegada en la sede (novel-sect-duty-routine). */
@@ -58,13 +63,44 @@ export function sectDutyProcess(): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [SECT_MEMBER.name, SECT.name, PLACE.name, LOCATION.name, SECT_CONTRIBUTION.name],
-    writes: [SECT_CONTRIBUTION.name],
+    reads: [
+      SECT_MEMBER.name,
+      SECT.name,
+      PLACE.name,
+      LOCATION.name,
+      SECT_CONTRIBUTION.name,
+      SECT_CAVE_PASS.name,
+    ],
+    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const rows = new Map<AgentId, SectContribution>();
+      const passes = new Map<AgentId, number>();
       for (const e of ctx.recent) {
+        // Las horas meditadas en la cueva salen del pase de quien entró con uno (novel-sect-cave-pass).
+        const sat = meditation(e);
+        if (sat && isSectCave(ctx.truth.get(LOCATION, sat.who)?.space)) {
+          const pass = ctx.truth.get(SECT_CAVE_PASS, sat.who as unknown as EntityRef);
+          const member = ctx.truth.get(SECT_MEMBER, sat.who as unknown as EntityRef);
+          const ranked = member?.org === pass?.org && member?.rank !== "outer";
+          if (pass && !ranked) {
+            const left = round2((passes.get(sat.who) ?? pass.hours) - sat.hours);
+            if ((passes.get(sat.who) ?? pass.hours) > 0) {
+              passes.set(sat.who, Math.max(0, left));
+              if (left <= 0)
+                events.push({
+                  kind: SECT_CAVE_PASS_SPENT_EVENT,
+                  actors: [sat.who],
+                  place: e.place,
+                  data: { org: pass.org },
+                  emissions: {},
+                  causes: [{ kind: "event", event: e.id }],
+                });
+            }
+          }
+          continue;
+        }
         const done = choreDone(e);
         if (!done) continue;
         const space = ctx.truth.get(LOCATION, done.who)?.space;
@@ -105,6 +141,15 @@ export function sectDutyProcess(): ProcessDef {
         });
       }
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));
+      for (const [who, hours] of passes) {
+        const pass = ctx.truth.get(SECT_CAVE_PASS, who as unknown as EntityRef);
+        if (!pass) continue;
+        changes.push(
+          hours > 0
+            ? setComponent(SECT_CAVE_PASS, who, { ...pass, hours })
+            : deleteComponent(SECT_CAVE_PASS, who as unknown as EntityRef),
+        );
+      }
       return { changes, events };
     },
   };

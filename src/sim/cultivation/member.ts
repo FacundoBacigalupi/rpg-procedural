@@ -5,8 +5,8 @@
 // miembro sigue en su casa, sabiéndose de la secta.
 
 import type { EntityRef, Tick } from "../../core/index.ts";
-import { table } from "../world/index.ts";
-import { compassOf, type Sect, type SectLore, WALK_KM_PER_DAY } from "./sect.ts";
+import { isSectCave, type ReadonlyWorldTruth, table } from "../world/index.ts";
+import { compassOf, SECT, type Sect, type SectLore, WALK_KM_PER_DAY } from "./sect.ts";
 
 export const SECT_JOINED_EVENT = "cultivation.sect_joined";
 
@@ -69,6 +69,43 @@ export interface SectContribution {
 }
 
 export const SECT_CONTRIBUTION = table<SectContribution>("cultivation.sect_contribution");
+
+/**
+ * El pase a la cueva de cultivo (novel-sect-cave-pass): horas que el miembro puede pasar adentro
+ * sin el rango. Se gastan meditando ahí; sin horas, no queda pase.
+ */
+export interface SectCavePass {
+  readonly org: EntityRef;
+  readonly hours: number;
+  readonly since: Tick;
+}
+export const SECT_CAVE_PASS = table<SectCavePass>("cultivation.sect_cave_pass");
+/** Se le acabaron las horas del pase. */
+export const SECT_CAVE_PASS_SPENT_EVENT = "cultivation.sect_cave_pass_spent";
+
+/** Los rangos que entran a la cueva sin pase. */
+const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
+
+/**
+ * Si la secta no deja a `who` entrar a `space`: es la cueva de su sede y no tiene rango interno o
+ * más ni un pase con horas de esa secta (el que no es de la secta, tampoco entra).
+ */
+export function caveBarred(
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  space: string | undefined,
+): boolean {
+  if (!isSectCave(space)) return false;
+  const org = (truth.ids(SECT) as EntityRef[]).find((id) => {
+    const seat = truth.get(SECT, id)?.seatPlace;
+    return seat !== undefined && space?.startsWith(`sect:${seat}/`);
+  });
+  if (org === undefined) return false;
+  const member = truth.get(SECT_MEMBER, who);
+  if (member?.org === org && CAVE_RANKS.has(member.rank)) return false;
+  const pass = truth.get(SECT_CAVE_PASS, who);
+  return !(pass?.org === org && pass.hours > 0);
+}
 
 /** El sueldo del mes desde el tesoro de la secta (novel-sect-duty-stipend). */
 export const SECT_STIPEND_EVENT = "cultivation.sect_stipend";

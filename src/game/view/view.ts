@@ -91,7 +91,9 @@ export type SelfCue =
   /** Cobró el sueldo del mes de la secta (`cultivation.sect_stipend`, novel-sect-duty-stipend). */
   | "stipend_paid"
   /** Cobró, pero menos: el tesoro no alcanzaba. */
-  | "stipend_cut";
+  | "stipend_cut"
+  /** Se le acabaron las horas del pase a la cueva (novel-sect-cave-pass). */
+  | "cave_pass_spent";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
@@ -392,6 +394,8 @@ export type EffectView =
       readonly stumbled: boolean;
       /** La puerta trabada no lo dejó salir. */
       readonly blocked?: boolean;
+      /** No lo dejaron entrar (la cueva de la secta sin rango ni pase, novel-sect-cave-pass). */
+      readonly barred?: boolean;
     }
   | {
       readonly kind: "observe";
@@ -1018,7 +1022,11 @@ function effectView(
         kind: "move",
         arrived: e.reached === null ? null : e.reached === e.to,
         stumbled: e.stumbled,
-        ...(e.blocked !== undefined ? { blocked: true } : {}),
+        ...(e.blocked === "barred"
+          ? { barred: true }
+          : e.blocked !== undefined
+            ? { blocked: true }
+            : {}),
       };
     case "observe":
       return { kind: "observe", ...target(e.target) };

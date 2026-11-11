@@ -116,6 +116,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   /** El actor está detrás de una puerta trabada: de ahí no sale caminando (settlements §7). */
   readonly shut?: boolean | undefined;
   /**
+   * Quien manda en el sitio no lo deja entrar al espacio de `withinSite` (la cueva de la secta sin
+   * rango ni pase, novel-sect-cave-pass): lo paran en la entrada; si viene de otro hex, llega afuera.
+   */
+  readonly barred?: boolean | undefined;
+  /**
    * `move` hacia un espacio del sitio (de la casa a la plaza, a la casa del vecino): al llegar al
    * hex queda en `space`. Si ya está en ese hex es un paso de metros, sin rumbo que perder: no se
    * tira, tarda `seconds` y solo lo frena no poder caminar o la puerta trabada (`leaving`: sale de
@@ -466,7 +471,7 @@ export type VerbEffect =
       /** Se cayó o se torció algo en el camino (body lo lee cuando llegue). */
       readonly stumbled: boolean;
       /** La puerta trabada no lo dejó salir: se queda donde estaba. */
-      readonly blocked?: "jammed_door";
+      readonly blocked?: "jammed_door" | "barred";
       /** El espacio del sitio donde quedó (la plaza, una casa), si iba a uno. */
       readonly space?: SpaceKey;
       /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
@@ -1156,13 +1161,21 @@ const move: Resolver = (c) => {
   const legEnd = path.length === 0 ? from : (path[path.length - 1] as number);
   const within = c.input.withinSite;
   const at = (hex: number): StateChange[] =>
-    within !== undefined && hex === to
+    within !== undefined && hex === to && c.input.barred !== true
       ? [setComponent(LOCATION, c.input.actor.id, { hex, space: within.space })]
       : hex === from
         ? []
         : [setComponent(LOCATION, c.input.actor.id, { hex })];
 
   if (within !== undefined && to === from) {
+    if (c.input.barred === true) {
+      // Lo paran en la entrada: sabe que no lo dejaron.
+      return {
+        effect: { ...effect(from, false), blocked: "barred" },
+        seconds: Math.min(within.seconds, 60),
+        override: { outcome: "failure", failure: "refused", believed: "failure" },
+      };
+    }
     // Unos pasos adentro del sitio: no hay rumbo que perder ni tirada que valga.
     if (c.input.shut === true && within.leaving) {
       return { effect: { ...effect(from, false), blocked: "jammed_door" }, seconds: 10 };

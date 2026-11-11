@@ -49,6 +49,7 @@ import {
   type ContestClaim,
   CREDIT,
   capabilitiesOf,
+  caveBarred,
   climateMapAt,
   createEntity,
   DEFICIENCY_EFFECTS,
@@ -1657,6 +1658,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     destination,
     shut:
       def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
+    barred:
+      def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
+        ? caveBarred(truth, me as unknown as EntityRef, spaceArg.text as string)
+        : undefined,
     withinSite:
       def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
         ? siteWalk(o.spaces, truth.get(LOCATION, me), spaceArg.text as SpaceKey, strollSeconds)

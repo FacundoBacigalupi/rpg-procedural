@@ -315,6 +315,13 @@
     "lines": ["Todavía no llegás: te queda camino.", "Avanzás, pero no llegás todavía."]
   },
   {
+    "id": "outcome.move.barred",
+    "lines": [
+      "En la entrada te paran: la cueva es para los internos o para quien tenga pase.",
+      "No te dejan pasar a la cueva: sin rango ni pase, ahí no se entra."
+    ]
+  },
+  {
     "id": "outcome.move.blocked",
     "lines": [
       "La puerta está trabada: empujás y no cede.",
@@ -1173,6 +1180,10 @@
       "Te dan el sueldo del mes de la secta: unas monedas de cobre a tu bolsa.",
       "Cobrás lo que la secta paga cada mes a los de tu rango."
     ]
+  },
+  {
+    "id": "self.cave_pass_spent",
+    "lines": ["Se te acabaron las horas del pase: para volver a la cueva vas a necesitar otro."]
   },
   {
     "id": "self.stipend_cut",

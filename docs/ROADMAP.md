@@ -60,7 +60,7 @@ quedan abiertos pero no se toman hasta terminar esta lista. Orden:
     - [x] (novel-sect-duty-treasury) El tesoro finito: la secta tiene su tenencia (grano y plata) en el ledger, que entra desde el tributo externo declarado y paga la despensa de la sede; el agregado sigue con `sect.upkeep` hasta que haya aldeas tributarias simuladas.
     - [x] (novel-sect-duty-stipend) El sueldo por rango cada mes desde el tesoro: cobre a la bolsa de cada miembro presente en la sede; si el tesoro no alcanza, se recorta parejo y se nota (señal y foto de la bolsa).
     - [x] (novel-sect-cave-vein) La cueva de cultivo está sobre el nudo de la veta: meditar ahí absorbe más rápido (factor sobre la misma reserva de la celda, que se conserva), con señal.
-    - [ ] (novel-sect-cave-pass) Entrar a la cueva pide rango interno o más, o un pase con horas que se gastan adentro; al externo sin pase lo para la secta (factibilidad real con el motivo, señal).
+    - [x] (novel-sect-cave-pass) Entrar a la cueva pide rango interno o más, o un pase con horas que se gastan adentro; al externo sin pase lo para la secta (factibilidad real con el motivo, señal).
     - [ ] (novel-sect-duty-exchange) Canjear puntos de contribución por horas de pase a la cueva (y, cuando haya alquimia, píldoras): pedido en la sede, evento causado por los puntos, que se descuentan.
     - [ ] (novel-sect-duty-rank) Ascenso: de externo a interno por aporte acumulado y tramo de cultivo, con evento causado por los puntos y el estado, señal y crónica; el interno medita en la cueva como los demás.
   - [ ] (novel-sect-seat-return) Volver a la aldea de visita o con permiso: el viaje inverso entre parches; la secta sigue viviendo mientras tanto (con `sleepers`, en tier bajo).

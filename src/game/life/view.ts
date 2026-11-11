@@ -48,6 +48,7 @@ import {
   type ReadonlyWorldTruth,
   rainBetween,
   realmOf,
+  SECT_CAVE_PASS_SPENT_EVENT,
   SECT_CHORE_EVENT,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
@@ -728,6 +729,11 @@ export function playerView(
     const cut = (stipend.data as { cut?: unknown } | null)?.cut !== undefined;
     cues.add(cut ? "stipend_cut" : "stipend_paid");
   }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CAVE_PASS_SPENT_EVENT)
+  )
+    cues.add("cave_pass_spent");
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

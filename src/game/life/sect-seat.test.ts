@@ -273,6 +273,12 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     const names = () => knownSpaces(w3, knownEntities(w3)).flatMap((k) => k.names);
     expect(names()).not.toContain("la cueva");
     w3.truth.set(LOCATION, me, { hex: goal });
+    // Interno: la cueva es suya (sin rango ni pase lo paran en la entrada, cave-pass).
+    w3.truth.set(SECT_MEMBER, me, {
+      org: w3.truth.ids(SECT)[0] as EntityRef,
+      rank: "inner",
+      since: life3.now,
+    });
     expect(names()).toContain("la cueva");
     const known = knownEntities(w3);
     const made = planFromDraft(
