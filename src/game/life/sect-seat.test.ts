@@ -19,9 +19,12 @@ import {
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   checkInvariants,
+  ENTITY,
   hexPath,
   type IntentDraft,
   LOCATION,
+  PERSON,
+  PERSON_NAME,
   PLACE,
   PLACE_QI,
   patchesOf,
@@ -29,6 +32,7 @@ import {
   planFromDraft,
   QI_TAKEN,
   SECT,
+  SECT_MEMBER,
   SECT_SITE_SPACES,
   sectSpaceKey,
   TALENT,
@@ -37,6 +41,7 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { knownEntities, knownSpaces } from "./known.ts";
 import { Life } from "./life.ts";
 import { qiPoolOf } from "./meditate.ts";
+import { SECT_HALL, SECT_HALL_EVENT } from "./sect-hall.ts";
 import { PLAYER_TREK } from "./trek.ts";
 import { playerView } from "./view.ts";
 import { playerSkyOf } from "./weather-panel.ts";
@@ -227,6 +232,59 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     if (made.kind !== "plan") throw new Error(`la cueva: ${made.kind}`);
     life3.turn(made.plan, 1);
     expect(w3.truth.get(LOCATION, me)).toEqual({ hex: goal, space: cave });
+  });
+
+  it("al llegar a la sede, sus ranuras se vuelven gente ahí, una sola vez (hall-people-born)", () => {
+    const make = () => {
+      const l = Life.create(3, content, options);
+      const s4 = l.world.truth.get(SECT, l.world.truth.ids(SECT)[0] as EntityRef);
+      if (!s4) throw new Error("sin secta");
+      return { l, s4 };
+    };
+    const { l, s4 } = make();
+    const w4 = l.world;
+    const org4 = w4.truth.ids(SECT)[0] as EntityRef;
+    const goal = w4.truth.get(PLACE, s4.seatPlace)?.hexes[0] as number;
+    l.advanceTo(l.now + 2 * HOUR);
+    expect(w4.truth.has(SECT_HALL, org4)).toBe(false);
+    w4.truth.set(LOCATION, l.player, { hex: goal });
+    l.advanceTo(l.now + 2 * HOUR);
+    const hall = w4.truth.get(SECT_HALL, org4);
+    expect(hall?.people.map((x) => x.slot)).toEqual(s4.slots.map((x) => x.slot));
+    for (const { slot, person } of hall?.people ?? []) {
+      const fixed = s4.slots.find((x) => x.slot === slot);
+      const p = person as unknown as EntityRef;
+      expect(w4.truth.get(PERSON, p)).toMatchObject({ sex: fixed?.sex, born: fixed?.born });
+      expect(w4.truth.get(TALENT, p)).toEqual(fixed?.talent);
+      expect(w4.truth.get(CULTIVATION_STATE, p)).toMatchObject({
+        stage: fixed?.stage,
+        purity: fixed?.purity,
+        foundation: fixed?.foundation,
+      });
+      expect(w4.truth.get(SECT_MEMBER, p)?.org).toBe(org4);
+      expect(w4.truth.get(LOCATION, p)?.hex).toBe(goal);
+      expect(w4.truth.has(PERSON_NAME, p)).toBe(true);
+    }
+    const ranks = (hall?.people ?? []).map(
+      (x) => w4.truth.get(SECT_MEMBER, x.person as unknown as EntityRef)?.rank,
+    );
+    expect(ranks).toContain("master");
+    expect(ranks).toContain("inner");
+    const born = w4.log.all().filter((e) => e.kind === SECT_HALL_EVENT);
+    expect(born.length).toBe(1);
+    expect(born[0]?.causes).toContainEqual({ kind: "event", event: s4.originEventId });
+    const first = w4.truth.get(ENTITY, hall?.people[0]?.person as unknown as EntityRef);
+    expect(first?.originEventId).toBe(born[0]?.id);
+    // Unos días ahí: no se vuelven a materializar, mismo mundo con el mismo seed, invariantes limpios.
+    l.advanceTo(l.now + 3 * w4.clock.day);
+    expect(w4.log.all().filter((e) => e.kind === SECT_HALL_EVENT).length).toBe(1);
+    const twin = make();
+    twin.l.advanceTo(twin.l.now + 2 * HOUR);
+    twin.l.world.truth.set(LOCATION, twin.l.player, { hex: goal });
+    twin.l.advanceTo(l.now);
+    expect(twin.l.hash().total).toBe(l.hash().total);
+    expect(w4.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w4.truth, log: w4.log })).toEqual([]);
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {

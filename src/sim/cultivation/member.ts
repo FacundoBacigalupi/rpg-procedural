@@ -13,17 +13,18 @@ export const SECT_JOINED_EVENT = "cultivation.sect_joined";
 /** Cuántos días le dan al aceptado para presentarse en la sede. */
 export const SECT_REPORT_DAYS = 30;
 
-export type MemberRank = "outer";
+/** Externo (el aceptado en la aldea), interno (discípulo de la sede), anciano y maestro. */
+export type MemberRank = "outer" | "inner" | "elder" | "master";
 
 /** Que alguien es de una secta: desde cuándo, con qué rango y hasta cuándo tiene para subir. */
 export interface SectMember {
   readonly org: EntityRef;
   readonly rank: MemberRank;
   readonly since: Tick;
-  /** El año de la prueba que lo aceptó. */
-  readonly trialYear: number;
+  /** El año de la prueba que lo aceptó (los de la sede no pasaron por la de la aldea). */
+  readonly trialYear?: number;
   /** Hasta cuándo tiene para presentarse en la sede (lo sabe: se lo dijeron). */
-  readonly reportBy: Tick;
+  readonly reportBy?: Tick;
 }
 
 export const SECT_MEMBER = table<SectMember>("cultivation.sect_member");
