@@ -91,6 +91,80 @@ export interface LocalMap {
     /** `life-35`: el campo se anega cuando llueve de más (`harvestSeason` con `flood`). */
     readonly flood?: true;
   };
+  /**
+   * Los parches unidos en este mapa (novel-sect-seat-patch), el primero el de la aldea. Cada
+   * parche ocupa los hexes `base .. base + size - 1` y no tiene aristas hacia los otros: ir de
+   * uno a otro es un viaje entre celdas (travel §2). Sin esto hay un solo parche, el de `cell`.
+   */
+  readonly patches?: readonly PatchSpan[];
+}
+
+/** Un parche dentro de un `LocalMap` unido: su celda, dónde empiezan sus hexes y su clima. */
+export interface PatchSpan {
+  readonly cell: CellId;
+  readonly base: number;
+  readonly size: number;
+  readonly lonDeg: number;
+  readonly climate: ClimateNormals;
+  readonly baseElevationM?: number;
+}
+
+function spanOf(map: LocalMap, base: number): PatchSpan {
+  return {
+    cell: map.cell,
+    base,
+    size: map.neighbors.length,
+    lonDeg: map.lonDeg,
+    climate: map.climate,
+    ...(map.baseElevationM === undefined ? {} : { baseElevationM: map.baseElevationM }),
+  };
+}
+
+/** Los parches del mapa; sin `patches`, uno solo que lo cubre entero. */
+export function patchesOf(map: LocalMap): readonly PatchSpan[] {
+  return map.patches ?? [spanOf(map, 0)];
+}
+
+/** El parche al que pertenece un hex (el primero si el hex está fuera de rango). */
+export function patchOf(map: LocalMap, hex: number): PatchSpan {
+  const spans = patchesOf(map);
+  return spans.find((s) => hex >= s.base && hex < s.base + s.size) ?? (spans[0] as PatchSpan);
+}
+
+/**
+ * Une parches en un mapa (puro): los de `home` conservan sus índices y los de cada otro se
+ * corren a continuación, con los vecinos desplazados y sin aristas entre parches. El clima,
+ * la longitud y la oscilación del mapa siguen siendo los de `home`; cada parche guarda los suyos
+ * en `patches`. Un parche cuya celda ya está en el mapa no se suma dos veces.
+ */
+export function joinMaps(home: LocalMap, others: readonly LocalMap[]): LocalMap {
+  const spans = [...patchesOf(home)];
+  const neighbors = [...home.neighbors];
+  const crossSeconds = [...home.crossSeconds];
+  const forest = [...home.forest];
+  const elevationM = home.elevationM ? [...home.elevationM] : undefined;
+  const water = home.water ? [...home.water] : undefined;
+  for (const m of others) {
+    if (spans.some((s) => s.cell === m.cell)) continue;
+    const base = neighbors.length;
+    const size = m.neighbors.length;
+    spans.push(spanOf(m, base));
+    for (const ns of m.neighbors) neighbors.push(ns.map((n) => n + base));
+    crossSeconds.push(...m.crossSeconds);
+    forest.push(...m.forest);
+    elevationM?.push(...(m.elevationM ?? new Array<number>(size).fill(m.baseElevationM ?? 0)));
+    water?.push(...(m.water ?? new Array<number>(size).fill(0)));
+  }
+  if (spans.length === 1) return home;
+  return {
+    ...home,
+    neighbors,
+    crossSeconds,
+    forest,
+    ...(elevationM ? { elevationM } : {}),
+    ...(water ? { water } : {}),
+    patches: spans,
+  };
 }
 
 /** El camino más corto en hexes de `from` a `to` (sin `from`, con `to`); vacío si son el mismo. */
