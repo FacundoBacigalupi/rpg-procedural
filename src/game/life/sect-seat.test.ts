@@ -20,16 +20,21 @@ import {
   CULTIVATION_STATE,
   checkInvariants,
   hexPath,
+  type IntentDraft,
   LOCATION,
   PLACE,
   PLACE_QI,
   patchesOf,
   patchOf,
+  planFromDraft,
   QI_TAKEN,
   SECT,
+  SECT_SITE_SPACES,
+  sectSpaceKey,
   TALENT,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { knownEntities, knownSpaces } from "./known.ts";
 import { Life } from "./life.ts";
 import { qiPoolOf } from "./meditate.ts";
 import { PLAYER_TREK } from "./trek.ts";
@@ -178,6 +183,50 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     expect(w2.truth.get(CULTIVATION_STATE, me)?.qi ?? 0).toBeCloseTo(drawn, 3);
     const absorbed = w2.log.all().filter((e) => e.kind === ABSORBED_EVENT && e.actors[0] === me);
     expect((absorbed[0]?.data as { cell?: number } | undefined)?.cell).toBe(s2.seat.cell);
+  });
+
+  it("la sede tiene portón, salón, dormitorios y cueva; estando ahí se va a la cueva (hall-spaces)", () => {
+    const life3 = Life.create(3, content, options);
+    const w3 = life3.world;
+    const me = life3.player;
+    const s3 = w3.truth.get(SECT, w3.truth.ids(SECT)[0] as EntityRef);
+    if (!s3) throw new Error("sin secta");
+    const goal = w3.truth.get(PLACE, s3.seatPlace)?.hexes[0] as number;
+    const cave = sectSpaceKey(s3.seatPlace, "cave");
+    const site = w3.spaces.spaces.filter((n) => n.hex === goal);
+    expect(site.map((n) => n.key)).toEqual(
+      expect.arrayContaining(SECT_SITE_SPACES.map((p) => sectSpaceKey(s3.seatPlace, p))),
+    );
+    expect(site.find((n) => n.key === cave)).toMatchObject({ indoor: true, wall: "cave" });
+    // Desde la aldea no se nombran; en la sede sí.
+    const names = () => knownSpaces(w3, knownEntities(w3)).flatMap((k) => k.names);
+    expect(names()).not.toContain("la cueva");
+    w3.truth.set(LOCATION, me, { hex: goal });
+    expect(names()).toContain("la cueva");
+    const known = knownEntities(w3);
+    const made = planFromDraft(
+      {
+        kind: "act",
+        plan: {
+          kind: "do",
+          verb: "move",
+          args: [{ role: "to", ref: { text: "la cueva", kind: "place", features: [] } }],
+        },
+      } as IntentDraft,
+      {
+        actor: me,
+        source: "player",
+        catalog: w3.catalog,
+        known,
+        clock: w3.clock,
+        causes: [{ kind: "state", entity: me, key: "intent" }],
+        here: goal,
+        spaces: knownSpaces(w3, known),
+      },
+    );
+    if (made.kind !== "plan") throw new Error(`la cueva: ${made.kind}`);
+    life3.turn(made.plan, 1);
+    expect(w3.truth.get(LOCATION, me)).toEqual({ hex: goal, space: cave });
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {

@@ -23,6 +23,9 @@ import {
   PLACE,
   PLACE_NAME,
   SECT_LORE,
+  SECT_SITE_SPACES,
+  type SectSiteSpace,
+  sectSpaceKey,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { ANIMAL_WORDS, animalsInSight } from "./animals.ts";
@@ -419,6 +422,13 @@ const COMMUNAL_NAMES: Readonly<Record<string, readonly string[]>> = {
   granary: GRANARY_NAMES,
   shrine: SHRINE_NAMES,
 };
+/** Los espacios de la sede de la secta, por parte (novel-sect-seat-hall-spaces). */
+const SECT_SPACE_NAMES: Readonly<Record<SectSiteSpace, readonly string[]>> = {
+  gate: ["el portón", "la entrada", "el patio de la secta"],
+  hall: ["el salón", "el salón principal", "el salón de la secta"],
+  dorm: ["los dormitorios", "el dormitorio", "donde duermen los discípulos"],
+  cave: ["la cueva", "la cueva de cultivo", "la caverna"],
+};
 /** La casa del herrero: toda la aldea sabe dónde está la fragua (use-tools-mend-smith). */
 const SMITHY_NAMES = ["la herrería", "la fragua", "la casa del herrero"];
 
@@ -445,7 +455,10 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
     {
       key: square.key,
       place: village as EntityRef,
-      names: [...SQUARE_NAMES, ...(node?.indoor === true ? OUT_NAMES : [])],
+      names: [
+        ...SQUARE_NAMES,
+        ...(node?.indoor === true && node.hex === square.hex ? OUT_NAMES : []),
+      ],
       owners: [],
     },
   ];
@@ -477,6 +490,18 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
     if (!own && !smithy && owners.length === 0) continue;
     const names = [...(own ? HOME_NAMES : []), ...(smithy ? SMITHY_NAMES : [])];
     out.push({ key: s.key, place: village as EntityRef, names, owners });
+  }
+  // En la sede (novel-sect-seat-hall-spaces): sus espacios se ven y se nombran estando ahí.
+  for (const id of [...w.truth.ids(PLACE)].sort()) {
+    const p = w.truth.get(PLACE, id);
+    const hex = p?.kind === "sect" ? p.hexes[0] : undefined;
+    if (hex === undefined || here?.hex !== hex) continue;
+    for (const part of SECT_SITE_SPACES) {
+      const key = sectSpaceKey(id, part);
+      const inside = node?.hex === hex && node.indoor;
+      const names = [...SECT_SPACE_NAMES[part], ...(part === "gate" && inside ? OUT_NAMES : [])];
+      out.push({ key, place: id as EntityRef, names, owners: [] });
+    }
   }
   const live = new Set(w.spaces.spaces.map((s) => s.key));
   for (const id of [...w.truth.ids(BUILDING)].sort()) {
