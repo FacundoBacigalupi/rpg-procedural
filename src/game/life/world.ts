@@ -58,6 +58,7 @@ import {
   PERSON,
   type PressureCurve,
   type ProcessDef,
+  patchOf,
   type ReadonlyWorldTruth,
   type RecipeDef,
   RUMORS,
@@ -268,6 +269,7 @@ import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { transitProcess } from "./transit.ts";
+import { TREK_PROVISIONS, trekProcess } from "./trek.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
@@ -705,6 +707,8 @@ export interface LifeWorld {
   readonly npcWater?: { readonly liters: number };
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`rest`) y sigue al alba (`NpcVerbsOptions.nightRest`). */
   readonly npcNightRest?: boolean;
+  /** Opt-in: el `move` del jugador a un lugar lejos es una marcha de varios días que bebe, come, duerme y retoma el tramo (`life.trek`, novel-sect-seat-trek). */
+  readonly playerTrek?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje, modo `careful` o `fast` del `move` (`NpcVerbsOptions.pace`). */
   readonly npcPace?: "careful" | "fast";
   /** Opt-in: el calzado de quien camina se gasta (más por monte) y gastado cuesta más caminar (`life.act`); apagado, nada cambia. */
@@ -1034,7 +1038,9 @@ function draftSeasonOf(parts: LifeParts): NonNullable<DraftOptions["restSeason"]
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
     const at = truth.get(LOCATION, who);
-    return at && at.space !== undefined ? village : { kind: "cell", cell: parts.map.cell };
+    return at && at.space !== undefined
+      ? village
+      : { kind: "cell", cell: at ? patchOf(parts.map, at.hex).cell : parts.map.cell };
   };
 }
 
@@ -2360,6 +2366,29 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(parts.playerTrek === true
+          ? [
+              trekProcess({
+                catalog: parts.catalog,
+                plans: parts.plans,
+                map: parts.map,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+                ...(() => {
+                  const food = parts.goods.find((g) => g.id === TREK_PROVISIONS.good);
+                  return food
+                    ? {
+                        provisions: {
+                          unit: goodUnit(food),
+                          name: food.name,
+                          grams: TREK_PROVISIONS.grams,
+                        },
+                      }
+                    : {};
+                })(),
+              }),
+            ]
+          : []),
         ...(altitudeOf && parts.travelCell
           ? [travelCellProcess({ cellOf: parts.travelCell })]
           : []),

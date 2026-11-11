@@ -96,6 +96,7 @@ import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
+import { TREK_EVENT } from "./trek.ts";
 import { seasonOf } from "./weather-panel.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -724,6 +725,22 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT)
   ) {
     cues.add("sect_joined");
+  }
+  // La marcha de varios días (novel-sect-seat-trek): salió, llegó o se rindió en este turno.
+  const trek =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) =>
+            e.kind === TREK_EVENT && (e.data as { what?: string } | undefined)?.what !== "drank",
+        );
+  if (trek) {
+    const what = (trek.data as { what?: string } | undefined)?.what;
+    cues.add(
+      what === "arrived" ? "trek_arrived" : what === "gave_up" ? "trek_gave_up" : "trek_started",
+    );
   }
   // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
   // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.

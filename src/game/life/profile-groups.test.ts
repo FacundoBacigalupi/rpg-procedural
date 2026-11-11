@@ -30,7 +30,7 @@ describe("grupos de opciones (novel-flags-groups-core)", () => {
     }
     expect(lifeGroupOptions(["cultivation"])).toEqual({
       groups: ["cultivation"],
-      options: { cultivation: true, sectSeatRegion: true },
+      options: { cultivation: true, sectSeatRegion: true, playerTrek: true },
     });
     expect(lifeGroupOptions([]).options).toEqual({});
   });

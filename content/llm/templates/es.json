@@ -1194,6 +1194,27 @@
     ]
   },
   {
+    "id": "self.trek_started",
+    "lines": [
+      "Cargás el odre y algo de grano y salís. Son jornadas de camino: vas a caminar de día y dormir donde te agarre la noche.",
+      "Te ponés en marcha con lo poco que llevás encima. El camino es largo; lo vas a hacer de a tramos, comiendo y durmiendo donde se pueda."
+    ]
+  },
+  {
+    "id": "self.trek_arrived",
+    "lines": [
+      "Después de días de camino, con los pies a la miseria, llegás.",
+      "Las jornadas se terminan: estás donde ibas, cansado pero entero."
+    ]
+  },
+  {
+    "id": "self.trek_gave_up",
+    "lines": [
+      "Hace un mes que caminás y no llegás. Te detenés: así no vas a ningún lado.",
+      "Tanto camino y el lugar no aparece. Parás y te sentás a pensar qué hacer."
+    ]
+  },
+  {
     "id": "self.technique_taught",
     "lines": [
       "Antes de que te vayas, uno de ellos te hace respirar como respiran ellos, despacio, hasta que te sale: {technique}, dice que se llama.",

@@ -17,6 +17,8 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
+import { PLAYER_TREK } from "./trek.ts";
+import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -73,23 +75,13 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     expect(checkInvariants({ truth, log })).toEqual([]);
   });
 
-  it("con `move` a la sede, turno a turno, se cruza de parche y se llega", () => {
-    // El viaje de varios días (acampar, comer, beber) es novel-sect-seat-trek: acá se sale a
-    // menos de un día de la sede, del lado de la aldea, y se camina como el jugador, turno a turno.
-    const walker = Life.create(3, content, options);
+  it("con la marcha, un `move` a la sede va de la aldea a la sede en días, vivo", () => {
+    const walker = Life.create(3, content, { ...options, playerTrek: true });
     const ww = walker.world;
     const me = walker.player;
     const s = ww.truth.get(SECT, ww.truth.ids(SECT)[0] as EntityRef);
     const target = s?.seatPlace as EntityRef;
     const goal = ww.truth.get(PLACE, target)?.hexes[0] as number;
-    const home = ww.truth.get(LOCATION, me)?.hex as number;
-    const path = [home, ...hexPath(ww.map, home, goal)];
-    const left = (i: number) =>
-      path.slice(i + 1).reduce((t, h) => t + (ww.map.crossSeconds[h] ?? 0), 0);
-    const start = path.findIndex((_, i) => left(i) <= 0.6 * ww.clock.day);
-    const from = path[start] as number;
-    expect(patchOf(ww.map, from).cell).not.toBe(seatCell);
-    ww.truth.set(LOCATION, me, { hex: from });
     const plan: ActionPlan = {
       actor: me,
       source: "player",
@@ -97,14 +89,27 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
       manner: [],
       causes: [{ kind: "state", entity: me, key: "intent" }],
     };
+    const from = walker.now;
     let turns = 0;
-    while (walker.alive && ww.truth.get(LOCATION, me)?.hex !== goal && turns < 40) {
+    while (walker.alive && ww.truth.get(LOCATION, me)?.hex !== goal && turns < 20) {
       walker.turn(plan, ++turns);
     }
+    const trek = ww.log.all().filter((e) => e.kind === "life.trek" && e.actors.includes(me));
+    const what = trek.map((e) => (e.data as { what: string }).what);
     expect({ alive: walker.alive, at: ww.truth.get(LOCATION, me)?.hex }).toEqual({
       alive: true,
       at: goal,
     });
+    expect(what[0]).toBe("started");
+    expect(what.at(-1)).toBe("arrived");
+    expect(turns).toBeLessThan(5);
+    // Más de una noche de camino: paró a dormir.
+    expect((walker.now - from) / ww.clock.day).toBeGreaterThan(4);
+    expect(ww.truth.has(PLAYER_TREK, me)).toBe(false);
+    expect(ww.ledger.audit()).toEqual([]);
+    // El turno en que llega, el narrador lo sabe.
+    const last = trek.at(-1)?.tick ?? walker.now;
+    expect(playerView(ww, [], { heardSince: last }).self.cues).toContain("trek_arrived");
   });
 
   it("apagado, el mapa es solo el parche de la aldea", () => {

@@ -47,6 +47,7 @@ import {
   type Interrupt,
   type RoutineRules,
 } from "./interrupts.ts";
+import { PLAYER_TREK } from "./trek.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
@@ -658,6 +659,8 @@ export class Life {
       done: false,
     };
     w.truth.set(PLAN_STATE, this.player, state);
+    // Lo que el jugador decide de nuevo corta la marcha en curso (si vuelve a pedir ir, se reabre).
+    if (w.truth.has(PLAYER_TREK, this.player)) w.truth.deleteRaw(PLAYER_TREK.name, this.player);
     w.scheduler.schedule({
       at: w.scheduler.now + 1,
       phase: "act",
@@ -693,7 +696,12 @@ export class Life {
         if (e.actors.includes(this.player)) events.push(e);
       }
       if (!this.alive) return true;
-      if (w.truth.get(PLAN_STATE, this.player)?.done ?? true) return true;
+      // La marcha de varios días (novel-sect-seat-trek) sigue entre plan y plan hasta llegar.
+      if (
+        (w.truth.get(PLAN_STATE, this.player)?.done ?? true) &&
+        !w.truth.has(PLAYER_TREK, this.player)
+      )
+        return true;
       interrupt = fixedInterrupt(w, report.events, known, routine, notes);
       return interrupt !== null;
     });

@@ -496,6 +496,8 @@ export interface LifeOptions {
   readonly cultivation?: boolean;
   /** Opt-in (requiere `cultivation`): la sede de la secta en su celda (novel-sect-seat-switch): el mapa de la vida es la región por tierra (`regionMapOf`: aldea, franjas del camino y la celda de la sede) y la sede es un lugar (`sect`) con un hex allí, al que se llega caminando; apagado, el mapa es solo el parche de la aldea. */
   readonly sectSeatRegion?: boolean;
+  /** Opt-in: el `move` del jugador a un lugar a más de 8 h de camino es una marcha de varios días (`life.trek`, novel-sect-seat-trek): sale con odre y grano de la despensa, bebe con sed, come a la hora, duerme de noche y retoma el tramo tras un tropiezo, hasta llegar o rendirse a los 30 días; apagado, hashes idénticos. */
+  readonly playerTrek?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
@@ -1068,6 +1070,7 @@ export function optInParts(
   | "npcProvisions"
   | "npcWater"
   | "npcNightRest"
+  | "playerTrek"
   | "npcPace"
   | "npcFootwear"
   | "npcFootSores"
@@ -1266,6 +1269,7 @@ export function optInParts(
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),
     ...(options.npcWater ? { npcWater: options.npcWater } : {}),
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
+    ...(options.playerTrek ? { playerTrek: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),

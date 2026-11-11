@@ -75,7 +75,13 @@ export type SelfCue =
   /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
   | "sect_joined"
   /** Los de la secta le enseñaron su técnica de entrada (`self.technique` la nombra). */
-  | "technique_taught";
+  | "technique_taught"
+  /** Salió de marcha hacia un lugar a días de camino (`life.trek`, novel-sect-seat-trek). */
+  | "trek_started"
+  /** Llegó al final de la marcha. */
+  | "trek_arrived"
+  /** Se rindió: un mes de marcha sin llegar. */
+  | "trek_gave_up";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
