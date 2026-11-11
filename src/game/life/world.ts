@@ -59,6 +59,7 @@ import {
   oscillationYearOfMap,
   outdoorTempC,
   PERSON,
+  PLACE,
   type PressureCurve,
   type ProcessDef,
   patchOf,
@@ -69,6 +70,8 @@ import {
   Scheduler,
   type SchedulerState,
   type SchemaDef,
+  SECT,
+  SECT_MEMBER,
   type SkillCatalog,
   type SpaceGraph,
   type SpeechLine,
@@ -238,7 +241,7 @@ import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sectDutyProcess } from "./sect-duty.ts";
-import { SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
+import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
@@ -2893,6 +2896,19 @@ export function lifeWorld(
                 player,
                 placeOf: placeOf(parts, village),
                 ...(draftOpts ? { draft: draftOpts } : {}),
+                // La gente de la sede medita o hace tareas: dormida no cosecha (sect-seat-return-sleepers).
+                ...(parts.cultivation && parts.map.patches
+                  ? {
+                      offField: (t, who) => seatRoutineOf(t, who, parts.map) !== undefined,
+                      offFieldReads: [
+                        SECT_MEMBER.name,
+                        SECT.name,
+                        SECT_HALL.name,
+                        PLACE.name,
+                        LOCATION.name,
+                      ],
+                    }
+                  : {}),
                 // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
                 harvest: {
                   season: harvestSeasonOf(parts.map, parts.clock, parts.seed),

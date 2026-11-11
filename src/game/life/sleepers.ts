@@ -91,6 +91,13 @@ export interface CatchUpProcessOptions {
      */
     readonly field?: { readonly map: LocalMap; readonly seed: Seed; readonly sowing: boolean };
   };
+  /**
+   * Quien no trabaja campos aunque tenga horas de trabajo (la gente de la sede de una secta, que
+   * medita o hace tareas, novel-sect-seat-return-sleepers): dormido no cosecha nada.
+   */
+  readonly offField?: (truth: ReadonlyWorldTruth, who: AgentId) => boolean;
+  /** Lo que lee `offField`. */
+  readonly offFieldReads?: readonly string[];
 }
 
 /** El evento del grano que cosechó un dormido en el tramo que se le puso al día. */
@@ -144,6 +151,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       ...(o.harvest?.field ? [IRRIGATED.name] : []),
       ...(o.harvest?.field?.sowing ? [SOWN.name] : []),
       ...(o.harvest && o.draft ? draftReads(o.draft) : []),
+      ...(o.offField ? (o.offFieldReads ?? []) : []),
     ],
     writes: [
       ASLEEP.name,
@@ -191,10 +199,11 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const pending = [...(truth.get(PENDING_FACTS, me) ?? [])].sort((a, b) => a.at - b.at);
       const due = pending.filter((f) => f.at <= ctx.now);
       const later = pending.filter((f) => f.at > ctx.now);
-      const fertility = o.harvest ? fieldFertility(truth) : 0;
+      const farms = o.harvest !== undefined && o.offField?.(truth, me) !== true;
+      const fertility = farms ? fieldFertility(truth) : 0;
       // El tiro se mira una vez por tramo (al despertar el proceso), no por hora.
       const draft =
-        o.harvest && o.draft ? draftFor(truth, me, ctx.now, o.draft, ctx.ledger) : undefined;
+        farms && o.draft ? draftFor(truth, me, ctx.now, o.draft, ctx.ledger) : undefined;
       const draftRate = draft?.rate ?? 1;
       // El factor de riego y siembra del campo por día (se pide por hora y por dormido).
       const cropByDay = new Map<number, number>();
@@ -213,7 +222,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
         ageYears: (ctx.now - person.born) / o.clock.year,
         ration: o.ration,
         maxMeals: left,
-        ...(o.harvest
+        ...(farms
           ? {
               harvestPerHour: (at: Tick) => {
                 const day = dayOf(o.clock, at + Math.round((o.lonDeg / 360) * o.clock.day));
@@ -327,7 +336,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
             ]
           : [];
       const crop = harvested + rest.harvest;
-      if (o.harvest && crop > 0) {
+      if (farms && crop > 0) {
         events.push({
           kind: NPC_HARVESTED_EVENT,
           actors: [me],
