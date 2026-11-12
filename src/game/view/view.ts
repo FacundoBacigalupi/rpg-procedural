@@ -102,6 +102,12 @@ export type SelfCue =
   | "exchange_done"
   /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
   | "exchange_refused"
+  /** El pabellón de escrituras le dio el método del reino siguiente (`self.technique` lo nombra; novel2-method-pavilion). */
+  | "method_given"
+  /** Pidió el método siguiente sin estar en la cima de su reino: todavía no. */
+  | "method_too_soon"
+  /** Pidió el método siguiente y su aporte no alcanza. */
+  | "method_no_points"
   /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
   | "promoted"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */

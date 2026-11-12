@@ -227,9 +227,9 @@ export function renderView(
   }
   for (const g of view.gone ?? []) say("percept.gone", { who: ref(g) });
   for (const c of view.self.cues) {
-    if (c === "technique_taught" && view.self.technique !== undefined) {
-      say("self.technique_taught", { technique: view.self.technique });
-    } else if (c !== "technique_taught") say(`self.${c}`);
+    if ((c === "technique_taught" || c === "method_given") && view.self.technique !== undefined) {
+      say(`self.${c}`, { technique: view.self.technique });
+    } else if (c !== "technique_taught" && c !== "method_given") say(`self.${c}`);
   }
   // El reino de la escuela (novel-cult-school): con su capa en palabras si tiene varias.
   const realm = view.self.realm;

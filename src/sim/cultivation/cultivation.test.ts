@@ -6,6 +6,7 @@ import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absor
 import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
+import { METHOD_POINTS_PER_REALM, methodExchange } from "./pavilion.ts";
 import {
   BLIND_PREP,
   breaksBlind,
@@ -439,5 +440,53 @@ describe("la escuela (novel-cult-school)", () => {
     expect(breaksBlind(undefined, undefined, UNGUIDED_TRAMOS - 2)).toBe(false);
     expect(breaksBlind(undefined, undefined, UNGUIDED_TRAMOS - 1)).toBe(true);
     expect(BLIND_PREP).toBeLessThan(1);
+  });
+
+  it("el pabellón: el método siguiente en la cima, con puntos o rango (novel2-method-pavilion)", () => {
+    const methods = [
+      { name: "m0", factor: 1.3, realm: 0 },
+      { name: "m1", factor: 1.5, realm: 1 },
+      { name: "m2", factor: 1.7, realm: 2 },
+    ];
+    const school = {
+      layer: "capa",
+      technique: { name: "m0", factor: 1.3 },
+      realms: [
+        { name: "A", from: 0, to: 2 },
+        { name: "B", from: 3, to: 4 },
+        { name: "C", from: 5, to: 5 },
+      ],
+      methods,
+    };
+    const k = (realm: number) => ({
+      org: "org:1" as EntityRef,
+      name: `m${realm}`,
+      factor: 1,
+      learnedAt: 0,
+      realm,
+    });
+    const cost = METHOD_POINTS_PER_REALM;
+    // Sin método: el de entrada, gratis.
+    expect(methodExchange(school, undefined, "outer", 0, 0)).toEqual({
+      kind: "given",
+      method: methods[0],
+      cost: 0,
+    });
+    expect(methodExchange(school, k(0), "outer", 1, 999)).toMatchObject({ refused: "too_soon" });
+    expect(methodExchange(school, k(0), "outer", 2, cost - 1)).toMatchObject({
+      refused: "no_points",
+    });
+    expect(methodExchange(school, k(0), "outer", 2, cost)).toEqual({
+      kind: "given",
+      method: methods[1],
+      cost,
+    });
+    expect(methodExchange(school, k(0), "inner", 2, 0)).toMatchObject({ kind: "given", cost: 0 });
+    expect(methodExchange(school, k(1), "inner", 4, 2 * cost)).toMatchObject({ cost: 2 * cost });
+    expect(methodExchange(school, k(1), "elder", 4, 0)).toMatchObject({ kind: "given", cost: 0 });
+    expect(methodExchange(school, k(2), "master", 5, 0)).toEqual({
+      kind: "refused",
+      refused: "no_method",
+    });
   });
 });

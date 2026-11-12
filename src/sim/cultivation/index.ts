@@ -3,6 +3,7 @@ export * from "./breakthrough.ts";
 export * from "./law.ts";
 export * from "./meditation.ts";
 export * from "./member.ts";
+export * from "./pavilion.ts";
 export * from "./school.ts";
 export * from "./sect.ts";
 export * from "./seed.ts";

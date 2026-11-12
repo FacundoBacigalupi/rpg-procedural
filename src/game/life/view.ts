@@ -755,8 +755,14 @@ export function playerView(
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_EXCHANGE_EVENT);
   if (exchange) {
-    const refused = (exchange.data as { refused?: unknown } | null)?.refused !== undefined;
-    cues.add(refused ? "exchange_refused" : "exchange_done");
+    const d = exchange.data as { refused?: unknown; what?: unknown } | null;
+    const refused = d?.refused !== undefined;
+    // El pabellón (novel2-method-pavilion): dar el método lo cuenta `method_given` más abajo.
+    if (d?.what === "method") {
+      if (d.refused === "too_soon") cues.add("method_too_soon");
+      else if (d.refused === "no_points") cues.add("method_no_points");
+      else if (refused) cues.add("exchange_refused");
+    } else cues.add(refused ? "exchange_refused" : "exchange_done");
   }
   if (
     options.heardSince !== undefined &&
@@ -820,11 +826,13 @@ export function playerView(
   // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
   // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.
   const taught =
-    options.heardSince !== undefined &&
-    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT) !==
-      undefined;
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT);
   const technique = taught ? w.truth.get(CULTIVATION_TECHNIQUE, w.player)?.name : undefined;
-  if (technique !== undefined) cues.add("technique_taught");
+  // El de entrada se lo enseñan al aceptarlo; los de arriba, el pabellón (novel2-method-pavilion).
+  const viaPavilion = (taught?.data as { via?: unknown } | null)?.via === "pavilion";
+  if (technique !== undefined) cues.add(viaPavilion ? "method_given" : "technique_taught");
   const member = w.truth.get(SECT_MEMBER, w.player);
   const school = member ? w.truth.get(SECT_SCHOOL, member.org) : undefined;
   const named = cues.has("sect_joined") || cues.has("break_success");

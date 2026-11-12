@@ -41,6 +41,13 @@ describe("la gramática y el acto de habla declarado", () => {
     expect(parseCommand("pido un pase")).toMatchObject({
       plan: { verb: "redeem", args: [{ role: "what", text: "cueva" }] },
     });
+    // El pabellón de escrituras (novel2-method-pavilion).
+    expect(parseCommand("pido el método siguiente")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "técnica" }] },
+    });
+    expect(parseCommand("canjeo mis puntos por la técnica del reino siguiente")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "técnica" }] },
+    });
   });
 
   it("«pido permiso para bajar a la aldea por diez días» es el permiso de la secta", () => {

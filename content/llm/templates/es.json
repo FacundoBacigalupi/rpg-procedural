@@ -1385,6 +1385,27 @@
     ]
   },
   {
+    "id": "self.method_given",
+    "lines": [
+      "En el pabellón de escrituras el encargado anota algo en el libro, saca un rollo de un estante alto y te lo hace leer delante de él hasta que lo repetís: {technique}. Sirve para lo que viene.",
+      "Te dejan entrar al pabellón de escrituras. Uno de los guardianes te dicta {technique} línea por línea y no te deja irte hasta que te sale."
+    ]
+  },
+  {
+    "id": "self.method_too_soon",
+    "lines": [
+      "El guardián del pabellón te mira de arriba abajo: todavía no llegaste a la cima de lo que sabés; ese rollo no te serviría de nada.",
+      "Te niegan el método siguiente: primero terminá el camino que tenés, te dicen."
+    ]
+  },
+  {
+    "id": "self.method_no_points",
+    "lines": [
+      "El encargado repasa tus cuentas y cierra el libro: tu aporte no alcanza para lo que pedís.",
+      "No hay rollo para vos: con lo que aportaste, el pabellón no se abre."
+    ]
+  },
+  {
     "id": "self.technique_taught",
     "lines": [
       "Antes de que te vayas, uno de ellos te hace respirar como respiran ellos, despacio, hasta que te sale: {technique}, dice que se llama.",

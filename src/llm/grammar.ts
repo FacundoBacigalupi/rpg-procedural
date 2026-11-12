@@ -586,11 +586,16 @@ const VERBS: readonly {
     },
   },
   {
-    // El canje de aportes (novel-sect-duty-exchange): puntos por horas de pase a la cueva.
-    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase)\b/iu,
+    // El canje de aportes (novel-sect-duty-exchange): puntos por horas de pase a la cueva, o por el
+    // método del reino siguiente (novel2-method-pavilion).
+    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase|pido (?:el |la )?(?:método|técnica|manual) (?:del reino )?siguiente|pido (?:el |la )?siguiente (?:método|técnica))\b/iu,
     build: (rest, _ctx, all) => {
       const d = duration(rest);
-      const what = /cueva|pase/i.test(all) ? "cueva" : "";
+      const what = /t[eé]cnica|m[eé]todo|manual|escritura/i.test(all)
+        ? "técnica"
+        : /cueva|pase/i.test(all)
+          ? "cueva"
+          : "";
       return {
         node: act("redeem", [
           ...(d ? [{ role: "for", duration: d.duration }] : []),

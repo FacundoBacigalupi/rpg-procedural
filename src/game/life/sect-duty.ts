@@ -6,6 +6,9 @@
 // `cultivation.sect_chore`, causado por la acción. También lleva el pase a la cueva: las horas
 // meditadas adentro salen del pase (novel-sect-cave-pass) y `redeem` canjea puntos por horas de pase
 // (novel-sect-duty-exchange) con `cultivation.sect_exchange`, causado por el pedido y los puntos.
+// Pedir el método (novel2-method-pavilion): si lo que se canjea es una técnica, el pabellón de
+// escrituras da el del reino siguiente (`methodExchange`) por puntos o por rango, con
+// `cultivation.sect_exchange` (`what: "method"`) y, si lo da, `cultivation.technique_taught`.
 // Y el permiso para bajar (novel-sect-seat-return-leave): `furlough` en la sede deja `SECT_LEAVE`
 // con `cultivation.sect_leave`; la ausencia la lleva `life.sect_absence` (`sect-leave.ts`).
 
@@ -15,6 +18,7 @@ import {
   CAVE_RANKS,
   CHORE_POINTS_PER_HOUR,
   CULTIVATION_STATE,
+  CULTIVATION_TECHNIQUE,
   choreOf,
   chorePoints,
   deleteComponent,
@@ -22,8 +26,10 @@ import {
   type ExchangeRefusal,
   exchangeHours,
   isSectCave,
+  type KnownTechnique,
   LOCATION,
   leaveDays,
+  methodExchange,
   PLACE,
   PROMOTION_CHORE_HOURS,
   PROMOTION_STAGE,
@@ -40,10 +46,12 @@ import {
   SECT_LEAVE_EVENT,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_SCHOOL,
   type SectCavePass,
   type SectContribution,
   type StateChange,
   setComponent,
+  TECHNIQUE_TAUGHT_EVENT,
 } from "../../sim/index.ts";
 import { meditation } from "./meditate.ts";
 
@@ -60,6 +68,9 @@ function seatOrgOf(truth: ReadonlyWorldTruth, who: AgentId): EntityRef | undefin
   const seat = sect ? truth.get(PLACE, sect.seatPlace) : undefined;
   return seat?.hexes.includes(hex) ? member.org : undefined;
 }
+
+/** Lo que se pide al canjear cuando es una técnica (lo que dejó el parser en `what`). */
+const METHOD_WORDS = /t[eé]cnica|m[eé]todo|escritura|manual|sutra|canon/iu;
 
 /** Quién hizo tareas, cuántas horas y qué dijo que hacía, de un `action.chore`. */
 function choreDone(e: Event): { who: AgentId; hours: number; said?: string } | undefined {
@@ -90,8 +101,16 @@ export function sectDutyProcess(o: { readonly dayTicks?: number } = {}): Process
       SECT_CONTRIBUTION.name,
       SECT_CAVE_PASS.name,
       CULTIVATION_STATE.name,
+      CULTIVATION_TECHNIQUE.name,
+      SECT_SCHOOL.name,
     ],
-    writes: [SECT_CONTRIBUTION.name, SECT_CAVE_PASS.name, SECT_MEMBER.name, SECT_LEAVE.name],
+    writes: [
+      SECT_CONTRIBUTION.name,
+      SECT_CAVE_PASS.name,
+      SECT_MEMBER.name,
+      SECT_LEAVE.name,
+      CULTIVATION_TECHNIQUE.name,
+    ],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -104,6 +123,8 @@ export function sectDutyProcess(o: { readonly dayTicks?: number } = {}): Process
           : ctx.truth.get(SECT_CAVE_PASS, who as unknown as EntityRef);
       const pointsOf = (who: AgentId) =>
         rows.get(who) ?? ctx.truth.get(SECT_CONTRIBUTION, who as unknown as EntityRef);
+      /** Los métodos que dio el pabellón en esta corrida. */
+      const taught = new Map<AgentId, KnownTechnique>();
       // Quién pudo haber llegado al ascenso en esta corrida, y por qué evento.
       const maybe = new Map<AgentId, Event>();
       for (const e of ctx.recent) {
@@ -131,10 +152,78 @@ export function sectDutyProcess(o: { readonly dayTicks?: number } = {}): Process
         if (e.kind === "action.redeem" && e.outcome !== "failure") {
           const who = e.actors[0] as AgentId | undefined;
           if (!who) continue;
-          const wanted = (e.data as { effect?: { hours?: unknown } } | null)?.effect?.hours;
+          const effect = (e.data as { effect?: { hours?: unknown; what?: unknown } } | null)
+            ?.effect;
+          const wanted = effect?.hours;
           const org = seatOrgOf(ctx.truth, who);
           const member = ctx.truth.get(SECT_MEMBER, who as unknown as EntityRef);
           const have = pointsOf(who);
+          // El pabellón de escrituras (novel2-method-pavilion): el método del reino siguiente.
+          if (typeof effect?.what === "string" && METHOD_WORDS.test(effect.what)) {
+            const school = org ? ctx.truth.get(SECT_SCHOOL, org) : undefined;
+            const known = taught.get(who) ?? ctx.truth.get(CULTIVATION_TECHNIQUE, who);
+            const stage = ctx.truth.get(CULTIVATION_STATE, who)?.stage ?? 0;
+            const points = have?.org === org ? (have?.points ?? 0) : 0;
+            const r =
+              org && member && school
+                ? methodExchange(
+                    school,
+                    known?.org === org ? known : undefined,
+                    member.rank,
+                    stage,
+                    points,
+                  )
+                : ({ kind: "refused", refused: "not_member" } as const);
+            if (r.kind === "given" && org) {
+              if (have && r.cost > 0)
+                rows.set(who, { ...have, points: round2(have.points - r.cost), last: ctx.now });
+              taught.set(who, {
+                org,
+                name: r.method.name,
+                factor: r.method.factor,
+                learnedAt: ctx.now,
+                realm: r.method.realm,
+              });
+            }
+            const exchange = {
+              kind: SECT_EXCHANGE_EVENT,
+              actors: [who],
+              place: e.place,
+              data: {
+                ...(org ? { org } : {}),
+                what: "method",
+                ...(r.kind === "given"
+                  ? { realm: r.method.realm, technique: r.method.name, points: r.cost }
+                  : {
+                      refused: r.refused,
+                      points: 0,
+                      ...(r.realm !== undefined ? { realm: r.realm } : {}),
+                    }),
+              },
+              emissions: {},
+              causes: [
+                { kind: "event" as const, event: e.id },
+                { kind: "state" as const, entity: who, key: CULTIVATION_STATE.name },
+                ...(r.kind === "given" && r.cost > 0
+                  ? [{ kind: "state" as const, entity: who, key: SECT_CONTRIBUTION.name }]
+                  : []),
+              ],
+            };
+            events.push(exchange);
+            if (r.kind === "given" && org)
+              events.push({
+                kind: TECHNIQUE_TAUGHT_EVENT,
+                actors: [who],
+                place: e.place,
+                data: { org, technique: r.method.name, realm: r.method.realm, via: "pavilion" },
+                emissions: {},
+                causes: [
+                  { kind: "event", event: e.id },
+                  { kind: "state", entity: org, key: SECT_SCHOOL.name },
+                ],
+              });
+            continue;
+          }
           const points = have?.org === org ? (have?.points ?? 0) : 0;
           const { hours, cost } = exchangeHours(points, typeof wanted === "number" ? wanted : null);
           const refused: ExchangeRefusal | undefined = !org
@@ -266,6 +355,7 @@ export function sectDutyProcess(o: { readonly dayTicks?: number } = {}): Process
         });
       }
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));
+      for (const [who, k] of taught) changes.push(setComponent(CULTIVATION_TECHNIQUE, who, k));
       for (const [who, pass] of passes) {
         if (pass) changes.push(setComponent(SECT_CAVE_PASS, who, pass));
         else if (ctx.truth.has(SECT_CAVE_PASS, who as unknown as EntityRef))
