@@ -20,7 +20,9 @@ import {
   TRIBULATION,
   TRIBULATION_GATHERS_EVENT,
   TRIBULATION_STRIKES_EVENT,
+  TRIBULATION_WAVE_EVENT,
   tribulationDue,
+  WAVES,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -51,7 +53,7 @@ function freshTurn(life: Life, plan: ActionPlan, seq: number): void {
   if (body) life.world.truth.set(BODY_STATE, life.player, body);
 }
 
-describe("la tribulación se junta y cae (novel2-trib-gather)", () => {
+describe("la tribulación se junta y cae en olas (novel2-trib-gather, novel2-trib-waves)", () => {
   const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
   it("un umbral que ofende al Cielo: nubes con qi de la reserva, y la ruptura se resuelve al caer", () => {
@@ -112,11 +114,13 @@ describe("la tribulación se junta y cae (novel2-trib-gather)", () => {
     freshTurn(life, doFor(me, "breakthrough", 1), seq++);
     expect(w.log.all().filter((e) => e.kind === TRIBULATION_GATHERS_EVENT)).toHaveLength(1);
 
-    // Esperar a que caiga.
+    // Esperar a que caiga (sin restaurar el cuerpo: las olas hieren).
     const energy = row?.energy ?? 0;
     const beforeStrike = life.now;
+    const woundsBefore = w.truth.get(BODY_STATE, me)?.wounds.length ?? 0;
+    const meridianBefore = w.truth.get(CULTIVATION_STATE, me)?.meridianDamage ?? 0;
     for (let i = 0; i < 8 && w.truth.get(TRIBULATION, me); i++) {
-      freshTurn(life, doFor(me, "wait", 1), seq++);
+      life.turn(doFor(me, "wait", 1), seq++);
     }
     const strikes = w.log.all().filter((e) => e.kind === TRIBULATION_STRIKES_EVENT);
     expect(strikes).toHaveLength(1);
@@ -124,6 +128,18 @@ describe("la tribulación se junta y cae (novel2-trib-gather)", () => {
     expect(s?.tick).toBe(row?.strikeAt);
     expect((s?.emissions as { sight?: number } | undefined)?.sight).toBe(1);
     expect(w.truth.get(TRIBULATION, me)).toBeUndefined();
+    // Las olas: tantas como dijo la fila, cada una causada por la caída, a la vista; hieren el cuerpo
+    // y los meridianos.
+    const waves = w.log.all().filter((e) => e.kind === TRIBULATION_WAVE_EVENT);
+    expect(waves).toHaveLength(row?.waves ?? -1);
+    expect(row?.waves).toBeGreaterThanOrEqual(WAVES[0]);
+    for (const wave of waves) {
+      const wc = wave.causes.find((c) => c.kind === "event");
+      expect(wc?.kind === "event" ? wc.event : undefined).toBe(s?.id);
+      expect((wave.data as { force: number }).force).toBeGreaterThan(0);
+    }
+    expect(w.truth.get(BODY_STATE, me)?.wounds.length ?? 0).toBe(woundsBefore + waves.length);
+    expect(w.truth.get(CULTIVATION_STATE, me)?.meridianDamage ?? 0).toBeGreaterThan(meridianBefore);
     const breaks = w.log.all().filter((e) => e.kind === BREAKTHROUGH_EVENT);
     expect(breaks).toHaveLength(1);
     const bc = breaks[0]?.causes.find((c) => c.kind === "event");

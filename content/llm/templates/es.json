@@ -316,6 +316,13 @@
     ]
   },
   {
+    "id": "percept.action.heaven.tribulation_wave",
+    "lines": [
+      "Otro rayo cae sobre {who}; el olor a quemado llega hasta vos.",
+      "Un relámpago más baja sobre {who}, y el trueno rueda por todo el lugar."
+    ]
+  },
+  {
     "id": "percept.action.family.birth",
     "lines": [
       "Se oye llorar a {who}, apenas nacido.",

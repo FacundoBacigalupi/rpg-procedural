@@ -1,7 +1,7 @@
 // La tribulación cae (novel2-trib-gather, heaven-karma §5): `meditateProcess` junta las nubes y
 // agenda este proceso para la hora en que caen; acá solo se emite la caída, a la vista y al oído de
 // todos. La ruptura la resuelve `meditateProcess` al ver la caída (es quien escribe el estado de
-// cultivo y la reserva de qi), devolviendo la energía a la reserva. Las olas llegan después.
+// cultivo y la reserva de qi), devolviendo la energía a la reserva, después de las olas.
 
 import type { AgentId } from "../../core/index.ts";
 import { type ProcessDef, TRIBULATION, TRIBULATION_STRIKES_EVENT } from "../../sim/index.ts";
@@ -30,7 +30,7 @@ export function tribulationProcess(): ProcessDef {
             kind: TRIBULATION_STRIKES_EVENT,
             actors: [who],
             place: t.place,
-            data: { threshold: t.threshold, energy: t.energy, waves: 0 },
+            data: { threshold: t.threshold, energy: t.energy, waves: t.waves },
             emissions: { sight: 1, sound: 1 },
             causes: [
               { kind: "event", event: t.attempt },

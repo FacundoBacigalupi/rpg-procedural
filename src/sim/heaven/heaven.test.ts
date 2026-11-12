@@ -8,6 +8,10 @@ import {
   THRESHOLD_DROP,
   THRESHOLD_TOP,
   tribulationDue,
+  WAVES,
+  waveCount,
+  waveForce,
+  waveTemper,
 } from "./index.ts";
 
 const ev = "event:1" as EventId;
@@ -53,5 +57,38 @@ describe("la fuerza del Cielo (novel2-trib-heaven)", () => {
     const weak = { strength: 0.25, threshold: heavenThreshold(0.25), originEventId: ev };
     expect(tribulationDue(strong, 0.2)).toBe(true);
     expect(tribulationDue(weak, 0.2)).toBe(false);
+  });
+});
+
+describe("las olas de la tribulación (novel2-trib-waves)", () => {
+  const strong = { strength: 0.85, threshold: heavenThreshold(0.85), originEventId: ev };
+  const weak = { strength: 0.25, threshold: heavenThreshold(0.25), originEventId: ev };
+  const hold = { capacity: 100, qi: 100, foundation: 1, health: 1 };
+
+  it("más ofensa y más Cielo, más olas, dentro del rango", () => {
+    expect(waveCount(weak, 0)).toBe(WAVES[0]);
+    expect(waveCount(strong, 1)).toBeGreaterThan(waveCount(weak, 1));
+    for (const t of [0, 0.3, 0.6, 1]) {
+      expect(waveCount(strong, t)).toBeGreaterThanOrEqual(WAVES[0]);
+      expect(waveCount(strong, t)).toBeLessThanOrEqual(WAVES[1]);
+    }
+  });
+
+  it("lo que aguanta frena la ola: vacío, sin fundamento o herido pega más", () => {
+    const base = waveForce(3, hold, 0.5);
+    expect(base).toBeGreaterThan(0);
+    expect(base).toBeLessThan(1);
+    expect(waveForce(3, { ...hold, qi: 0 }, 0.5)).toBeGreaterThan(base);
+    expect(waveForce(3, { ...hold, foundation: 0 }, 0.5)).toBeGreaterThan(base);
+    expect(waveForce(3, { ...hold, health: 0.3 }, 0.5)).toBeGreaterThan(base);
+    expect(waveForce(6, hold, 0.5)).toBeGreaterThan(base);
+    expect(waveForce(0, hold, 0.5)).toBe(0);
+    expect(waveForce(1e6, hold, 1)).toBe(1);
+  });
+
+  it("templa en proporción a lo que pegó", () => {
+    expect(waveTemper(0)).toBe(0);
+    expect(waveTemper(0.6)).toBeGreaterThan(waveTemper(0.3));
+    expect(waveTemper(5)).toBe(waveTemper(1));
   });
 });

@@ -22,6 +22,10 @@
 // se resuelve en el acto: el Cielo saca qi de la reserva (`TRIBULATION`, débito en `QI_TAKEN`), las
 // nubes se juntan a la vista y `tribulationProcess` agenda la caída; al verla, la ruptura se resuelve
 // y la energía vuelve a la reserva. Mientras hay una en curso, otro intento no hace nada.
+//
+// Las olas (novel2-trib-waves): antes de resolver, la caída se reparte en rayos que hieren el cuerpo
+// y los meridianos según lo que se aguanta (`strikeWaves`) y templan lo aguantado; el templado suma
+// a la calidad si rompe. Escribe el cuerpo acá (percepción: nadie más lo escribe en esta fase).
 
 import type { AgentId, EntityRef, Event, EventId, Rng } from "../../core/index.ts";
 import {
@@ -46,6 +50,7 @@ import {
   type EventDraft,
   gatherHours,
   HEAVEN_LAW,
+  injure,
   isSectCave,
   LOCATION,
   type LocalMap,
@@ -73,10 +78,15 @@ import {
   TRIBULATION,
   TRIBULATION_GATHERS_EVENT,
   TRIBULATION_STRIKES_EVENT,
+  TRIBULATION_WAVE_EVENT,
   type Tribulation,
   tribulationDue,
   tribulationEnergy,
   vesselCapacity,
+  WAVE_MERIDIAN,
+  waveCount,
+  waveForce,
+  waveTemper,
 } from "../../sim/index.ts";
 import { TRIBULATION_PROCESS } from "./tribulation.ts";
 
@@ -121,6 +131,8 @@ function resolveBreak(
   calm: number,
   taken: QiTaken | undefined,
   rng: Rng,
+  /** Lo que templó una tribulación aguantada: suma a la calidad si rompe. */
+  temper = 0,
 ): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
   if (!before.sensed) return undefined;
   const stage = before.stage ?? 0;
@@ -143,7 +155,7 @@ function resolveBreak(
     next = {
       ...before,
       stage: stage + 1,
-      foundation: round4((before.foundation ?? 0) + outcome.quality),
+      foundation: round4((before.foundation ?? 0) + outcome.quality + temper),
     };
   } else if (outcome.kind === "backlash") {
     lost = round4(qi * outcome.lostShare);
@@ -171,13 +183,111 @@ function resolveBreak(
       kind: BREAKTHROUGH_EVENT,
       actors: [who],
       place: e.place,
-      data: { outcome: outcome.kind, threshold: threshold.id, prep, lost, ...outcome },
+      data: {
+        outcome: outcome.kind,
+        threshold: threshold.id,
+        prep,
+        lost,
+        ...outcome,
+        ...(temper > 0 ? { temper } : {}),
+      },
       emissions: seen > 0 ? { sight: seen } : {},
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
       ],
     },
+  };
+}
+
+/**
+ * Las olas de una tribulación que cae (novel2-trib-waves): la energía repartida en `t.waves` rayos;
+ * cada uno pega con la fuerza que deja pasar lo que aguanta quien rompe (`waveForce`), le hace una
+ * herida (contusa: la quemadura llega con su tipo de herida) y le daña los meridianos; si sigue vivo,
+ * lo templa. Un rayo en la cabeza puede matar y ahí se cortan.
+ */
+function strikeWaves(
+  e: Event,
+  who: AgentId,
+  t: Tribulation,
+  state: CultivationState,
+  law: CultivationLaw,
+  plans: ReadonlyMap<string, BodyPlanDef>,
+  ctx: { readonly truth: ReadonlyWorldTruth; readonly now: number; readonly rng: Rng },
+): {
+  state: CultivationState;
+  body: Body | undefined;
+  temper: number;
+  dead: boolean;
+  events: EventDraft[];
+} {
+  let body = ctx.truth.get(BODY_STATE, who);
+  const plan = body ? plans.get(body.plan) : undefined;
+  const capacity = vesselCapacity(law, state.stage ?? 0);
+  const per = t.waves > 0 ? t.energy / t.waves : 0;
+  let meridian = state.meridianDamage ?? 0;
+  let temper = 0;
+  let dead = false;
+  let hit = false;
+  const events: EventDraft[] = [];
+  for (let i = 0; i < t.waves; i++) {
+    if (!body || !plan || body.death) break;
+    const rng = ctx.rng.fork("tribulation", who, t.attempt, i);
+    // Las heridas abiertas pesan a medias: dos graves dejan el cuerpo sin aguante.
+    const open = body.wounds
+      .filter((w) => w.stage !== "healed")
+      .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+    const force = waveForce(
+      per,
+      {
+        capacity,
+        qi: state.qi ?? 0,
+        foundation: state.foundation ?? 0,
+        health: 1 - Math.min(1, open / 2),
+      },
+      rng.float(),
+    );
+    const injury = injure(
+      plan,
+      body,
+      { kind: "blunt", force, dirt: 0, cause: e.id as EventId, at: ctx.now },
+      rng.fork("injure"),
+    );
+    body = injury.body;
+    hit = true;
+    meridian = round4(Math.min(MAX_MERIDIAN_DAMAGE, meridian + WAVE_MERIDIAN * force));
+    if (!injury.died) temper = round4(temper + waveTemper(force));
+    events.push({
+      kind: TRIBULATION_WAVE_EVENT,
+      actors: [who],
+      place: e.place,
+      data: {
+        wave: i + 1,
+        of: t.waves,
+        energy: round4(per),
+        force,
+        zone: injury.wound.zone,
+        severity: round4(injury.wound.severity),
+        ...(injury.died ? { died: injury.died } : {}),
+      },
+      emissions: { sight: 1, sound: 1 },
+      causes: [
+        { kind: "event", event: e.id },
+        { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+      ],
+    });
+    if (injury.died) {
+      dead = true;
+      break;
+    }
+  }
+  return {
+    state:
+      meridian !== (state.meridianDamage ?? 0) ? { ...state, meridianDamage: meridian } : state,
+    body: hit ? body : undefined,
+    temper,
+    dead,
+    events,
   };
 }
 
@@ -251,7 +361,7 @@ export function meditateProcess(o: {
     writes: [
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
-      ...(o.dayTicks !== undefined ? [TRIBULATION.name] : []),
+      ...(o.dayTicks !== undefined ? [TRIBULATION.name, BODY_STATE.name] : []),
     ],
     run(ctx) {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
@@ -260,6 +370,8 @@ export function meditateProcess(o: {
       const heaven = o.dayTicks !== undefined ? ctx.truth.get(HEAVEN_LAW, plane) : undefined;
       /** Las tribulaciones que esta corrida abre (`Tribulation`) o cierra (`null`). */
       const tribs = new Map<AgentId, Tribulation | null>();
+      /** Los cuerpos que golpearon las olas. */
+      const bodies = new Map<AgentId, Body>();
       const schedule: ScheduleRequest[] = [];
       const pending = (who: AgentId): Tribulation | undefined => {
         const t = tribs.get(who);
@@ -302,11 +414,27 @@ export function meditateProcess(o: {
           }
           const talent = ctx.truth.get(TALENT, struck);
           if (!talent) continue;
-          const before = stateOf(struck);
+          const waved = strikeWaves(e, struck, t, stateOf(struck), law, plans, ctx);
+          events.push(...waved.events);
+          if (waved.body) bodies.set(struck, waved.body);
+          rows.set(struck, waved.state);
+          // Murió bajo el rayo: no hay ruptura que resolver.
+          if (waved.dead) continue;
+          const before = waved.state;
           const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
-          const calm = calmOf(plans, ctx.truth.get(BODY_STATE, struck));
+          const calm = calmOf(plans, waved.body ?? ctx.truth.get(BODY_STATE, struck));
           const pool = pools.get(poolFor(struck)) as { taken?: QiTaken };
-          const r = resolveBreak(e, struck, law, apt, before, calm, pool.taken, ctx.rng);
+          const r = resolveBreak(
+            e,
+            struck,
+            law,
+            apt,
+            before,
+            calm,
+            pool.taken,
+            ctx.rng,
+            waved.temper,
+          );
           if (!r) continue;
           rows.set(struck, r.next);
           if (r.taken) pool.taken = r.taken;
@@ -348,6 +476,7 @@ export function meditateProcess(o: {
               threshold: threshold.id,
               stage: before.stage ?? 0,
               energy,
+              waves: waveCount(heaven, threshold.transgression),
               pool: poolId,
               gatheredAt: ctx.now,
               strikeAt,
@@ -467,6 +596,9 @@ export function meditateProcess(o: {
       const changes: StateChange[] = [...rows].map(([id, row]) =>
         setComponent(CULTIVATION_STATE, id, row),
       );
+      for (const [id, b] of [...bodies].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        changes.push(setComponent(BODY_STATE, id, b));
+      }
       for (const [id, t] of [...tribs].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
         changes.push(
           t === null ? deleteComponent(TRIBULATION, id) : setComponent(TRIBULATION, id, t),
