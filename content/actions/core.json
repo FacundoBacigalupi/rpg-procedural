@@ -1057,6 +1057,49 @@
     "evidence": 1
   },
   {
+    "id": "furlough",
+    "name": "pedir permiso para bajar de la secta",
+    "domain": "social",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [
+      {
+        "kind": "position",
+        "at": ["sect"]
+      }
+    ],
+    "occupies": {
+      "voice": "full"
+    },
+    "duration": {
+      "kind": "fixed",
+      "seconds": 600
+    },
+    "checkpoint": 600,
+    "emissions": {
+      "sight": 0.2,
+      "sound": 0.3
+    },
+    "serves": {
+      "status": 0.05
+    },
+    "resolver": "furlough",
+    "ease": 1,
+    "failureModes": [
+      {
+        "id": "not_here",
+        "factor": "position"
+      }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "wait",
     "name": "esperar",
     "domain": "time",

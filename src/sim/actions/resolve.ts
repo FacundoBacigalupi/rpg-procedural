@@ -770,6 +770,11 @@ export type VerbEffect =
       readonly what: string | null;
     }
   | {
+      /** Un pedido de permiso para bajar de la sede (novel-sect-seat-return-leave): los días, si dijo. */
+      readonly kind: "furlough";
+      readonly days: number | null;
+    }
+  | {
       /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
       readonly kind: "ponder";
       readonly about: string | null;
@@ -1090,6 +1095,17 @@ const redeem: Resolver = (c) => {
   // Pedir sale siempre: lo que decide es la secta, no una tirada.
   return {
     effect: { kind: "redeem", hours, what: argText(c, "what") },
+    seconds: c.nominal,
+    verdict: { outcome: "success", failure: null, believed: "success" },
+  };
+};
+
+/** El pedido de permiso: deja cuántos días pidió; si se lo dan lo decide `game`. */
+const furlough: Resolver = (c) => {
+  const a = c.input.node.args.find((x) => x.role === "for");
+  const days = a && "seconds" in a ? a.seconds / 86_400 : null;
+  return {
+    effect: { kind: "furlough", days },
     seconds: c.nominal,
     verdict: { outcome: "success", failure: null, believed: "success" },
   };
@@ -2958,6 +2974,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   resolve: resolveGoal,
   chore,
   redeem,
+  furlough,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

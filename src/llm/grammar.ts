@@ -600,6 +600,14 @@ const VERBS: readonly {
     },
   },
   {
+    // El permiso para bajar de la sede (novel-sect-seat-return-leave): cuántos días, si los dice.
+    re: /^(?:pido (?:licencia|unos días de permiso|permiso para (?:bajar|irme|salir|ir a la aldea|volver a la aldea))|pedir (?:licencia|permiso para (?:bajar|irme|salir)))\b/iu,
+    build: (rest) => {
+      const d = duration(rest);
+      return { node: act("furlough", d ? [{ role: "for", duration: d.duration }] : []) };
+    },
+  },
+  {
     // Las tareas de la secta (novel-sect-duty-chore): qué tarea, si la dice; si no, la del lugar.
     re: /^(?:hago mis tareas|hacer mis tareas|barro|barrer|hago guardia|hacer guardia)\b/i,
     build: (rest, _ctx, all) => {

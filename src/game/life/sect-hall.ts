@@ -184,8 +184,9 @@ export interface SectHallMind {
 
 /**
  * La casa y el lugar de las horas de trabajo de quien vive en la sede: los dormitorios y la cueva.
- * El discípulo externo vive ahí solo si ya subió (con `map`: está en el parche de la sede), y sus
- * horas de trabajo son de tareas en el portón (novel-sect-duty-routine).
+ * Vale solo estando en el parche de la sede (con `map`): quien bajó a la aldea vive ahí como
+ * cualquiera hasta que vuelva caminando (novel-sect-seat-return-trek). El discípulo externo trabaja
+ * en tareas en el portón (novel-sect-duty-routine).
  */
 export function seatRoutineOf(
   truth: ReadonlyWorldTruth,
@@ -197,15 +198,15 @@ export function seatRoutineOf(
   const sect = truth.get(SECT, member.org);
   if (!sect) return undefined;
   const home = sectSpaceKey(sect.seatPlace, "dorm");
+  const seatHex = truth.get(PLACE, sect.seatPlace)?.hexes[0];
+  const here = truth.get(LOCATION, me)?.hex;
+  if (!map || seatHex === undefined || here === undefined) return undefined;
+  if (patchOf(map, here).base !== patchOf(map, seatHex).base) return undefined;
   if (member.rank !== "outer") {
     return truth.has(SECT_HALL, member.org)
       ? { home, work: sectSpaceKey(sect.seatPlace, "cave") }
       : undefined;
   }
-  const seatHex = truth.get(PLACE, sect.seatPlace)?.hexes[0];
-  const here = truth.get(LOCATION, me)?.hex;
-  if (!map || seatHex === undefined || here === undefined) return undefined;
-  if (patchOf(map, here).base !== patchOf(map, seatHex).base) return undefined;
   return { home, work: sectSpaceKey(sect.seatPlace, "gate"), chores: true };
 }
 

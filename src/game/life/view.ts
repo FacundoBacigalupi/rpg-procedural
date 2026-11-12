@@ -53,9 +53,11 @@ import {
   SECT_EXCHANGE_EVENT,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
+  SECT_LEAVE_EVENT,
   SECT_LORE,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_RETURNED_EVENT,
   SECT_SCHOOL,
   SECT_STIPEND_EVENT,
   SECT_TRIAL_EVENT,
@@ -749,6 +751,22 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT)
   )
     cues.add("promoted");
+  const leave =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_LEAVE_EVENT);
+  if (leave) {
+    const refused = (leave.data as { refused?: unknown } | null)?.refused !== undefined;
+    cues.add(refused ? "leave_refused" : "leave_granted");
+  }
+  const back =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_RETURNED_EVENT);
+  if (back) {
+    const d = (back.data ?? {}) as { late?: number; penalty?: number };
+    cues.add((d.late ?? 0) > 0 ? "returned_late" : "returned_on_time");
+  }
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

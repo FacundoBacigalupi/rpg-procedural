@@ -804,6 +804,19 @@
     }
   },
   {
+    "id": "furlough",
+    "text": "pido permiso para bajar a la aldea por diez días",
+    "scene": "Estás en el salón de la sede de la secta, frente al encargado de las cuentas.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "furlough",
+        "args": [{ "role": "for", "duration": { "amount": 10, "unit": "day" } }]
+      }
+    }
+  },
+  {
     "id": "redeem",
     "text": "canjeo mis puntos por tres horas de cueva",
     "scene": "Estás en el salón de la sede de la secta, frente al encargado de las cuentas.",
