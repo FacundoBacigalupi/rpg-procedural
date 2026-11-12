@@ -4,7 +4,12 @@
 // enteran de lejos llegan con el rumor (información, Fase 3). Funciones puras: el proceso las aplica.
 
 import type { AgentId, Event } from "../../core/index.ts";
-import { type Experience, PERCEPT_KEYS, type Percept } from "../../sim/index.ts";
+import {
+  type Experience,
+  PERCEPT_KEYS,
+  type Percept,
+  TRIBULATION_STRIKES_EVENT,
+} from "../../sim/index.ts";
 import { perceptibleBandRaid } from "./band-raid.ts";
 
 export interface Lived {
@@ -251,6 +256,12 @@ export const WITNESS_INTENSITY = 0.5;
 export const WITNESS_VALENCE = 0.6;
 /** Bajo esta claridad el testigo no guarda nada: vio una sombra. */
 export const WITNESS_MIN_CLARITY = 0.15;
+/**
+ * Ver caer una tribulación (novel2-trib-seen): asombro con miedo, de lo que no se olvida (sin
+ * calibrar; antes de la atenuación de testigo).
+ */
+export const TRIBULATION_SEEN_INTENSITY = 1;
+export const TRIBULATION_SEEN_VALENCE = -0.4;
 /** Cuánto guarda quien presenció medio dormido (el `encoding` de la memoria). */
 export const WITNESS_ASLEEP_ENCODING = 0.4;
 
@@ -258,7 +269,8 @@ export const WITNESS_ASLEEP_ENCODING = 0.4;
  * Lo que guardan los testigos que no son parte (perception §12, npc-psychology §5): de lo que
  * vieron u oyeron (`percepts`, uno por observador) forman una memoria más tenue que la de las
  * partes, con `clarity` de lo que percibieron (luz, distancia, atención) y `with` solo si
- * reconocieron a quién. Solo lo memorable: lo que ya tiene vivencia de las partes o una muerte.
+ * reconocieron a quién. Solo lo memorable: lo que ya tiene vivencia de las partes, una muerte o
+ * el rayo del Cielo cayendo sobre alguien.
  */
 export function witnessLived(
   e: Event,
@@ -276,6 +288,9 @@ export function witnessLived(
   } else if (e.kind === "body.died") {
     intensity = 0.5;
     valence = -0.5;
+  } else if (e.kind === TRIBULATION_STRIKES_EVENT) {
+    intensity = TRIBULATION_SEEN_INTENSITY;
+    valence = TRIBULATION_SEEN_VALENCE;
   } else if (lived.length > 0) {
     intensity = Math.max(...lived.map((l) => l.experience.intensity));
     valence = lived.reduce((s, l) => s + l.experience.valence, 0) / lived.length;

@@ -1,0 +1,9 @@
+[
+  {
+    "id": "spirit-grass",
+    "good": "spirit-herb",
+    "minRatio": 1.2,
+    "gramsPerRatio": 2000,
+    "regrowth": 0.03
+  }
+]

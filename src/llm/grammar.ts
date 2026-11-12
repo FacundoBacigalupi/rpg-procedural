@@ -586,11 +586,20 @@ const VERBS: readonly {
     },
   },
   {
-    // El canje de aportes (novel-sect-duty-exchange): puntos por horas de pase a la cueva.
-    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase)\b/iu,
+    // El canje de aportes (novel-sect-duty-exchange): puntos por horas de pase a la cueva, o por el
+    // método del reino siguiente (novel2-method-pavilion).
+    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase|pido (?:el |la )?(?:método|técnica|manual) (?:del reino )?siguiente|pido (?:el |la )?siguiente (?:método|técnica)|pido (?:una |otra )?(?=p[ií]ldora))\b/iu,
     build: (rest, _ctx, all) => {
       const d = duration(rest);
-      const what = /cueva|pase/i.test(all) ? "cueva" : "";
+      // Una píldora del tesoro (novel2-pills-exchange): cuál, como la dijo.
+      const pill = /p[ií]ldora[^,.;]*/iu.exec(all)?.[0]?.trim();
+      const what = pill
+        ? pill
+        : /t[eé]cnica|m[eé]todo|manual|escritura/i.test(all)
+          ? "técnica"
+          : /cueva|pase/i.test(all)
+            ? "cueva"
+            : "";
       return {
         node: act("redeem", [
           ...(d ? [{ role: "for", duration: d.duration }] : []),
@@ -633,6 +642,15 @@ const VERBS: readonly {
     build: (rest) => {
       const what = nounPhrase(rest.replace(MANNER_WORDS, " ").replace(/^algo\b/i, ""));
       return { node: act("eat", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
+    // Tragar una píldora es consumirla (novel2-pills-take): «tomo una píldora de reunir qi», «me
+    // trago la píldora de fundamento». «Tomo la píldora del estante» sin tragarla no se distingue.
+    re: /^(?:me\s+)?(?:tomo|tomar|trago|tragar|tragarme|ingiero)\s+(?:(?:una|la|esa|otra)\s+)?(?=p[ií]ldora)/iu,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("consume", what ? [{ role: "what", text: what }] : []) };
     },
   },
   {

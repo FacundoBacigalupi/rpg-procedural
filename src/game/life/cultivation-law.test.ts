@@ -8,6 +8,8 @@ import {
   CULTIVATION_LAW_EVENT,
   checkInvariants,
   ENTITY,
+  HEAVEN_LAW,
+  HEAVEN_LAW_EVENT,
   PERSON,
   PLACE_NAME,
   SECT,
@@ -44,6 +46,7 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(off.world.truth.ids(CULTIVATION_LAW)).toEqual([]);
     expect(off.world.truth.ids(TALENT)).toEqual([]);
     expect(off.world.truth.ids(SECT)).toEqual([]);
+    expect(off.world.truth.ids(HEAVEN_LAW)).toEqual([]);
   });
 
   it("encendido: la ley en el plano con su evento de origen y el talento de cada persona", () => {
@@ -58,6 +61,11 @@ describe("la ley del cultivo en la vida nueva (novel-cult-law)", () => {
     expect(origin?.kind).toBe(CULTIVATION_LAW_EVENT);
     expect(origin?.causes).toEqual([{ kind: "seed" }]);
     expect(w.truth.get(ENTITY, plane)?.originEventId).toBe(law?.originEventId);
+    // La fuerza del Cielo en el mismo plano, con su evento del seed (novel2-trib-heaven).
+    const heaven = w.truth.get(HEAVEN_LAW, plane);
+    const heavenOrigin = heaven ? w.log.get(heaven.originEventId) : undefined;
+    expect(heavenOrigin?.kind).toBe(HEAVEN_LAW_EVENT);
+    expect(heavenOrigin?.causes).toEqual([{ kind: "seed" }]);
     const people = w.truth.ids(PERSON);
     expect([...w.truth.ids(TALENT)].sort()).toEqual([...people].sort());
     // Hijo de padres con talento: lo hereda (sus padres en el genoma del talento).

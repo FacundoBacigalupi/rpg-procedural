@@ -17,6 +17,15 @@
 //
 // La técnica (novel-cult-school): quien aprendió la de entrada de una secta medita y absorbe con su
 // factor (lo que pide; la celda y la capacidad siguen acotando).
+//
+// La tribulación (novel2-trib-gather): si el umbral ofende al Cielo (`tribulationDue`), el intento no
+// se resuelve en el acto: el Cielo saca qi de la reserva (`TRIBULATION`, débito en `QI_TAKEN`), las
+// nubes se juntan a la vista y `tribulationProcess` agenda la caída; al verla, la ruptura se resuelve
+// y la energía vuelve a la reserva. Mientras hay una en curso, otro intento no hace nada.
+//
+// Las olas (novel2-trib-waves): antes de resolver, la caída se reparte en rayos que hieren el cuerpo
+// y los meridianos según lo que se aguanta (`strikeWaves`) y templan lo aguantado; el templado suma
+// a la calidad si rompe. Escribe el cuerpo acá (percepción: nadie más lo escribe en esta fase).
 
 import type { AgentId, EntityRef, Event, EventId, Rng } from "../../core/index.ts";
 import {
@@ -25,26 +34,37 @@ import {
   absorbDraw,
   absorbWant,
   aptitudeOf,
+  BLIND_PREP,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
   BREAKTHROUGH_EVENT,
+  breakAidOf,
   breakOutcome,
   breakPreparation,
+  breaksBlind,
   CAVE_FOCUS,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
   type CultivationLaw,
   type CultivationState,
+  deleteComponent,
   type EventDraft,
+  gatherHours,
+  HEAVEN_LAW,
+  injure,
   isSectCave,
+  type KnownTechnique,
   LOCATION,
   type LocalMap,
   MAX_MERIDIAN_DAMAGE,
   meditationGain,
+  methodCovers,
   mixedPurity,
   needsFrom,
+  PILL_TAKEN_EVENT,
+  type PillDef,
   PLACE,
   PLACE_QI,
   type PlaceQi,
@@ -56,13 +76,29 @@ import {
   type ReadonlyWorldTruth,
   regrown,
   rootMatch,
+  type ScheduleRequest,
+  type School,
+  SECT_SCHOOL,
   SENSE_THRESHOLD,
   SENSED_QI_EVENT,
   type StateChange,
   setComponent,
+  swallowGather,
   TALENT,
+  TRIBULATION,
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_STRIKES_EVENT,
+  TRIBULATION_WAVE_EVENT,
+  type Tribulation,
+  tribulationDue,
+  tribulationEnergy,
   vesselCapacity,
+  WAVE_MERIDIAN,
+  waveCount,
+  waveForce,
+  waveTemper,
 } from "../../sim/index.ts";
+import { TRIBULATION_PROCESS } from "./tribulation.ts";
 
 export const MEDITATE_PROCESS = "life.cultivation.meditate";
 /** Una hora de meditar o un intento de romper de la rutina delegada (novel-cult-delegate). */
@@ -78,6 +114,19 @@ export function meditation(e: Event): { who: AgentId; hours: number } | undefine
   const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
   if (!who || typeof seconds !== "number" || seconds <= 0) return undefined;
   return { who, hours: seconds / 3600 };
+}
+
+/** Quién tragó qué píldora, de un `action.consume` que gastó una. */
+function pillTaken(
+  e: Event,
+  pills: ReadonlyMap<string, PillDef>,
+): { who: AgentId; pill: PillDef } | undefined {
+  if (e.kind !== "action.consume") return undefined;
+  const eff = (e.data as { effect?: { good?: unknown; units?: unknown } } | null)?.effect;
+  const pill = typeof eff?.good === "string" ? pills.get(eff.good) : undefined;
+  const who = e.actors[0] as AgentId | undefined;
+  if (!pill || !who || typeof eff?.units !== "number" || eff.units <= 0) return undefined;
+  return { who, pill };
 }
 
 /** Quién intentó romper, de un `action.breakthrough` o de la rutina delegada. */
@@ -105,6 +154,10 @@ function resolveBreak(
   calm: number,
   taken: QiTaken | undefined,
   rng: Rng,
+  /** Sin método que cubra el tramo al que se llega (novel2-method-school): la preparación baja. */
+  blind: boolean,
+  /** Lo que templó una tribulación aguantada: suma a la calidad si rompe. */
+  temper = 0,
 ): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
   if (!before.sensed) return undefined;
   const stage = before.stage ?? 0;
@@ -112,7 +165,7 @@ function resolveBreak(
   if (!threshold) return undefined;
   const qi = before.qi ?? 0;
   const capacity = threshold.capacity;
-  const prep = breakPreparation(apt, {
+  const ready = breakPreparation(apt, {
     qi,
     capacity,
     purity: before.purity ?? 0,
@@ -120,19 +173,25 @@ function resolveBreak(
     meridianDamage: before.meridianDamage ?? 0,
     foundation: before.foundation ?? 0,
   });
+  // La píldora de romper tragada antes (novel2-pills-take) empuja; se gasta en este intento.
+  const aid = before.aid;
+  const prep = round4(Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0)));
   const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
-  let next = before;
+  const { aid: _spent, ...rest } = before;
+  let next: CultivationState = rest;
   let lost = 0;
   if (outcome.kind === "success") {
     next = {
-      ...before,
+      ...rest,
       stage: stage + 1,
-      foundation: round4((before.foundation ?? 0) + outcome.quality),
+      foundation: round4(
+        (before.foundation ?? 0) + Math.max(0, outcome.quality - (aid?.cost ?? 0)) + temper,
+      ),
     };
   } else if (outcome.kind === "backlash") {
     lost = round4(qi * outcome.lostShare);
     next = {
-      ...before,
+      ...rest,
       qi: round4(qi - lost),
       meridianDamage: round4(
         Math.min(MAX_MERIDIAN_DAMAGE, (before.meridianDamage ?? 0) + outcome.damage),
@@ -155,13 +214,135 @@ function resolveBreak(
       kind: BREAKTHROUGH_EVENT,
       actors: [who],
       place: e.place,
-      data: { outcome: outcome.kind, threshold: threshold.id, prep, lost, ...outcome },
+      data: {
+        outcome: outcome.kind,
+        threshold: threshold.id,
+        prep,
+        lost,
+        ...outcome,
+        ...(blind ? { blind } : {}),
+        ...(aid ? { aid: aid.pill } : {}),
+        ...(temper > 0 ? { temper } : {}),
+      },
       emissions: seen > 0 ? { sight: seen } : {},
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
       ],
     },
+  };
+}
+
+/** El método que alguien sabe y la escuela que lo enseñó. */
+function methodOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+): { known: KnownTechnique | undefined; school: School | undefined } {
+  const known = truth.get(CULTIVATION_TECHNIQUE, who);
+  return { known, school: known ? truth.get(SECT_SCHOOL, known.org) : undefined };
+}
+
+/** Si romper desde `stage` va a ciegas para `who` (novel2-method-school). */
+function blindAt(truth: ReadonlyWorldTruth, who: AgentId, stage: number): boolean {
+  const { known, school } = methodOf(truth, who);
+  return breaksBlind(school, known, stage);
+}
+
+/** Lo que rinde el método al meditar en `stage`: nada fuera de su reino (o sin método). */
+function methodFactor(truth: ReadonlyWorldTruth, who: AgentId, stage: number): number {
+  const { known, school } = methodOf(truth, who);
+  if (!known) return 1;
+  return !school || methodCovers(school, known, stage) ? known.factor : 1;
+}
+
+/**
+ * Las olas de una tribulación que cae (novel2-trib-waves): la energía repartida en `t.waves` rayos;
+ * cada uno pega con la fuerza que deja pasar lo que aguanta quien rompe (`waveForce`), le hace una
+ * herida (contusa: la quemadura llega con su tipo de herida) y le daña los meridianos; si sigue vivo,
+ * lo templa. Un rayo en la cabeza puede matar y ahí se cortan.
+ */
+function strikeWaves(
+  e: Event,
+  who: AgentId,
+  t: Tribulation,
+  state: CultivationState,
+  law: CultivationLaw,
+  plans: ReadonlyMap<string, BodyPlanDef>,
+  ctx: { readonly truth: ReadonlyWorldTruth; readonly now: number; readonly rng: Rng },
+): {
+  state: CultivationState;
+  body: Body | undefined;
+  temper: number;
+  dead: boolean;
+  events: EventDraft[];
+} {
+  let body = ctx.truth.get(BODY_STATE, who);
+  const plan = body ? plans.get(body.plan) : undefined;
+  const capacity = vesselCapacity(law, state.stage ?? 0);
+  const per = t.waves > 0 ? t.energy / t.waves : 0;
+  let meridian = state.meridianDamage ?? 0;
+  let temper = 0;
+  let dead = false;
+  let hit = false;
+  const events: EventDraft[] = [];
+  for (let i = 0; i < t.waves; i++) {
+    if (!body || !plan || body.death) break;
+    const rng = ctx.rng.fork("tribulation", who, t.attempt, i);
+    // Las heridas abiertas pesan a medias: dos graves dejan el cuerpo sin aguante.
+    const open = body.wounds
+      .filter((w) => w.stage !== "healed")
+      .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+    const force = waveForce(
+      per,
+      {
+        capacity,
+        qi: state.qi ?? 0,
+        foundation: state.foundation ?? 0,
+        health: 1 - Math.min(1, open / 2),
+      },
+      rng.float(),
+    );
+    const injury = injure(
+      plan,
+      body,
+      { kind: "blunt", force, dirt: 0, cause: e.id as EventId, at: ctx.now },
+      rng.fork("injure"),
+    );
+    body = injury.body;
+    hit = true;
+    meridian = round4(Math.min(MAX_MERIDIAN_DAMAGE, meridian + WAVE_MERIDIAN * force));
+    if (!injury.died) temper = round4(temper + waveTemper(force));
+    events.push({
+      kind: TRIBULATION_WAVE_EVENT,
+      actors: [who],
+      place: e.place,
+      data: {
+        wave: i + 1,
+        of: t.waves,
+        energy: round4(per),
+        force,
+        zone: injury.wound.zone,
+        severity: round4(injury.wound.severity),
+        ...(injury.died ? { died: injury.died } : {}),
+      },
+      emissions: { sight: 1, sound: 1 },
+      causes: [
+        { kind: "event", event: e.id },
+        { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+      ],
+    });
+    if (injury.died) {
+      dead = true;
+      break;
+    }
+  }
+  return {
+    state:
+      meridian !== (state.meridianDamage ?? 0) ? { ...state, meridianDamage: meridian } : state,
+    body: hit ? body : undefined,
+    temper,
+    dead,
+    events,
   };
 }
 
@@ -205,8 +386,16 @@ export function meditateProcess(o: {
    * del parche donde está (`qiPoolOf`). Sin él, todos sobre la del plano.
    */
   readonly map?: LocalMap;
+  /**
+   * Ticks por día (novel2-trib-gather): con él, los umbrales que ofenden al Cielo llaman
+   * tribulación (las horas de nubes se cuentan con él). Sin él, toda ruptura se resuelve en el acto.
+   */
+  readonly dayTicks?: number;
+  /** Las píldoras (novel2-pills-take): con ellas, tragar una (`action.consume`) hace lo suyo. */
+  readonly pills?: readonly PillDef[];
 }): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  const pillByUnit = new Map((o.pills ?? []).map((p) => [`good:${p.good}`, p] as const));
   const pooled = o.map?.patches !== undefined;
   return {
     id: MEDITATE_PROCESS,
@@ -223,14 +412,30 @@ export function meditateProcess(o: {
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
       CULTIVATION_TECHNIQUE.name,
+      SECT_SCHOOL.name,
       LOCATION.name,
       ...(pooled ? [PLACE.name] : []),
+      ...(o.dayTicks !== undefined ? [HEAVEN_LAW.name, TRIBULATION.name] : []),
     ],
-    writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
+    writes: [
+      CULTIVATION_STATE.name,
+      QI_TAKEN.name,
+      ...(o.dayTicks !== undefined ? [TRIBULATION.name, BODY_STATE.name] : []),
+    ],
     run(ctx) {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
       const law = plane ? ctx.truth.get(CULTIVATION_LAW, plane) : undefined;
       if (!plane || !law) return {};
+      const heaven = o.dayTicks !== undefined ? ctx.truth.get(HEAVEN_LAW, plane) : undefined;
+      /** Las tribulaciones que esta corrida abre (`Tribulation`) o cierra (`null`). */
+      const tribs = new Map<AgentId, Tribulation | null>();
+      /** Los cuerpos que golpearon las olas. */
+      const bodies = new Map<AgentId, Body>();
+      const schedule: ScheduleRequest[] = [];
+      const pending = (who: AgentId): Tribulation | undefined => {
+        const t = tribs.get(who);
+        return t === null ? undefined : (t ?? ctx.truth.get(TRIBULATION, who));
+      };
       // Cada reserva con su débito; la del plano es la de la aldea.
       const pools = new Map<
         EntityRef,
@@ -255,20 +460,176 @@ export function meditateProcess(o: {
       const stateOf = (who: AgentId): CultivationState =>
         rows.get(who) ?? ctx.truth.get(CULTIVATION_STATE, who) ?? { sensitivity: 0, hours: 0 };
       for (const e of ctx.recent) {
+        // La tribulación cayó: la energía vuelve a su reserva y la ruptura se resuelve.
+        const struck = e.kind === TRIBULATION_STRIKES_EVENT ? (e.actors[0] as AgentId) : undefined;
+        if (struck) {
+          const t = pending(struck);
+          if (!t) continue;
+          tribs.set(struck, null);
+          poolFor(struck);
+          const back = pools.get(t.pool);
+          if (back?.taken) {
+            back.taken = { ...back.taken, taken: round4(Math.max(0, back.taken.taken - t.energy)) };
+          }
+          const talent = ctx.truth.get(TALENT, struck);
+          if (!talent) continue;
+          const waved = strikeWaves(e, struck, t, stateOf(struck), law, plans, ctx);
+          events.push(...waved.events);
+          if (waved.body) bodies.set(struck, waved.body);
+          rows.set(struck, waved.state);
+          // Murió bajo el rayo: no hay ruptura que resolver.
+          if (waved.dead) continue;
+          const before = waved.state;
+          const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
+          const calm = calmOf(plans, waved.body ?? ctx.truth.get(BODY_STATE, struck));
+          const pool = pools.get(poolFor(struck)) as { taken?: QiTaken };
+          const r = resolveBreak(
+            e,
+            struck,
+            law,
+            apt,
+            before,
+            calm,
+            pool.taken,
+            ctx.rng,
+            blindAt(ctx.truth, struck, before.stage ?? 0),
+            waved.temper,
+          );
+          if (!r) continue;
+          rows.set(struck, r.next);
+          if (r.taken) pool.taken = r.taken;
+          else delete pool.taken;
+          events.push(r.event);
+          continue;
+        }
         const breaker = breakAttempt(e);
         if (breaker) {
           const talent = ctx.truth.get(TALENT, breaker);
           if (!talent) continue;
+          // Ya hay nubes sobre él: el intento no agrega nada.
+          if (pending(breaker)) continue;
           const before = stateOf(breaker);
+          const threshold = law.paths[0]?.thresholds[before.stage ?? 0];
+          if (
+            o.dayTicks !== undefined &&
+            heaven &&
+            before.sensed &&
+            threshold &&
+            tribulationDue(heaven, threshold.transgression)
+          ) {
+            const poolId = poolFor(breaker);
+            const pool = pools.get(poolId) as { place?: PlaceQi; taken?: QiTaken };
+            const inCell =
+              pool.place && pool.taken ? Math.max(0, pool.place.level - pool.taken.taken) : 0;
+            const energy = tribulationEnergy(
+              heaven,
+              threshold.transgression,
+              threshold.capacity,
+              inCell,
+            );
+            if (pool.taken && energy > 0) {
+              pool.taken = { ...pool.taken, taken: round4(pool.taken.taken + energy) };
+            }
+            const hours = gatherHours(heaven, threshold.transgression);
+            const strikeAt = ctx.now + Math.max(1, Math.round((hours * o.dayTicks) / 24));
+            tribs.set(breaker, {
+              threshold: threshold.id,
+              stage: before.stage ?? 0,
+              energy,
+              waves: waveCount(heaven, threshold.transgression),
+              pool: poolId,
+              gatheredAt: ctx.now,
+              strikeAt,
+              place: e.place,
+              attempt: e.id,
+            });
+            schedule.push({
+              at: strikeAt,
+              phase: "physics",
+              process: TRIBULATION_PROCESS,
+              scope: breaker,
+              reason: { kind: "event", event: e.id },
+            });
+            events.push({
+              kind: TRIBULATION_GATHERS_EVENT,
+              actors: [breaker],
+              place: e.place,
+              data: { threshold: threshold.id, energy, hours, strikeAt },
+              emissions: { sight: 1 },
+              causes: [
+                { kind: "event", event: e.id },
+                { kind: "state", entity: plane, key: HEAVEN_LAW.name },
+                { kind: "state", entity: poolId, key: PLACE_QI.name },
+              ],
+            });
+            continue;
+          }
           const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
           const calm = calmOf(plans, ctx.truth.get(BODY_STATE, breaker));
           const pool = pools.get(poolFor(breaker)) as { taken?: QiTaken };
-          const r = resolveBreak(e, breaker, law, apt, before, calm, pool.taken, ctx.rng);
+          const r = resolveBreak(
+            e,
+            breaker,
+            law,
+            apt,
+            before,
+            calm,
+            pool.taken,
+            ctx.rng,
+            blindAt(ctx.truth, breaker, before.stage ?? 0),
+          );
           if (!r) continue;
           rows.set(breaker, r.next);
           if (r.taken) pool.taken = r.taken;
           else delete pool.taken;
           events.push(r.event);
+          continue;
+        }
+        const swallowed = pillByUnit.size > 0 ? pillTaken(e, pillByUnit) : undefined;
+        if (swallowed) {
+          const { who, pill } = swallowed;
+          const before = stateOf(who);
+          if (pill.effect === "break") {
+            const aid = breakAidOf(pill, before.aid);
+            rows.set(who, { ...before, aid });
+            events.push({
+              kind: PILL_TAKEN_EVENT,
+              actors: [who],
+              place: e.place,
+              data: { pill: pill.id, effect: "break", prep: aid.prep },
+              emissions: {},
+              causes: [{ kind: "event", event: e.id }],
+            });
+            continue;
+          }
+          // Sin sentir el qi no hay recipiente: todo lo que lleva se escapa.
+          const capacity = before.sensed ? vesselCapacity(law, before.stage ?? 0) : 0;
+          const r = swallowGather(pill, before.qi ?? 0, before.purity ?? 0, capacity);
+          if (r.taken > 0) rows.set(who, { ...before, qi: r.qi, purity: r.purity });
+          const poolId = poolFor(who);
+          const pool = pools.get(poolId) as { taken?: QiTaken };
+          // Lo que no cabe se escapa al lugar: la reserva lo recupera.
+          if (r.spilled > 0 && pool.taken) {
+            pool.taken = {
+              ...pool.taken,
+              taken: round4(Math.max(0, pool.taken.taken - r.spilled)),
+            };
+          }
+          events.push({
+            kind: PILL_TAKEN_EVENT,
+            actors: [who],
+            place: e.place,
+            data: {
+              pill: pill.id,
+              effect: "gather",
+              taken: r.taken,
+              spilled: r.spilled,
+              qi: r.qi,
+              capacity,
+            },
+            emissions: {},
+            causes: [{ kind: "event", event: e.id }],
+          });
           continue;
         }
         const m = meditation(e);
@@ -286,7 +647,7 @@ export function meditateProcess(o: {
         const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
         const factor = pool.factor * focus;
         const taken = pool.taken;
-        const method = ctx.truth.get(CULTIVATION_TECHNIQUE, m.who)?.factor ?? 1;
+        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0);
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
           ...before,
@@ -352,13 +713,22 @@ export function meditateProcess(o: {
       const changes: StateChange[] = [...rows].map(([id, row]) =>
         setComponent(CULTIVATION_STATE, id, row),
       );
+      for (const [id, b] of [...bodies].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        changes.push(setComponent(BODY_STATE, id, b));
+      }
+      for (const [id, t] of [...tribs].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        changes.push(
+          t === null ? deleteComponent(TRIBULATION, id) : setComponent(TRIBULATION, id, t),
+        );
+      }
       if (changes.length > 0) {
         for (const [id, pool] of [...pools].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
           if (pool.taken && pool.taken !== pool.row)
             changes.push(setComponent(QI_TAKEN, id, pool.taken));
         }
       }
-      return changes.length === 0 ? {} : { changes, events };
+      if (changes.length === 0) return {};
+      return { changes, events, ...(schedule.length > 0 ? { schedule } : {}) };
     },
   };
 }

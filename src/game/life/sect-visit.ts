@@ -215,6 +215,7 @@ export function sectVisitProcess(o: {
                 name: school.technique.name,
                 factor: school.technique.factor,
                 learnedAt: ctx.now,
+                realm: 0,
               }),
             );
             events.push({

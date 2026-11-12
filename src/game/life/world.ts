@@ -39,6 +39,7 @@ import {
   HEARTH,
   HEARTH_BURN_G_PER_H,
   HEARTH_WARMING,
+  type HerbDef,
   type HouseholdToolDef,
   KNOWN_DEEDS,
   LIVESTOCK_PASTURE_SHARE,
@@ -59,6 +60,7 @@ import {
   oscillationYearOfMap,
   outdoorTempC,
   PERSON,
+  type PillDef,
   PLACE,
   type PressureCurve,
   type ProcessDef,
@@ -157,6 +159,7 @@ import {
   hearthEnv,
   hearthProcess,
 } from "./hearth.ts";
+import { herbsProcess } from "./herbs.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess, npcLarderProcess } from "./inventory-belief.ts";
@@ -279,6 +282,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { transitProcess } from "./transit.ts";
 import { TREK_PROVISIONS, trekProcess } from "./trek.ts";
+import { tribulationProcess } from "./tribulation.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
@@ -840,7 +844,13 @@ export interface LifeWorld {
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
   /** Opt-in (novel-cult-law): el talento para cultivar; los que nacen lo heredan (`cultivation.talent`). */
-  readonly cultivation?: { readonly talents: readonly Trait[] };
+  readonly cultivation?: {
+    readonly talents: readonly Trait[];
+    /** Las píldoras que se pueden tragar (`content/pills/`, novel2-pills-take). */
+    readonly pills?: readonly PillDef[];
+    /** Las hierbas espirituales que crecen del qi del lugar (`content/herbs/`, novel2-pills-herbs). */
+    readonly herbs?: readonly HerbDef[];
+  };
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
   /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
@@ -1271,7 +1281,9 @@ export function lifeWorld(
           ...(parts.npcPace && parts.npcStrain === true ? { strain: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.itemClaims === true ? { itemClaims: true } : {}),
-          ...(parts.wildHarvest === true && parts.wildFirewood === true
+          // Las hierbas espirituales se juntan nombrándolas (novel2-pills-herbs).
+          ...((parts.wildHarvest === true && parts.wildFirewood === true) ||
+          (parts.cultivation?.herbs?.length ?? 0) > 0
             ? { gatherByWords: true }
             : {}),
           ...(parts.tasteDemand === true ? { tasteDemand: parts.tastes } : {}),
@@ -1279,6 +1291,9 @@ export function lifeWorld(
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.cultivation?.pills
+            ? { pillGoods: parts.cultivation.pills.map((p) => p.good) }
+            : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
@@ -2493,9 +2508,27 @@ export function lifeWorld(
                 bodyPlans: parts.plans,
                 yearTicks: parts.clock.year,
                 ...(parts.map.patches ? { map: parts.map } : {}),
+                // Los umbrales altos llaman tribulación (novel2-trib-gather).
+                dayTicks: parts.clock.day,
+                ...(parts.cultivation.pills ? { pills: parts.cultivation.pills } : {}),
               }),
+              tribulationProcess(),
+              ...(parts.cultivation.herbs && parts.cultivation.herbs.length > 0
+                ? [herbsProcess({ dayTicks: parts.clock.day, herbs: parts.cultivation.herbs })]
+                : []),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
-              sectDutyProcess({ dayTicks: parts.clock.day }),
+              sectDutyProcess({
+                dayTicks: parts.clock.day,
+                // El tesoro canjea píldoras por puntos (novel2-pills-exchange).
+                ...(parts.cultivation.pills
+                  ? {
+                      pills: parts.cultivation.pills.map((def) => ({
+                        def,
+                        name: parts.goods.find((g) => g.id === def.good)?.name ?? def.good,
+                      })),
+                    }
+                  : {}),
+              }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
@@ -2514,6 +2547,13 @@ export function lifeWorld(
                                 kcalPerGram: grain.kcalPerGram,
                                 days: SECT_STORE_DAYS,
                                 coin: COPPER,
+                                // El tesoro llega con píldoras (novel2-pills-stock).
+                                pills: (parts.cultivation?.pills ?? [])
+                                  .filter((p) => (p.endowPerHead ?? 0) > 0)
+                                  .map((p) => ({
+                                    unit: ledgerUnit(`good:${p.good}`),
+                                    perHead: p.endowPerHead ?? 0,
+                                  })),
                               },
                             }
                           : {};

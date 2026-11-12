@@ -64,6 +64,10 @@ export type SelfCue =
   | "break_backlash"
   /** Intentó romper sin sentir el qi: no hay nada que empujar. */
   | "break_nothing"
+  /** El umbral ofende al Cielo: las nubes se juntan sobre él (`heaven.tribulation_gathers`). */
+  | "tribulation_gathers"
+  /** La tribulación cae sobre él (`heaven.tribulation_strikes`, novel2-trib-gather). */
+  | "tribulation_strikes"
   /** Oyó el aviso: en unos días baja la secta a la plaza a buscar discípulos (novel-cult-sect-visit). */
   | "sect_coming"
   /** La gente de la secta está en la plaza. */
@@ -98,6 +102,24 @@ export type SelfCue =
   | "exchange_done"
   /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
   | "exchange_refused"
+  /** El tesoro de la secta le dio una píldora por puntos (novel2-pills-exchange). */
+  | "pill_bought"
+  /** Pidió una píldora y en el tesoro no queda. */
+  | "pill_no_stock"
+  /** Pidió una píldora y su aporte no alcanza. */
+  | "pill_no_points"
+  /** El pabellón de escrituras le dio el método del reino siguiente (`self.technique` lo nombra; novel2-method-pavilion). */
+  | "method_given"
+  /** Pidió el método siguiente sin estar en la cima de su reino: todavía no. */
+  | "method_too_soon"
+  /** Pidió el método siguiente y su aporte no alcanza. */
+  | "method_no_points"
+  /** Tragó una píldora de reunir y el qi le entró (`cultivation.pill_taken`, novel2-pills-take). */
+  | "pill_qi"
+  /** Tragó una píldora de reunir y el qi se le fue (sin sentirlo o con el recipiente lleno). */
+  | "pill_wasted"
+  /** Tragó una píldora de romper: la ayuda espera el próximo intento. */
+  | "pill_aid"
   /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
   | "promoted"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */

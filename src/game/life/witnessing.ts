@@ -25,6 +25,7 @@ import {
   sensorAcuity,
   setComponent,
   skyLight,
+  TRIBULATION_SEEN,
   table,
   vigilantAttention,
   type WitnessCandidate,
@@ -84,9 +85,9 @@ export function importanceTiers(
   return (id) => (top.has(id) ? 3 : 2);
 }
 
-/** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
+/** Los pasos de otros que se perciben: lo que hacen, que alguien muera y una tribulación. */
 function perceivable(kind: string): boolean {
-  return kind.startsWith("action.") || kind === "body.died";
+  return kind.startsWith("action.") || kind === "body.died" || TRIBULATION_SEEN.has(kind);
 }
 
 export function witnessingProcess(o: WitnessingOptions): ProcessDef {

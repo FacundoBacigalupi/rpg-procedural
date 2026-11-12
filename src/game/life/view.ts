@@ -40,6 +40,7 @@ import {
   mentionableTastes,
   PERSON,
   type Percept,
+  PILL_TAKEN_EVENT,
   PLACE,
   PLEDGE,
   PLEDGE_BOOK,
@@ -70,6 +71,8 @@ import {
   TASTES_OF,
   TECHNIQUE_TAUGHT_EVENT,
   TRACE,
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_STRIKES_EVENT,
   type TradeRecipeDef,
   thingStimulus,
   traceStrength,
@@ -575,6 +578,7 @@ function sectCue(w: LifeWorld, since: Tick): SelfCue | undefined {
  * el resultado, es que no sentía el qi y no hubo nada que empujar.
  */
 function breakCue(e: Event): SelfCue {
+  if (e.kind === TRIBULATION_GATHERS_EVENT) return "tribulation_gathers";
   if (e.kind !== BREAKTHROUGH_EVENT) return "break_nothing";
   const outcome = (e.data as { outcome?: string } | null)?.outcome;
   if (outcome === "success") return "break_success";
@@ -708,13 +712,22 @@ export function playerView(
     // En la cueva de la sede, el qi se junta (novel-sect-cave-vein).
     if ((absorbed.data as { focus?: unknown } | null)?.focus !== undefined) cues.add("qi_dense");
   }
+  // La tribulación cae (novel2-trib-gather): antes que el resultado de la ruptura.
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TRIBULATION_STRIKES_EVENT)
+  )
+    cues.add("tribulation_strikes");
   const broke =
     options.heardSince === undefined
       ? undefined
       : lastPlayerEventSince(
           w,
           options.heardSince,
-          (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
+          (e) =>
+            e.kind === BREAKTHROUGH_EVENT ||
+            e.kind === "action.breakthrough" ||
+            e.kind === TRIBULATION_GATHERS_EVENT,
         );
   if (broke) cues.add(breakCue(broke));
   const chore =
@@ -738,13 +751,35 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CAVE_PASS_SPENT_EVENT)
   )
     cues.add("cave_pass_spent");
+  // Lo que hizo la píldora que tragó (novel2-pills-take).
+  const pill =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === PILL_TAKEN_EVENT);
+  if (pill) {
+    const d = pill.data as { effect?: unknown; taken?: unknown } | null;
+    if (d?.effect === "break") cues.add("pill_aid");
+    else cues.add(typeof d?.taken === "number" && d.taken > 0 ? "pill_qi" : "pill_wasted");
+  }
   const exchange =
     options.heardSince === undefined
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_EXCHANGE_EVENT);
   if (exchange) {
-    const refused = (exchange.data as { refused?: unknown } | null)?.refused !== undefined;
-    cues.add(refused ? "exchange_refused" : "exchange_done");
+    const d = exchange.data as { refused?: unknown; what?: unknown } | null;
+    const refused = d?.refused !== undefined;
+    // El pabellón (novel2-method-pavilion): dar el método lo cuenta `method_given` más abajo.
+    if (d?.what === "method") {
+      if (d.refused === "too_soon") cues.add("method_too_soon");
+      else if (d.refused === "no_points") cues.add("method_no_points");
+      else if (refused) cues.add("exchange_refused");
+    } else if (d?.what === "pill") {
+      // El tesoro (novel2-pills-exchange): la píldora o por qué no.
+      if (!refused) cues.add("pill_bought");
+      else if (d.refused === "no_stock") cues.add("pill_no_stock");
+      else if (d.refused === "no_points") cues.add("pill_no_points");
+      else cues.add("exchange_refused");
+    } else cues.add(refused ? "exchange_refused" : "exchange_done");
   }
   if (
     options.heardSince !== undefined &&
@@ -808,11 +843,13 @@ export function playerView(
   // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
   // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.
   const taught =
-    options.heardSince !== undefined &&
-    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT) !==
-      undefined;
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT);
   const technique = taught ? w.truth.get(CULTIVATION_TECHNIQUE, w.player)?.name : undefined;
-  if (technique !== undefined) cues.add("technique_taught");
+  // El de entrada se lo enseñan al aceptarlo; los de arriba, el pabellón (novel2-method-pavilion).
+  const viaPavilion = (taught?.data as { via?: unknown } | null)?.via === "pavilion";
+  if (technique !== undefined) cues.add(viaPavilion ? "method_given" : "technique_taught");
   const member = w.truth.get(SECT_MEMBER, w.player);
   const school = member ? w.truth.get(SECT_SCHOOL, member.org) : undefined;
   const named = cues.has("sect_joined") || cues.has("break_success");

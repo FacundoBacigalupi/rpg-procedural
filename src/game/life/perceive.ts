@@ -21,6 +21,7 @@ import {
   STATUS,
   type StatusDef,
   skyLight,
+  TRIBULATION_SEEN,
   type TraitDef,
   table,
 } from "../../sim/index.ts";
@@ -57,10 +58,16 @@ export interface PerceiveOptions {
 /**
  * Los pasos de otros que el personaje percibe: lo que hacen, que alguien muera y que nazca un niño
  * cerca (el llanto; `family.birth` solo existe con `births`). Los eventos internos de la sim
- * (`npc.*`, `family.conception`…) no emiten nada: no llegan a la narración.
+ * (`npc.*`, `family.conception`…) no emiten nada: no llegan a la narración. Una tribulación ajena
+ * sí: las nubes, la caída y cada rayo (novel2-trib-seen).
  */
 function perceivable(kind: string): boolean {
-  return kind.startsWith("action.") || kind === "body.died" || kind === "family.birth";
+  return (
+    kind.startsWith("action.") ||
+    kind === "body.died" ||
+    kind === "family.birth" ||
+    TRIBULATION_SEEN.has(kind)
+  );
 }
 
 export function perceiveProcess(o: PerceiveOptions): ProcessDef {

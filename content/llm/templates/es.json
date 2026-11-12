@@ -302,6 +302,27 @@
     ]
   },
   {
+    "id": "percept.action.heaven.tribulation_gathers",
+    "lines": [
+      "Sobre {who} el cielo se oscurece: nubes que se juntan en un solo lugar, bajas y pesadas.",
+      "Las nubes se arremolinan encima de {who}, y el aire se pone espeso, como antes de una tormenta."
+    ]
+  },
+  {
+    "id": "percept.action.heaven.tribulation_strikes",
+    "lines": [
+      "Un rayo baja de las nubes sobre {who}; el estruendo te llega al pecho.",
+      "El cielo se abre sobre {who} con un golpe de luz y un trueno que sacude todo."
+    ]
+  },
+  {
+    "id": "percept.action.heaven.tribulation_wave",
+    "lines": [
+      "Otro rayo cae sobre {who}; el olor a quemado llega hasta vos.",
+      "Un relámpago más baja sobre {who}, y el trueno rueda por todo el lugar."
+    ]
+  },
+  {
     "id": "percept.action.family.birth",
     "lines": [
       "Se oye llorar a {who}, apenas nacido.",
@@ -1201,6 +1222,27 @@
     ]
   },
   {
+    "id": "self.pill_bought",
+    "lines": [
+      "El encargado del tesoro descuenta tus puntos en el libro, abre un frasco de porcelana y te pone una píldora en la palma.",
+      "Te anotan el canje y te dan una píldora envuelta en papel encerado. Huele a hierbas amargas."
+    ]
+  },
+  {
+    "id": "self.pill_no_stock",
+    "lines": [
+      "El encargado sacude el frasco vacío: de esas no queda ninguna hasta la próxima entrega.",
+      "No hay más de esas en el tesoro; te dicen que vuelvas cuando repongan."
+    ]
+  },
+  {
+    "id": "self.pill_no_points",
+    "lines": [
+      "El encargado repasa tus cuentas y niega con la cabeza: tu aporte no alcanza para esa píldora.",
+      "Con lo que aportaste no te dan esa píldora."
+    ]
+  },
+  {
     "id": "self.exchange_done",
     "lines": [
       "El encargado tacha puntos de tu aporte y te anota horas de pase a la cueva.",
@@ -1301,6 +1343,20 @@
     "lines": ["Empujás hacia adentro, pero no hay nada que empujar: ni corriente, ni pared."]
   },
   {
+    "id": "self.tribulation_gathers",
+    "lines": [
+      "Empujás, y el umbral no cede: algo arriba responde. El aire se pone pesado y el cielo se oscurece justo encima de vos.",
+      "Antes de que el qi pase, sentís que te miran desde arriba. Las nubes empiezan a juntarse sobre tu cabeza, y no sobre otra parte."
+    ]
+  },
+  {
+    "id": "self.tribulation_strikes",
+    "lines": [
+      "Las nubes se abren y el peso de arriba cae sobre vos de una vez, como un trueno que se mete adentro.",
+      "El cielo se rompe encima tuyo. Un golpe blanco, un estruendo, y el qi que empujabas se sacude contra el umbral."
+    ]
+  },
+  {
     "id": "self.sect_coming",
     "lines": [
       "Corre la voz por la aldea: en unos días bajan los inmortales de la secta a la plaza, a llevarse a los chicos que tengan raíz.",
@@ -1347,6 +1403,48 @@
     "lines": [
       "Hace un mes que caminás y no llegás. Te detenés: así no vas a ningún lado.",
       "Tanto camino y el lugar no aparece. Parás y te sentás a pensar qué hacer."
+    ]
+  },
+  {
+    "id": "self.pill_qi",
+    "lines": [
+      "La píldora se deshace en la lengua y baja como una brasa tibia; el qi se te acomoda en los meridianos.",
+      "Tragás la píldora. Un calor sube desde el vientre y lo que traía se suma a lo que ya juntaste."
+    ]
+  },
+  {
+    "id": "self.pill_wasted",
+    "lines": [
+      "La píldora baja, te calienta un momento y se te va por la piel como vapor: no tenés dónde guardarla.",
+      "Sentís el calor de la píldora un instante y después nada; lo que traía se escapa."
+    ]
+  },
+  {
+    "id": "self.pill_aid",
+    "lines": [
+      "La píldora deja un peso firme en el centro del pecho, como un apoyo que espera: para cuando intentes romper.",
+      "Tragás la píldora. No te da qi; te deja algo quieto y firme adentro, listo para empujar en la próxima ruptura."
+    ]
+  },
+  {
+    "id": "self.method_given",
+    "lines": [
+      "En el pabellón de escrituras el encargado anota algo en el libro, saca un rollo de un estante alto y te lo hace leer delante de él hasta que lo repetís: {technique}. Sirve para lo que viene.",
+      "Te dejan entrar al pabellón de escrituras. Uno de los guardianes te dicta {technique} línea por línea y no te deja irte hasta que te sale."
+    ]
+  },
+  {
+    "id": "self.method_too_soon",
+    "lines": [
+      "El guardián del pabellón te mira de arriba abajo: todavía no llegaste a la cima de lo que sabés; ese rollo no te serviría de nada.",
+      "Te niegan el método siguiente: primero terminá el camino que tenés, te dicen."
+    ]
+  },
+  {
+    "id": "self.method_no_points",
+    "lines": [
+      "El encargado repasa tus cuentas y cierra el libro: tu aporte no alcanza para lo que pedís.",
+      "No hay rollo para vos: con lo que aportaste, el pabellón no se abre."
     ]
   },
   {

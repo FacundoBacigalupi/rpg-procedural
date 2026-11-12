@@ -299,7 +299,7 @@
       },
       {
         "kind": "position",
-        "at": ["forest", "fields", "water"]
+        "at": ["forest", "fields", "water", "sect"]
       }
     ],
     "occupies": {
@@ -382,6 +382,18 @@
         "good": "firewood",
         "perHour": 3000,
         "words": ["leña", "rama", "palo", "madera seca", "astilla"]
+      },
+      {
+        "at": "forest",
+        "good": "spirit-herb",
+        "perHour": 60,
+        "words": ["hierba espiritual", "hierbas espirituales", "hierba de qi", "hierbas de qi"]
+      },
+      {
+        "at": "sect",
+        "good": "spirit-herb",
+        "perHour": 60,
+        "words": ["hierba espiritual", "hierbas espirituales", "hierba de qi", "hierbas de qi"]
       },
       {
         "at": "fields",

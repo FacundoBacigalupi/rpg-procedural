@@ -41,6 +41,37 @@ describe("la gramática y el acto de habla declarado", () => {
     expect(parseCommand("pido un pase")).toMatchObject({
       plan: { verb: "redeem", args: [{ role: "what", text: "cueva" }] },
     });
+    // El pabellón de escrituras (novel2-method-pavilion).
+    expect(parseCommand("pido el método siguiente")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "técnica" }] },
+    });
+    expect(parseCommand("canjeo mis puntos por la técnica del reino siguiente")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "técnica" }] },
+    });
+    // El tesoro (novel2-pills-exchange).
+    expect(parseCommand("canjeo mis puntos por una píldora de reunir qi")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "píldora de reunir qi" }] },
+    });
+    expect(parseCommand("pido una píldora de fundamento")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "píldora de fundamento" }] },
+    });
+  });
+
+  it("juntar hierbas espirituales las nombra (novel2-pills-herbs)", () => {
+    expect(parseCommand("junto hierbas espirituales")).toMatchObject({
+      plan: { verb: "gather", args: [{ role: "what", text: "hierbas espirituales" }] },
+    });
+  });
+
+  it("tragar una píldora es consumirla (novel2-pills-take)", () => {
+    expect(parseCommand("tomo una píldora de reunir qi")).toMatchObject({
+      plan: { verb: "consume", args: [{ role: "what", text: "píldora de reunir qi" }] },
+    });
+    expect(parseCommand("me trago la píldora de fundamento")).toMatchObject({
+      plan: { verb: "consume", args: [{ role: "what", text: "píldora de fundamento" }] },
+    });
+    // Sin píldora, «tomo» sigue siendo agarrar.
+    expect(parseCommand("tomo la jarra")).not.toMatchObject({ plan: { verb: "consume" } });
   });
 
   it("«pido permiso para bajar a la aldea por diez días» es el permiso de la secta", () => {

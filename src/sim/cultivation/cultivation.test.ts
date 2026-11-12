@@ -6,7 +6,19 @@ import { absorbDraw, absorbWant, mixedPurity, regrown, rootMatch } from "./absor
 import { breakChance, breakOutcome, breakPreparation } from "./breakthrough.ts";
 import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
-import { generateSchool, realmOf, type SchoolNames } from "./school.ts";
+import { METHOD_POINTS_PER_REALM, methodExchange } from "./pavilion.ts";
+import {
+  BLIND_PREP,
+  breaksBlind,
+  generateSchool,
+  type KnownTechnique,
+  METHOD_FACTOR,
+  methodCovers,
+  realmIndex,
+  realmOf,
+  type SchoolNames,
+  UNGUIDED_TRAMOS,
+} from "./school.ts";
 import {
   bearingDeg,
   COMPASS8,
@@ -376,5 +388,105 @@ describe("la escuela (novel-cult-school)", () => {
     expect(realmOf(school, 2)).toEqual({ name: "A", layer: 3 });
     expect(realmOf(school, 3)).toEqual({ name: "B" });
     expect(realmOf(school, 9)).toEqual({ name: "B" });
+  });
+
+  it("un método por reino: el de entrada abajo, nombres sin repetir, rinde en su rango (novel2-method-school)", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const school = generateSchool(Rng.root(seed), lawOf(seed), names);
+      const methods = school.methods ?? [];
+      expect(methods).toHaveLength(school.realms.length);
+      expect(methods[0]).toEqual({ ...school.technique, realm: 0 });
+      expect(new Set(methods.map((m) => m.name)).size).toBe(methods.length);
+      for (const [i, m] of methods.entries()) {
+        expect(m.realm).toBe(i);
+        if (i === 0) continue;
+        expect(m.factor).toBeGreaterThanOrEqual(METHOD_FACTOR[0]);
+        expect(m.factor).toBeLessThanOrEqual(METHOD_FACTOR[1]);
+      }
+    }
+  });
+
+  it("cubrir y romper a ciegas: el método llega hasta su reino; sin método, los primeros tramos", () => {
+    const school = {
+      layer: "capa",
+      technique: { name: "t", factor: 1.3 },
+      realms: [
+        { name: "A", from: 0, to: 2 },
+        { name: "B", from: 3, to: 4 },
+        { name: "C", from: 5, to: 5 },
+      ],
+    };
+    expect(realmIndex(school, 0)).toBe(0);
+    expect(realmIndex(school, 4)).toBe(1);
+    expect(realmIndex(school, 9)).toBe(2);
+    const entry: KnownTechnique = {
+      org: "org:1" as EntityRef,
+      name: "t",
+      factor: 1.3,
+      learnedAt: 0,
+    };
+    const second: KnownTechnique = { ...entry, realm: 1 };
+    // Sin `realm`, el primero.
+    expect(methodCovers(school, entry, 2)).toBe(true);
+    expect(methodCovers(school, entry, 3)).toBe(false);
+    expect(methodCovers(school, second, 2)).toBe(true);
+    expect(methodCovers(school, second, 4)).toBe(true);
+    // Romper desde la cima del reino A cae en B: a ciegas con el de entrada, no con el segundo.
+    expect(breaksBlind(school, entry, 1)).toBe(false);
+    expect(breaksBlind(school, entry, 2)).toBe(true);
+    expect(breaksBlind(school, second, 2)).toBe(false);
+    expect(breaksBlind(school, second, 4)).toBe(true);
+    // Sin método: se intuyen los primeros tramos.
+    expect(breaksBlind(undefined, undefined, UNGUIDED_TRAMOS - 2)).toBe(false);
+    expect(breaksBlind(undefined, undefined, UNGUIDED_TRAMOS - 1)).toBe(true);
+    expect(BLIND_PREP).toBeLessThan(1);
+  });
+
+  it("el pabellón: el método siguiente en la cima, con puntos o rango (novel2-method-pavilion)", () => {
+    const methods = [
+      { name: "m0", factor: 1.3, realm: 0 },
+      { name: "m1", factor: 1.5, realm: 1 },
+      { name: "m2", factor: 1.7, realm: 2 },
+    ];
+    const school = {
+      layer: "capa",
+      technique: { name: "m0", factor: 1.3 },
+      realms: [
+        { name: "A", from: 0, to: 2 },
+        { name: "B", from: 3, to: 4 },
+        { name: "C", from: 5, to: 5 },
+      ],
+      methods,
+    };
+    const k = (realm: number) => ({
+      org: "org:1" as EntityRef,
+      name: `m${realm}`,
+      factor: 1,
+      learnedAt: 0,
+      realm,
+    });
+    const cost = METHOD_POINTS_PER_REALM;
+    // Sin método: el de entrada, gratis.
+    expect(methodExchange(school, undefined, "outer", 0, 0)).toEqual({
+      kind: "given",
+      method: methods[0],
+      cost: 0,
+    });
+    expect(methodExchange(school, k(0), "outer", 1, 999)).toMatchObject({ refused: "too_soon" });
+    expect(methodExchange(school, k(0), "outer", 2, cost - 1)).toMatchObject({
+      refused: "no_points",
+    });
+    expect(methodExchange(school, k(0), "outer", 2, cost)).toEqual({
+      kind: "given",
+      method: methods[1],
+      cost,
+    });
+    expect(methodExchange(school, k(0), "inner", 2, 0)).toMatchObject({ kind: "given", cost: 0 });
+    expect(methodExchange(school, k(1), "inner", 4, 2 * cost)).toMatchObject({ cost: 2 * cost });
+    expect(methodExchange(school, k(1), "elder", 4, 0)).toMatchObject({ kind: "given", cost: 0 });
+    expect(methodExchange(school, k(2), "master", 5, 0)).toEqual({
+      kind: "refused",
+      refused: "no_method",
+    });
   });
 });
