@@ -2,6 +2,7 @@ export * from "./absorb.ts";
 export * from "./breakthrough.ts";
 export * from "./herb.ts";
 export * from "./law.ts";
+export * from "./master.ts";
 export * from "./meditation.ts";
 export * from "./member.ts";
 export * from "./pavilion.ts";
