@@ -1,7 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type ContentSource, HOUR, loadContent } from "../../core/index.ts";
+import {
+  type AgentId,
+  type ContentSource,
+  type EntityRef,
+  HOUR,
+  loadContent,
+} from "../../core/index.ts";
 import {
   ABSORBED_EVENT,
   type ActionPlan,
@@ -10,6 +16,9 @@ import {
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
+  LOCATION,
+  MASTER_OF,
+  masterGuide,
   QI_TAKEN,
   SECT,
   SENSED_QI_EVENT,
@@ -19,6 +28,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { playerView } from "./view.ts";
+import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -114,6 +124,36 @@ describe("meditar (novel-cult-meditate)", () => {
     const b = taught.world.truth.get(CULTIVATION_STATE, taught.player)?.sensitivity ?? 0;
     expect(a).toBeGreaterThan(0);
     expect(b / a).toBeCloseTo(1.5, 2);
+  }, 240_000);
+
+  it("con su maestro al lado y más arriba, meditar rinde más (novel2-master-guide)", () => {
+    const plain = lifeWith(content, true);
+    const guided = lifeWith(content, true);
+    const absent = lifeWith(content, true);
+    const bond = (life: Life, near: boolean) => {
+      const w = life.world;
+      const me = life.player;
+      const org = w.truth.ids(SECT)[0] as EntityRef;
+      const master = living(w.truth).find((id) => id !== me) as AgentId;
+      w.truth.set(MASTER_OF, me, { master, org, since: life.now });
+      const state = w.truth.get(CULTIVATION_STATE, master);
+      w.truth.set(CULTIVATION_STATE, master, {
+        ...(state ?? { sensitivity: 1, hours: 0 }),
+        stage: 3,
+      });
+      const here = w.truth.get(LOCATION, me);
+      if (!here) throw new Error("sin lugar");
+      w.truth.set(LOCATION, master, near ? here : { hex: here.hex + 7 });
+    };
+    bond(guided, true);
+    bond(absent, false);
+    for (const life of [plain, guided, absent]) life.turn(meditate(life.player, 1), 1);
+    const sens = (life: Life) =>
+      life.world.truth.get(CULTIVATION_STATE, life.player)?.sensitivity ?? 0;
+    expect(sens(plain)).toBeGreaterThan(0);
+    const g = masterGuide({ present: true, masterStage: 3, discipleStage: 0 });
+    expect(sens(guided) / sens(plain)).toBeCloseTo(g.gain, 2);
+    expect(sens(absent)).toBeCloseTo(sens(plain), 6);
   }, 240_000);
 
   it("sin raíz suma horas pero la sensibilidad no se mueve: no pasa nada", () => {

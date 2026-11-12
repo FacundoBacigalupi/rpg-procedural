@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { discipleWorth, MAX_DISCIPLES, type MasterAsk, masterAccepts } from "./master.ts";
+import {
+  discipleWorth,
+  GUIDE_GAIN_PER_STAGE,
+  GUIDE_MAX_GAP,
+  GUIDE_PREP_PER_STAGE,
+  MAX_DISCIPLES,
+  type MasterAsk,
+  masterAccepts,
+  masterGuide,
+  NO_GUIDE,
+} from "./master.ts";
 
 const ask = (over: Partial<MasterAsk> = {}): MasterAsk => ({
   sameOrg: true,
@@ -11,6 +21,20 @@ const ask = (over: Partial<MasterAsk> = {}): MasterAsk => ({
   regard: 0.3,
   disciples: 0,
   ...over,
+});
+
+describe("la guía del maestro (novel2-master-guide)", () => {
+  it("guía el que está y le lleva tramos, con tope; si no, nada", () => {
+    expect(masterGuide({ present: false, masterStage: 4, discipleStage: 0 })).toEqual(NO_GUIDE);
+    expect(masterGuide({ present: true, masterStage: 1, discipleStage: 1 })).toEqual(NO_GUIDE);
+    const one = masterGuide({ present: true, masterStage: 2, discipleStage: 1 });
+    const far = masterGuide({ present: true, masterStage: 9, discipleStage: 0 });
+    expect(one).toEqual({ gain: 1 + GUIDE_GAIN_PER_STAGE, prep: GUIDE_PREP_PER_STAGE });
+    expect(far).toEqual(
+      masterGuide({ present: true, masterStage: GUIDE_MAX_GAP, discipleStage: 0 }),
+    );
+    expect(far.gain).toBeGreaterThan(one.gain);
+  });
 });
 
 describe("masterAccepts (novel2-master-bond)", () => {

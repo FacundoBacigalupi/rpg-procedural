@@ -50,6 +50,7 @@ import {
   type CultivationLaw,
   type CultivationState,
   deleteComponent,
+  ENTITY,
   type EventDraft,
   gatherHours,
   HEAVEN_LAW,
@@ -58,10 +59,14 @@ import {
   type KnownTechnique,
   LOCATION,
   type LocalMap,
+  MASTER_OF,
   MAX_MERIDIAN_DAMAGE,
+  type MasterGuide,
+  masterGuide,
   meditationGain,
   methodCovers,
   mixedPurity,
+  NO_GUIDE,
   needsFrom,
   PILL_TAKEN_EVENT,
   type PillDef,
@@ -158,6 +163,8 @@ function resolveBreak(
   blind: boolean,
   /** Lo que templó una tribulación aguantada: suma a la calidad si rompe. */
   temper = 0,
+  /** La guía del maestro presente (novel2-master-guide): suma a la preparación. */
+  guide: MasterGuide = NO_GUIDE,
 ): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
   if (!before.sensed) return undefined;
   const stage = before.stage ?? 0;
@@ -175,7 +182,9 @@ function resolveBreak(
   });
   // La píldora de romper tragada antes (novel2-pills-take) empuja; se gasta en este intento.
   const aid = before.aid;
-  const prep = round4(Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0)));
+  const prep = round4(
+    Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0) + guide.prep),
+  );
   const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
   const { aid: _spent, ...rest } = before;
   let next: CultivationState = rest;
@@ -223,11 +232,13 @@ function resolveBreak(
         ...(blind ? { blind } : {}),
         ...(aid ? { aid: aid.pill } : {}),
         ...(temper > 0 ? { temper } : {}),
+        ...(guide.prep > 0 ? { guided: guide.prep } : {}),
       },
       emissions: seen > 0 ? { sight: seen } : {},
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+        ...(guide.prep > 0 ? [{ kind: "state" as const, entity: who, key: MASTER_OF.name }] : []),
       ],
     },
   };
@@ -246,6 +257,24 @@ function methodOf(
 function blindAt(truth: ReadonlyWorldTruth, who: AgentId, stage: number): boolean {
   const { known, school } = methodOf(truth, who);
   return breaksBlind(school, known, stage);
+}
+
+/**
+ * La guía de su maestro (novel2-master-guide): vivo, en el mismo hex y más arriba en el camino.
+ * Sin maestro, nada.
+ */
+function guideOf(truth: ReadonlyWorldTruth, who: AgentId, stage: number): MasterGuide {
+  const bond = truth.get(MASTER_OF, who);
+  if (!bond) return NO_GUIDE;
+  const master = bond.master;
+  const alive = truth.has(ENTITY, master) && truth.get(ENTITY, master)?.endedAt === undefined;
+  const here = truth.get(LOCATION, who);
+  const there = truth.get(LOCATION, master);
+  return masterGuide({
+    present: alive && here !== undefined && there !== undefined && here.hex === there.hex,
+    masterStage: truth.get(CULTIVATION_STATE, master)?.stage ?? 0,
+    discipleStage: stage,
+  });
 }
 
 /** Lo que rinde el método al meditar en `stage`: nada fuera de su reino (o sin método). */
@@ -414,6 +443,8 @@ export function meditateProcess(o: {
       CULTIVATION_TECHNIQUE.name,
       SECT_SCHOOL.name,
       LOCATION.name,
+      MASTER_OF.name,
+      ENTITY.name,
       ...(pooled ? [PLACE.name] : []),
       ...(o.dayTicks !== undefined ? [HEAVEN_LAW.name, TRIBULATION.name] : []),
     ],
@@ -494,6 +525,7 @@ export function meditateProcess(o: {
             ctx.rng,
             blindAt(ctx.truth, struck, before.stage ?? 0),
             waved.temper,
+            guideOf(ctx.truth, struck, before.stage ?? 0),
           );
           if (!r) continue;
           rows.set(struck, r.next);
@@ -577,6 +609,8 @@ export function meditateProcess(o: {
             pool.taken,
             ctx.rng,
             blindAt(ctx.truth, breaker, before.stage ?? 0),
+            0,
+            guideOf(ctx.truth, breaker, before.stage ?? 0),
           );
           if (!r) continue;
           rows.set(breaker, r.next);
@@ -647,7 +681,9 @@ export function meditateProcess(o: {
         const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
         const factor = pool.factor * focus;
         const taken = pool.taken;
-        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0);
+        // La guía del maestro presente (novel2-master-guide) rinde como un método más.
+        const guide = guideOf(ctx.truth, m.who, before.stage ?? 0);
+        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0) * guide.gain;
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
           ...before,
@@ -685,11 +721,15 @@ export function meditateProcess(o: {
               purity,
               cell: place.cell,
               ...(focus > 1 ? { focus } : {}),
+              ...(guide.gain > 1 ? { guided: guide.gain } : {}),
             },
             emissions: {},
             causes: [
               { kind: "event", event: e.id },
               { kind: "state", entity: poolId, key: PLACE_QI.name },
+              ...(guide.gain > 1
+                ? [{ kind: "state" as const, entity: m.who, key: MASTER_OF.name }]
+                : []),
             ],
           });
         }

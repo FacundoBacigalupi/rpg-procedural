@@ -85,3 +85,36 @@ export function masterAccepts(a: MasterAsk): MasterDecision {
     ? { kind: "accepted", score }
     : { kind: "refused", refused: "unworthy", score };
 }
+
+/** Lo que suma la guía por cada tramo que el maestro le lleva, hasta `GUIDE_MAX_GAP` (sin calibrar). */
+export const GUIDE_GAIN_PER_STAGE = 0.1;
+export const GUIDE_PREP_PER_STAGE = 0.04;
+export const GUIDE_MAX_GAP = 3;
+
+/** La guía del maestro (novel2-master-guide): cuánto rinde más la meditación y cuánto sube la preparación. */
+export interface MasterGuide {
+  /** Factor sobre lo que rinde meditar (1: nada). */
+  readonly gain: number;
+  /** Lo que suma a la preparación de la ruptura. */
+  readonly prep: number;
+}
+
+export const NO_GUIDE: MasterGuide = { gain: 1, prep: 0 };
+
+/**
+ * Guía el que está al lado y va más arriba: un maestro presente que le lleva tramos le corrige la
+ * respiración y le dice cuándo empujar; cuanto más le lleva, más (hasta un tope). Ausente, muerto o
+ * no más alto que el discípulo, nada.
+ */
+export function masterGuide(g: {
+  readonly present: boolean;
+  readonly masterStage: number;
+  readonly discipleStage: number;
+}): MasterGuide {
+  const gap = Math.min(GUIDE_MAX_GAP, g.masterStage - g.discipleStage);
+  if (!g.present || gap <= 0) return NO_GUIDE;
+  return {
+    gain: Math.round((1 + GUIDE_GAIN_PER_STAGE * gap) * 1e4) / 1e4,
+    prep: Math.round(GUIDE_PREP_PER_STAGE * gap * 1e4) / 1e4,
+  };
+}
