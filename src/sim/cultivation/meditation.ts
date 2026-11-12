@@ -45,6 +45,16 @@ export interface CultivationState {
   readonly foundation?: number;
   /** Daño a los meridianos por retrocesos, 0-1: absorben y rompen peor. */
   readonly meridianDamage?: number;
+  /** La ayuda de una píldora de romper tragada que espera el próximo intento (novel2-pills-take). */
+  readonly aid?: BreakAid;
+}
+
+/** La ayuda de una píldora de romper que espera el próximo intento (`pill.ts`). */
+export interface BreakAid {
+  readonly prep: number;
+  readonly cost: number;
+  /** La píldora que la dejó (id del contenido). */
+  readonly pill: string;
 }
 
 export const CULTIVATION_STATE = table<CultivationState>("cultivation.state");

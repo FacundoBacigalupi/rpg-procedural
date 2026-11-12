@@ -50,6 +50,17 @@ describe("la gramática y el acto de habla declarado", () => {
     });
   });
 
+  it("tragar una píldora es consumirla (novel2-pills-take)", () => {
+    expect(parseCommand("tomo una píldora de reunir qi")).toMatchObject({
+      plan: { verb: "consume", args: [{ role: "what", text: "píldora de reunir qi" }] },
+    });
+    expect(parseCommand("me trago la píldora de fundamento")).toMatchObject({
+      plan: { verb: "consume", args: [{ role: "what", text: "píldora de fundamento" }] },
+    });
+    // Sin píldora, «tomo» sigue siendo agarrar.
+    expect(parseCommand("tomo la jarra")).not.toMatchObject({ plan: { verb: "consume" } });
+  });
+
   it("«pido permiso para bajar a la aldea por diez días» es el permiso de la secta", () => {
     expect(parseCommand("pido permiso para bajar a la aldea por diez días")).toMatchObject({
       kind: "act",

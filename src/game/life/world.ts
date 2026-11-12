@@ -59,6 +59,7 @@ import {
   oscillationYearOfMap,
   outdoorTempC,
   PERSON,
+  type PillDef,
   PLACE,
   type PressureCurve,
   type ProcessDef,
@@ -841,7 +842,11 @@ export interface LifeWorld {
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
   /** Opt-in (novel-cult-law): el talento para cultivar; los que nacen lo heredan (`cultivation.talent`). */
-  readonly cultivation?: { readonly talents: readonly Trait[] };
+  readonly cultivation?: {
+    readonly talents: readonly Trait[];
+    /** Las píldoras que se pueden tragar (`content/pills/`, novel2-pills-take). */
+    readonly pills?: readonly PillDef[];
+  };
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
   /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
@@ -1280,6 +1285,9 @@ export function lifeWorld(
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.cultivation?.pills
+            ? { pillGoods: parts.cultivation.pills.map((p) => p.good) }
+            : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
@@ -2496,6 +2504,7 @@ export function lifeWorld(
                 ...(parts.map.patches ? { map: parts.map } : {}),
                 // Los umbrales altos llaman tribulación (novel2-trib-gather).
                 dayTicks: parts.clock.day,
+                ...(parts.cultivation.pills ? { pills: parts.cultivation.pills } : {}),
               }),
               tribulationProcess(),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),

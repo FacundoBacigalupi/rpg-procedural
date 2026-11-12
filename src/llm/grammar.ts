@@ -641,6 +641,15 @@ const VERBS: readonly {
     },
   },
   {
+    // Tragar una píldora es consumirla (novel2-pills-take): «tomo una píldora de reunir qi», «me
+    // trago la píldora de fundamento». «Tomo la píldora del estante» sin tragarla no se distingue.
+    re: /^(?:me\s+)?(?:tomo|tomar|trago|tragar|tragarme|ingiero)\s+(?:(?:una|la|esa|otra)\s+)?(?=p[ií]ldora)/iu,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("consume", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
     // "tomo agua" es beber; "tomo la jarra" sigue siendo agarrar (más abajo).
     re: /^(?:bebo|beber|tomo\s+(?:un\s+(?:poco\s+de\s+)?|algo\s+de\s+)?agua|tomar\s+agua|me\s+tomo\s+(?:un\s+)?(?:trago|vaso)(?:\s+de\s+agua)?)\b/i,
     build: () => ({ node: act("drink", []) }),

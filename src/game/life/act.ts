@@ -464,6 +464,11 @@ export interface ActOptions {
    */
   readonly consumables?: readonly ConsumableDef[];
   /**
+   * Opt-in (novel2-pills-take): los bienes que son píldoras; `consume` las gasta como a cualquier
+   * consumible y lo que hacen lo aplica `life.meditate` al leer el evento. Apagado, no se toman.
+   */
+  readonly pillGoods?: readonly string[];
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -1771,8 +1776,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
         : undefined,
     consumables:
-      o.consumables && node.verb === "consume"
-        ? new Set(o.consumables.map((c) => GOOD(c.good)))
+      (o.consumables || o.pillGoods) && node.verb === "consume"
+        ? new Set([
+            ...(o.consumables ?? []).map((c) => GOOD(c.good)),
+            ...(o.pillGoods ?? []).map(GOOD),
+          ])
         : undefined,
     owed: node.verb === "give" ? debtsTo(truth, me, parties["to"]?.id ?? null) : undefined,
     recipes: node.verb === "cook" ? o.recipes : undefined,

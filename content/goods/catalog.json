@@ -339,5 +339,26 @@
     "form": "good",
     "priceCopperPerKg": 12,
     "halfLifeDays": 40
+  },
+  {
+    "id": "pill-qi-gathering",
+    "name": "píldora de reunir qi",
+    "form": "good",
+    "priceCopperPerKg": 30000,
+    "halfLifeDays": 3650
+  },
+  {
+    "id": "pill-spirit-gathering",
+    "name": "píldora de reunir espíritu",
+    "form": "good",
+    "priceCopperPerKg": 200000,
+    "halfLifeDays": 3650
+  },
+  {
+    "id": "pill-foundation",
+    "name": "píldora de fundamento",
+    "form": "good",
+    "priceCopperPerKg": 1000000,
+    "halfLifeDays": 3650
   }
 ]

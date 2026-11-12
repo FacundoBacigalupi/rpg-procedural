@@ -1,0 +1,24 @@
+[
+  {
+    "id": "qi-gathering",
+    "good": "pill-qi-gathering",
+    "effect": "gather",
+    "qi": 20,
+    "purity": 0.7
+  },
+  {
+    "id": "spirit-gathering",
+    "good": "pill-spirit-gathering",
+    "effect": "gather",
+    "qi": 120,
+    "purity": 0.8
+  },
+  {
+    "id": "foundation",
+    "good": "pill-foundation",
+    "effect": "break",
+    "purity": 0.8,
+    "prep": 0.2,
+    "cost": 0.15
+  }
+]

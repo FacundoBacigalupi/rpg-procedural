@@ -95,6 +95,7 @@ import {
   PARCEL_SOIL,
   PERSON,
   type Person,
+  PILLS,
   PLACE,
   PLACE_QI,
   PLANS,
@@ -863,7 +864,9 @@ export function cultivationParts(
   options: LifeOptions,
   content: Content,
 ): Pick<LifeParts, "cultivation"> {
-  return options.cultivation ? { cultivation: { talents: content.all(TALENTS) } } : {};
+  return options.cultivation
+    ? { cultivation: { talents: content.all(TALENTS), pills: content.all(PILLS) } }
+    : {};
 }
 
 /** El sistema elemental del mundo xianxia para la ley del cultivo (`content/elements/`). */
@@ -1684,7 +1687,10 @@ export function ledgerConfigOf(
   livestockSheep = false,
   livestockCow = false,
   sectUpkeep = false,
+  /** Con cultivo, las píldoras (novel2-pills-take): se tragan (`eaten`) y hay de arranque. */
+  cultivation = false,
 ): LedgerConfig {
+  const pillUnits = cultivation ? content.all(PILLS).map((p) => ledgerUnit(`good:${p.good}`)) : [];
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
     ...new Set(
@@ -1721,7 +1727,7 @@ export function ledgerConfigOf(
   return {
     externals: {
       [COOKED]: units,
-      [EATEN]: units,
+      [EATEN]: [...units, ...pillUnits],
       [HARVEST]: [HARVEST_GOOD],
       [ROTTED]: [...rottedBase, ...tanUnits.filter((u) => !rottedBase.includes(u))],
       seed: [
@@ -1730,6 +1736,7 @@ export function ledgerConfigOf(
         COPPER,
         ...settlementUnits(content.all(MATERIALS)),
         ...(hearths ? [FIREWOOD_UNIT] : []),
+        ...pillUnits,
       ],
       [WORKSHOP]: tradeUnits,
       [WORKSHOP_WASTE]: tradeUnits,
@@ -1754,7 +1761,7 @@ export function ledgerConfigOf(
       ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
       ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
       // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
-      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER] } : {}),
+      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER, ...pillUnits] } : {}),
     },
   };
 }
@@ -1776,6 +1783,7 @@ export function withDeclaredExternals(
   wildHunt = false,
   wildFirewood = false,
   hearths = false,
+  cultivation = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
@@ -1792,6 +1800,16 @@ export function withDeclaredExternals(
       wildHunt,
       wildFirewood,
       hearths,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      cultivation,
     ).externals,
   )) {
     const known = new Set(have[name] ?? []);
@@ -1927,6 +1945,7 @@ export function createLife(
       options.villageLivestock === true && options.livestockSheep === true,
       options.villageLivestock === true && options.livestockCow === true,
       options.cultivation === true && options.sectSeatRegion === true,
+      options.cultivation === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).

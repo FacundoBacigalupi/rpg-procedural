@@ -1385,6 +1385,27 @@
     ]
   },
   {
+    "id": "self.pill_qi",
+    "lines": [
+      "La píldora se deshace en la lengua y baja como una brasa tibia; el qi se te acomoda en los meridianos.",
+      "Tragás la píldora. Un calor sube desde el vientre y lo que traía se suma a lo que ya juntaste."
+    ]
+  },
+  {
+    "id": "self.pill_wasted",
+    "lines": [
+      "La píldora baja, te calienta un momento y se te va por la piel como vapor: no tenés dónde guardarla.",
+      "Sentís el calor de la píldora un instante y después nada; lo que traía se escapa."
+    ]
+  },
+  {
+    "id": "self.pill_aid",
+    "lines": [
+      "La píldora deja un peso firme en el centro del pecho, como un apoyo que espera: para cuando intentes romper.",
+      "Tragás la píldora. No te da qi; te deja algo quieto y firme adentro, listo para empujar en la próxima ruptura."
+    ]
+  },
+  {
     "id": "self.method_given",
     "lines": [
       "En el pabellón de escrituras el encargado anota algo en el libro, saca un rollo de un estante alto y te lo hace leer delante de él hasta que lo repetís: {technique}. Sirve para lo que viene.",

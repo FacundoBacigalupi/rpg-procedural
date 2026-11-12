@@ -39,6 +39,7 @@ import {
   type Body,
   type BodyPlanDef,
   BREAKTHROUGH_EVENT,
+  breakAidOf,
   breakOutcome,
   breakPreparation,
   breaksBlind,
@@ -62,6 +63,8 @@ import {
   methodCovers,
   mixedPurity,
   needsFrom,
+  PILL_TAKEN_EVENT,
+  type PillDef,
   PLACE,
   PLACE_QI,
   type PlaceQi,
@@ -80,6 +83,7 @@ import {
   SENSED_QI_EVENT,
   type StateChange,
   setComponent,
+  swallowGather,
   TALENT,
   TRIBULATION,
   TRIBULATION_GATHERS_EVENT,
@@ -110,6 +114,19 @@ export function meditation(e: Event): { who: AgentId; hours: number } | undefine
   const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
   if (!who || typeof seconds !== "number" || seconds <= 0) return undefined;
   return { who, hours: seconds / 3600 };
+}
+
+/** Quién tragó qué píldora, de un `action.consume` que gastó una. */
+function pillTaken(
+  e: Event,
+  pills: ReadonlyMap<string, PillDef>,
+): { who: AgentId; pill: PillDef } | undefined {
+  if (e.kind !== "action.consume") return undefined;
+  const eff = (e.data as { effect?: { good?: unknown; units?: unknown } } | null)?.effect;
+  const pill = typeof eff?.good === "string" ? pills.get(eff.good) : undefined;
+  const who = e.actors[0] as AgentId | undefined;
+  if (!pill || !who || typeof eff?.units !== "number" || eff.units <= 0) return undefined;
+  return { who, pill };
 }
 
 /** Quién intentó romper, de un `action.breakthrough` o de la rutina delegada. */
@@ -156,20 +173,25 @@ function resolveBreak(
     meridianDamage: before.meridianDamage ?? 0,
     foundation: before.foundation ?? 0,
   });
-  const prep = blind ? round4(ready * BLIND_PREP) : ready;
+  // La píldora de romper tragada antes (novel2-pills-take) empuja; se gasta en este intento.
+  const aid = before.aid;
+  const prep = round4(Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0)));
   const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
-  let next = before;
+  const { aid: _spent, ...rest } = before;
+  let next: CultivationState = rest;
   let lost = 0;
   if (outcome.kind === "success") {
     next = {
-      ...before,
+      ...rest,
       stage: stage + 1,
-      foundation: round4((before.foundation ?? 0) + outcome.quality + temper),
+      foundation: round4(
+        (before.foundation ?? 0) + Math.max(0, outcome.quality - (aid?.cost ?? 0)) + temper,
+      ),
     };
   } else if (outcome.kind === "backlash") {
     lost = round4(qi * outcome.lostShare);
     next = {
-      ...before,
+      ...rest,
       qi: round4(qi - lost),
       meridianDamage: round4(
         Math.min(MAX_MERIDIAN_DAMAGE, (before.meridianDamage ?? 0) + outcome.damage),
@@ -199,6 +221,7 @@ function resolveBreak(
         lost,
         ...outcome,
         ...(blind ? { blind } : {}),
+        ...(aid ? { aid: aid.pill } : {}),
         ...(temper > 0 ? { temper } : {}),
       },
       emissions: seen > 0 ? { sight: seen } : {},
@@ -368,8 +391,11 @@ export function meditateProcess(o: {
    * tribulación (las horas de nubes se cuentan con él). Sin él, toda ruptura se resuelve en el acto.
    */
   readonly dayTicks?: number;
+  /** Las píldoras (novel2-pills-take): con ellas, tragar una (`action.consume`) hace lo suyo. */
+  readonly pills?: readonly PillDef[];
 }): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  const pillByUnit = new Map((o.pills ?? []).map((p) => [`good:${p.good}`, p] as const));
   const pooled = o.map?.patches !== undefined;
   return {
     id: MEDITATE_PROCESS,
@@ -557,6 +583,53 @@ export function meditateProcess(o: {
           if (r.taken) pool.taken = r.taken;
           else delete pool.taken;
           events.push(r.event);
+          continue;
+        }
+        const swallowed = pillByUnit.size > 0 ? pillTaken(e, pillByUnit) : undefined;
+        if (swallowed) {
+          const { who, pill } = swallowed;
+          const before = stateOf(who);
+          if (pill.effect === "break") {
+            const aid = breakAidOf(pill, before.aid);
+            rows.set(who, { ...before, aid });
+            events.push({
+              kind: PILL_TAKEN_EVENT,
+              actors: [who],
+              place: e.place,
+              data: { pill: pill.id, effect: "break", prep: aid.prep },
+              emissions: {},
+              causes: [{ kind: "event", event: e.id }],
+            });
+            continue;
+          }
+          // Sin sentir el qi no hay recipiente: todo lo que lleva se escapa.
+          const capacity = before.sensed ? vesselCapacity(law, before.stage ?? 0) : 0;
+          const r = swallowGather(pill, before.qi ?? 0, before.purity ?? 0, capacity);
+          if (r.taken > 0) rows.set(who, { ...before, qi: r.qi, purity: r.purity });
+          const poolId = poolFor(who);
+          const pool = pools.get(poolId) as { taken?: QiTaken };
+          // Lo que no cabe se escapa al lugar: la reserva lo recupera.
+          if (r.spilled > 0 && pool.taken) {
+            pool.taken = {
+              ...pool.taken,
+              taken: round4(Math.max(0, pool.taken.taken - r.spilled)),
+            };
+          }
+          events.push({
+            kind: PILL_TAKEN_EVENT,
+            actors: [who],
+            place: e.place,
+            data: {
+              pill: pill.id,
+              effect: "gather",
+              taken: r.taken,
+              spilled: r.spilled,
+              qi: r.qi,
+              capacity,
+            },
+            emissions: {},
+            causes: [{ kind: "event", event: e.id }],
+          });
           continue;
         }
         const m = meditation(e);

@@ -108,6 +108,12 @@ export type SelfCue =
   | "method_too_soon"
   /** Pidió el método siguiente y su aporte no alcanza. */
   | "method_no_points"
+  /** Tragó una píldora de reunir y el qi le entró (`cultivation.pill_taken`, novel2-pills-take). */
+  | "pill_qi"
+  /** Tragó una píldora de reunir y el qi se le fue (sin sentirlo o con el recipiente lleno). */
+  | "pill_wasted"
+  /** Tragó una píldora de romper: la ayuda espera el próximo intento. */
+  | "pill_aid"
   /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
   | "promoted"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */

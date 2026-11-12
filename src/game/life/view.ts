@@ -40,6 +40,7 @@ import {
   mentionableTastes,
   PERSON,
   type Percept,
+  PILL_TAKEN_EVENT,
   PLACE,
   PLEDGE,
   PLEDGE_BOOK,
@@ -750,6 +751,16 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CAVE_PASS_SPENT_EVENT)
   )
     cues.add("cave_pass_spent");
+  // Lo que hizo la píldora que tragó (novel2-pills-take).
+  const pill =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === PILL_TAKEN_EVENT);
+  if (pill) {
+    const d = pill.data as { effect?: unknown; taken?: unknown } | null;
+    if (d?.effect === "break") cues.add("pill_aid");
+    else cues.add(typeof d?.taken === "number" && d.taken > 0 ? "pill_qi" : "pill_wasted");
+  }
   const exchange =
     options.heardSince === undefined
       ? undefined
