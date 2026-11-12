@@ -48,11 +48,16 @@ import {
   type ReadonlyWorldTruth,
   rainBetween,
   realmOf,
+  SECT_CAVE_PASS_SPENT_EVENT,
+  SECT_CHORE_EVENT,
+  SECT_EXCHANGE_EVENT,
   SECT_HERALD_EVENT,
   SECT_JOINED_EVENT,
   SECT_LORE,
   SECT_MEMBER,
+  SECT_PROMOTED_EVENT,
   SECT_SCHOOL,
+  SECT_STIPEND_EVENT,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
   SENSED_QI_EVENT,
@@ -96,7 +101,8 @@ import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
-import { seasonOf } from "./weather-panel.ts";
+import { TREK_EVENT } from "./trek.ts";
+import { playerSkyOf, seasonOf } from "./weather-panel.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -159,7 +165,8 @@ function attentionOf(steps: readonly StepRecord[]): number {
 export function itemsSeen(w: LifeWorld, steps: readonly StepRecord[] = []): Percept[] {
   const now = w.scheduler.now;
   const observer = playerObserver(w, attentionOf(steps), now);
-  const day = skyLight(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const day = skyLight(skyMap, w.clock, w.seed, now);
   const rng = Rng.root(w.seed).fork("view-items", now);
   const out: Percept[] = [];
   for (const id of w.truth.ids(ITEM_LOOK)) {
@@ -601,8 +608,9 @@ export function playerView(
   const at = w.truth.get(LOCATION, w.player);
   const body = w.truth.get(BODY_STATE, w.player);
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
-  const hour = localHour(w.clock, now, w.map.lonDeg);
-  const day = skyLight(w.map, w.clock, w.seed, now);
+  const skyMap = playerSkyOf(w);
+  const hour = localHour(w.clock, now, skyMap.lonDeg);
+  const day = skyLight(skyMap, w.clock, w.seed, now);
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);
@@ -693,7 +701,11 @@ export function playerView(
     options.heardSince === undefined
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === ABSORBED_EVENT);
-  if (absorbed) cues.add(absorbCue(absorbed));
+  if (absorbed) {
+    cues.add(absorbCue(absorbed));
+    // En la cueva de la sede, el qi se junta (novel-sect-cave-vein).
+    if ((absorbed.data as { focus?: unknown } | null)?.focus !== undefined) cues.add("qi_dense");
+  }
   const broke =
     options.heardSince === undefined
       ? undefined
@@ -703,6 +715,40 @@ export function playerView(
           (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
         );
   if (broke) cues.add(breakCue(broke));
+  const chore =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CHORE_EVENT);
+  if (chore) {
+    const credited = (chore.data as { credited?: unknown } | null)?.credited === true;
+    cues.add(credited ? "chore_credited" : "chore_unpaid");
+  }
+  const stipend =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_STIPEND_EVENT);
+  if (stipend) {
+    const cut = (stipend.data as { cut?: unknown } | null)?.cut !== undefined;
+    cues.add(cut ? "stipend_cut" : "stipend_paid");
+  }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_CAVE_PASS_SPENT_EVENT)
+  )
+    cues.add("cave_pass_spent");
+  const exchange =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_EXCHANGE_EVENT);
+  if (exchange) {
+    const refused = (exchange.data as { refused?: unknown } | null)?.refused !== undefined;
+    cues.add(refused ? "exchange_refused" : "exchange_done");
+  }
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT)
+  )
+    cues.add("promoted");
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =
@@ -724,6 +770,22 @@ export function playerView(
     lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT)
   ) {
     cues.add("sect_joined");
+  }
+  // La marcha de varios días (novel-sect-seat-trek): salió, llegó o se rindió en este turno.
+  const trek =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) =>
+            e.kind === TREK_EVENT && (e.data as { what?: string } | undefined)?.what !== "drank",
+        );
+  if (trek) {
+    const what = (trek.data as { what?: string } | undefined)?.what;
+    cues.add(
+      what === "arrived" ? "trek_arrived" : what === "gave_up" ? "trek_gave_up" : "trek_started",
+    );
   }
   // La escuela (novel-cult-school): la técnica que le enseñaron, y el reino en que la escuela pone su
   // tramo cuando importa (entró o rompió). Solo lo que la secta le dijo: sin ser de ella, no hay nombres.
@@ -786,8 +848,8 @@ export function playerView(
             {
               memories: w.truth.get(MEMORIES, w.player)?.items ?? [],
               seasons: {
-                from: seasonOf(yearPhase(w.clock, options.heardSince), w.map.climate.latDeg),
-                to: seasonOf(yearPhase(w.clock, now), w.map.climate.latDeg),
+                from: seasonOf(yearPhase(w.clock, options.heardSince), skyMap.climate.latDeg),
+                to: seasonOf(yearPhase(w.clock, now), skyMap.climate.latDeg),
               },
               ...(options.goals !== undefined ? { goals: options.goals } : {}),
             },
@@ -803,7 +865,7 @@ export function playerView(
       hour,
       light: node ? spaceLight(node, day) : day,
       marks: marksAt(w.truth, at, now, node ? spaceLight(node, day) : day, (made) =>
-        rainBetween(w.map, w.clock, w.seed, made, now),
+        rainBetween(skyMap, w.clock, w.seed, made, now),
       ),
     },
     percepts: told,

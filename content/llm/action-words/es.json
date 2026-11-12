@@ -288,6 +288,20 @@
     "weak": ["qi"]
   },
   {
+    "id": "chore",
+    "kind": "action",
+    "stems": ["tarea", "barr", "escoba", "guardia"],
+    "forms": [],
+    "weak": ["secta", "portón", "patio"]
+  },
+  {
+    "id": "redeem",
+    "kind": "action",
+    "stems": ["canj", "pase"],
+    "forms": [],
+    "weak": ["puntos", "aportes", "cueva"]
+  },
+  {
     "id": "resolve",
     "kind": "action",
     "stems": ["propon", "propus", "propues", "propós"],

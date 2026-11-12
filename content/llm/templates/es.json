@@ -155,6 +155,17 @@
     "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."]
   },
   {
+    "id": "percept.action.redeem",
+    "lines": [
+      "{who} canjea sus aportes en las cuentas de la secta.",
+      "Ves a {who} pidiendo un pase a cambio de sus puntos."
+    ]
+  },
+  {
+    "id": "percept.action.chore",
+    "lines": ["{who} está con las tareas de la sede.", "Ves a {who} cumpliendo con sus tareas."]
+  },
+  {
     "id": "percept.action.meditate",
     "lines": [
       "{who} medita, quieto, con los ojos cerrados.",
@@ -311,6 +322,13 @@
     "lines": ["Todavía no llegás: te queda camino.", "Avanzás, pero no llegás todavía."]
   },
   {
+    "id": "outcome.move.barred",
+    "lines": [
+      "En la entrada te paran: la cueva es para los internos o para quien tenga pase.",
+      "No te dejan pasar a la cueva: sin rango ni pase, ahí no se entra."
+    ]
+  },
+  {
     "id": "outcome.move.blocked",
     "lines": [
       "La puerta está trabada: empujás y no cede.",
@@ -425,6 +443,33 @@
   {
     "id": "outcome.rest.unsure",
     "lines": ["Descansás un rato."]
+  },
+  {
+    "id": "outcome.redeem.success",
+    "lines": ["Pedís en las cuentas de la secta canjear tus aportes."]
+  },
+  {
+    "id": "outcome.redeem.unsure",
+    "lines": ["Pedís canjear tus aportes."]
+  },
+  {
+    "id": "outcome.chore.success",
+    "lines": [
+      "Hacés tu parte del trabajo de la sede sin que nadie tenga que decirte nada.",
+      "Las horas se van en la tarea; cuando terminás, queda hecho y bien hecho."
+    ]
+  },
+  {
+    "id": "outcome.chore.partial",
+    "lines": ["Cumplís con la tarea a medias: algo queda sin hacer."]
+  },
+  {
+    "id": "outcome.chore.failure",
+    "lines": ["La tarea no sale: se te va el rato y no queda nada que mostrar."]
+  },
+  {
+    "id": "outcome.chore.unsure",
+    "lines": ["Hacés tus tareas un rato."]
   },
   {
     "id": "outcome.meditate.success",
@@ -1134,6 +1179,59 @@
     ]
   },
   {
+    "id": "self.chore_credited",
+    "lines": [
+      "Alguien de la secta anota tus horas: cuentan para tu aporte.",
+      "Tu trabajo queda anotado a tu nombre en las cuentas de la secta."
+    ]
+  },
+  {
+    "id": "self.exchange_done",
+    "lines": [
+      "El encargado tacha puntos de tu aporte y te anota horas de pase a la cueva.",
+      "Te descuentan aporte de las cuentas y te dan un pase de horas para la cueva."
+    ]
+  },
+  {
+    "id": "self.exchange_refused",
+    "lines": ["El encargado mira las cuentas y niega con la cabeza: no hay canje para vos."]
+  },
+  {
+    "id": "self.promoted",
+    "lines": [
+      "Te llaman al salón: por tu aporte y por lo que avanzaste, desde hoy sos discípulo interno. La cueva queda abierta para vos.",
+      "La secta te sube de rango: dejás de ser externo y pasás a los internos, con su sueldo y la cueva."
+    ]
+  },
+  {
+    "id": "self.chore_unpaid",
+    "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
+  },
+  {
+    "id": "self.stipend_paid",
+    "lines": [
+      "Te dan el sueldo del mes de la secta: unas monedas de cobre a tu bolsa.",
+      "Cobrás lo que la secta paga cada mes a los de tu rango."
+    ]
+  },
+  {
+    "id": "self.cave_pass_spent",
+    "lines": ["Se te acabaron las horas del pase: para volver a la cueva vas a necesitar otro."]
+  },
+  {
+    "id": "self.stipend_cut",
+    "lines": [
+      "Te dan el sueldo del mes, pero menos de lo que corresponde: el tesoro de la secta no alcanza."
+    ]
+  },
+  {
+    "id": "self.qi_dense",
+    "lines": [
+      "En la cueva el qi se junta, espeso: entra más rápido que afuera.",
+      "Acá adentro, sobre la veta, el qi te llega más denso que en el patio."
+    ]
+  },
+  {
     "id": "self.sensed_qi",
     "lines": [
       "En la quietud, algo se mueve: una corriente tibia, apenas, entre vos y el aire. No es el viento.",
@@ -1191,6 +1289,27 @@
     "lines": [
       "Te anotan entre los suyos: discípulo de afuera. Te dicen hacia dónde queda la sede, cuántas jornadas a pie, y que tenés un mes para presentarte.",
       "Ya sos de la secta, dicen, aunque sea de los de afuera. Te explican el camino a la sede con cuidado y te dan un mes para subir."
+    ]
+  },
+  {
+    "id": "self.trek_started",
+    "lines": [
+      "Cargás el odre y algo de grano y salís. Son jornadas de camino: vas a caminar de día y dormir donde te agarre la noche.",
+      "Te ponés en marcha con lo poco que llevás encima. El camino es largo; lo vas a hacer de a tramos, comiendo y durmiendo donde se pueda."
+    ]
+  },
+  {
+    "id": "self.trek_arrived",
+    "lines": [
+      "Después de días de camino, con los pies a la miseria, llegás.",
+      "Las jornadas se terminan: estás donde ibas, cansado pero entero."
+    ]
+  },
+  {
+    "id": "self.trek_gave_up",
+    "lines": [
+      "Hace un mes que caminás y no llegás. Te detenés: así no vas a ningún lado.",
+      "Tanto camino y el lugar no aparece. Parás y te sentás a pensar qué hacer."
     ]
   },
   {

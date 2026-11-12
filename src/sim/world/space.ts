@@ -17,10 +17,10 @@ import type {
 import { floorDiv } from "../../core/index.ts";
 import { table } from "./truth.ts";
 
-export const PLACE_KINDS = ["village", "water", "fields", "forest", "grave"] as const;
+export const PLACE_KINDS = ["village", "water", "fields", "forest", "grave", "sect"] as const;
 export type PlaceKind = (typeof PLACE_KINDS)[number];
 
-/** Un lugar con nombre: qué es y qué hexes cubre (índices locales del parche de la aldea). */
+/** Un lugar con nombre: qué es y qué hexes cubre (índices del `LocalMap`: la aldea y, si los hay, los parches unidos). */
 export interface PlaceRecord {
   readonly kind: PlaceKind;
   readonly hexes: readonly number[];
@@ -90,6 +90,153 @@ export interface LocalMap {
     readonly teleconnection: number;
     /** `life-35`: el campo se anega cuando llueve de más (`harvestSeason` con `flood`). */
     readonly flood?: true;
+  };
+  /**
+   * Los parches unidos en este mapa (novel-sect-seat-patch), el primero el de la aldea. Cada
+   * parche ocupa los hexes `base .. base + size - 1` y no tiene aristas hacia los otros: ir de
+   * uno a otro es un viaje entre celdas (travel §2). Sin esto hay un solo parche, el de `cell`.
+   */
+  readonly patches?: readonly PatchSpan[];
+}
+
+/** Un parche dentro de un `LocalMap` unido: su celda, dónde empiezan sus hexes y su clima. */
+export interface PatchSpan {
+  readonly cell: CellId;
+  readonly base: number;
+  readonly size: number;
+  readonly lonDeg: number;
+  readonly climate: ClimateNormals;
+  readonly baseElevationM?: number;
+  readonly oscillation?: LocalMap["oscillation"];
+}
+
+function spanOf(map: LocalMap, base: number): PatchSpan {
+  return {
+    cell: map.cell,
+    base,
+    size: map.neighbors.length,
+    lonDeg: map.lonDeg,
+    climate: map.climate,
+    ...(map.baseElevationM === undefined ? {} : { baseElevationM: map.baseElevationM }),
+    ...(map.oscillation === undefined ? {} : { oscillation: map.oscillation }),
+  };
+}
+
+const climateViews = new WeakMap<LocalMap, Map<number, LocalMap>>();
+
+/**
+ * El mapa con el clima del parche de `hex` (novel-sect-seat-weather): la misma grilla con la
+ * celda, la longitud, las normales, la altura base y la oscilación de ese parche, para que el
+ * tiempo (`sim/weather`) y la hora local salgan de donde está quien lo vive. En el primer parche
+ * (o sin parches) es el mismo mapa; las vistas se guardan, así cada parche es siempre el mismo
+ * objeto (las memorias por mapa siguen sirviendo).
+ */
+export function climateMapAt(map: LocalMap, hex: number | undefined): LocalMap {
+  if (hex === undefined || map.patches === undefined) return map;
+  const span = patchOf(map, hex);
+  if (span.base === 0) return map;
+  let views = climateViews.get(map);
+  if (views === undefined) {
+    views = new Map();
+    climateViews.set(map, views);
+  }
+  let view = views.get(span.base);
+  if (view === undefined) {
+    const { baseElevationM: _b, oscillation: _o, ...rest } = map;
+    view = {
+      ...rest,
+      cell: span.cell,
+      lonDeg: span.lonDeg,
+      climate: span.climate,
+      ...(span.baseElevationM === undefined ? {} : { baseElevationM: span.baseElevationM }),
+      ...(span.oscillation === undefined ? {} : { oscillation: span.oscillation }),
+    };
+    views.set(span.base, view);
+  }
+  return view;
+}
+
+/** Los parches del mapa; sin `patches`, uno solo que lo cubre entero. */
+export function patchesOf(map: LocalMap): readonly PatchSpan[] {
+  return map.patches ?? [spanOf(map, 0)];
+}
+
+/** El parche al que pertenece un hex (el primero si el hex está fuera de rango). */
+export function patchOf(map: LocalMap, hex: number): PatchSpan {
+  const spans = patchesOf(map);
+  return spans.find((s) => hex >= s.base && hex < s.base + s.size) ?? (spans[0] as PatchSpan);
+}
+
+/**
+ * Une parches en un mapa (puro): los de `home` conservan sus índices y los de cada otro se
+ * corren a continuación (en orden, cada uno empieza donde terminó el anterior), con los vecinos
+ * desplazados. `links` son las aristas entre parches, en índices del mapa unido: los hexes que se
+ * tocan de verdad en el borde de dos celdas (novel-sect-seat-road). El clima, la longitud y la
+ * oscilación del mapa siguen siendo los de `home`; cada parche guarda los suyos en `patches`. Un
+ * parche cuya celda ya está en el mapa no se suma dos veces.
+ */
+export function joinMaps(
+  home: LocalMap,
+  others: readonly LocalMap[],
+  links: readonly (readonly [number, number])[] = [],
+): LocalMap {
+  const spans = [...patchesOf(home)];
+  const neighbors = [...home.neighbors];
+  const crossSeconds = [...home.crossSeconds];
+  const forest = [...home.forest];
+  const elevationM = home.elevationM ? [...home.elevationM] : undefined;
+  const water = home.water ? [...home.water] : undefined;
+  for (const m of others) {
+    if (spans.some((s) => s.cell === m.cell)) continue;
+    const base = neighbors.length;
+    const size = m.neighbors.length;
+    spans.push(spanOf(m, base));
+    for (const ns of m.neighbors) neighbors.push(ns.map((n) => n + base));
+    crossSeconds.push(...m.crossSeconds);
+    forest.push(...m.forest);
+    elevationM?.push(...(m.elevationM ?? new Array<number>(size).fill(m.baseElevationM ?? 0)));
+    water?.push(...(m.water ?? new Array<number>(size).fill(0)));
+  }
+  if (spans.length === 1) return home;
+  for (const [a, b] of links) {
+    if (a === b || neighbors[a] === undefined || neighbors[b] === undefined) continue;
+    if (!neighbors[a].includes(b)) neighbors[a] = [...neighbors[a], b];
+    if (!neighbors[b].includes(a)) neighbors[b] = [...neighbors[b], a];
+  }
+  return {
+    ...home,
+    neighbors,
+    crossSeconds,
+    forest,
+    ...(elevationM ? { elevationM } : {}),
+    ...(water ? { water } : {}),
+    patches: spans,
+  };
+}
+
+/**
+ * El mapa restringido a `keep` (puro): esos hexes, en ese orden, renumerados desde 0, con solo los
+ * vecinos que también quedan. Para la franja de una celda que solo se cruza (novel-sect-seat-road).
+ */
+export function subMap(map: LocalMap, keep: readonly number[]): LocalMap {
+  const index = new Map(keep.map((h, i) => [h, i]));
+  const pick = <T>(xs: readonly T[] | undefined): T[] | undefined =>
+    xs ? keep.map((h) => xs[h] as T) : undefined;
+  const elevationM = pick(map.elevationM);
+  const water = pick(map.water);
+  const { patches: _patches, ...rest } = map;
+  return {
+    ...rest,
+    neighbors: keep.map((h) =>
+      (map.neighbors[h] ?? []).flatMap((n) => {
+        const i = index.get(n);
+        return i === undefined ? [] : [i];
+      }),
+    ),
+    crossSeconds: pick(map.crossSeconds) as number[],
+    forest: pick(map.forest) as boolean[],
+    ...(elevationM ? { elevationM } : {}),
+    ...(water ? { water } : {}),
   };
 }
 

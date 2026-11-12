@@ -116,6 +116,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   /** El actor está detrás de una puerta trabada: de ahí no sale caminando (settlements §7). */
   readonly shut?: boolean | undefined;
   /**
+   * Quien manda en el sitio no lo deja entrar al espacio de `withinSite` (la cueva de la secta sin
+   * rango ni pase, novel-sect-cave-pass): lo paran en la entrada; si viene de otro hex, llega afuera.
+   */
+  readonly barred?: boolean | undefined;
+  /**
    * `move` hacia un espacio del sitio (de la casa a la plaza, a la casa del vecino): al llegar al
    * hex queda en `space`. Si ya está en ese hex es un paso de metros, sin rumbo que perder: no se
    * tira, tarda `seconds` y solo lo frena no poder caminar o la puerta trabada (`leaving`: sale de
@@ -466,7 +471,7 @@ export type VerbEffect =
       /** Se cayó o se torció algo en el camino (body lo lee cuando llegue). */
       readonly stumbled: boolean;
       /** La puerta trabada no lo dejó salir: se queda donde estaba. */
-      readonly blocked?: "jammed_door";
+      readonly blocked?: "jammed_door" | "barred";
       /** El espacio del sitio donde quedó (la plaza, una casa), si iba a uno. */
       readonly space?: SpaceKey;
       /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
@@ -752,6 +757,17 @@ export type VerbEffect =
       readonly asked: string | null;
       /** Lo que dejó en la mano del adivino. */
       readonly paid: { readonly unit: LedgerUnit; readonly amount: number } | null;
+    }
+  | {
+      /** Una tarea de la secta, con lo que dijo que hacía («barro»); `game` la anota (novel-sect-duty-chore). */
+      readonly kind: "chore";
+      readonly what: string | null;
+    }
+  | {
+      /** Un pedido de canje de aportes (novel-sect-duty-exchange): las horas de pase que pidió, si dijo. */
+      readonly kind: "redeem";
+      readonly hours: number | null;
+      readonly what: string | null;
     }
   | {
       /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
@@ -1061,6 +1077,24 @@ const ponder: Resolver = (c) => ({
   seconds: c.nominal,
 });
 
+/** Las tareas de la secta: deja qué dijo que hacía; qué tarea es y qué se le anota lo decide `game`. */
+const chore: Resolver = (c) => ({
+  effect: { kind: "chore", what: argText(c, "what") },
+  seconds: c.nominal,
+});
+
+/** El canje de aportes: deja cuántas horas pidió y qué; si alcanza lo decide `game`. */
+const redeem: Resolver = (c) => {
+  const a = c.input.node.args.find((x) => x.role === "for");
+  const hours = a && "seconds" in a ? a.seconds / 3600 : null;
+  // Pedir sale siempre: lo que decide es la secta, no una tirada.
+  return {
+    effect: { kind: "redeem", hours, what: argText(c, "what") },
+    seconds: c.nominal,
+    verdict: { outcome: "success", failure: null, believed: "success" },
+  };
+};
+
 /** Proponerse algo: deja las palabras y la persona, si la nombró; la meta la arma `game`. */
 const resolveGoal: Resolver = (c) => ({
   effect: { kind: "resolve", about: argText(c, "about"), whom: argEntity(c, "whom") },
@@ -1145,13 +1179,21 @@ const move: Resolver = (c) => {
   const legEnd = path.length === 0 ? from : (path[path.length - 1] as number);
   const within = c.input.withinSite;
   const at = (hex: number): StateChange[] =>
-    within !== undefined && hex === to
+    within !== undefined && hex === to && c.input.barred !== true
       ? [setComponent(LOCATION, c.input.actor.id, { hex, space: within.space })]
       : hex === from
         ? []
         : [setComponent(LOCATION, c.input.actor.id, { hex })];
 
   if (within !== undefined && to === from) {
+    if (c.input.barred === true) {
+      // Lo paran en la entrada: sabe que no lo dejaron.
+      return {
+        effect: { ...effect(from, false), blocked: "barred" },
+        seconds: Math.min(within.seconds, 60),
+        override: { outcome: "failure", failure: "refused", believed: "failure" },
+      };
+    }
     // Unos pasos adentro del sitio: no hay rumbo que perder ni tirada que valga.
     if (c.input.shut === true && within.leaving) {
       return { effect: { ...effect(from, false), blocked: "jammed_door" }, seconds: 10 };
@@ -2914,6 +2956,8 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   milk,
   ponder,
   resolve: resolveGoal,
+  chore,
+  redeem,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

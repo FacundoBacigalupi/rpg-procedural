@@ -363,6 +363,12 @@ function decideBody(i: ReplyInput, at: number): Reply {
   const memory = i.recollection ?? NO_RECOLLECTION;
   if (misheard(i)) return say("misheard");
   switch (a.kind) {
+    case "introduce":
+      // Con algo contra quien pregunta, o desconfiando de él, no da su nombre.
+      if (i.reproach || (memory.bias <= WARY_BIAS && memory.vivid >= FOND_VIVID)) {
+        return say("introduce.wary");
+      }
+      return say("introduce", { name: i.nameOf(i.listener) });
     case "greet":
       if (i.reproach) return say(`greet.cold.${i.reproach}`);
       if (memory.bias >= FOND_BIAS && memory.vivid >= FOND_VIVID) return say("greet.fond");

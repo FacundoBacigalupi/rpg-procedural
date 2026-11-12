@@ -42,10 +42,22 @@ describe("perfil de la CLI y la web", () => {
   it("--cultivation suma el cultivo al setup (con o sin perfil) y sin él no aparece", () => {
     expect(config([]).setup.life).not.toHaveProperty("cultivation");
     const full = config(["--cultivation"]).setup.life;
-    expect(full).toEqual({ ...FULL_PROFILE, cultivation: true });
-    expect(ScenarioLife.parse(full)).toEqual({ ...FULL_PROFILE, cultivation: true });
+    expect(full).toEqual({
+      ...FULL_PROFILE,
+      cultivation: true,
+      sectSeatRegion: true,
+      playerTrek: true,
+    });
+    expect(ScenarioLife.parse(full)).toEqual({
+      ...FULL_PROFILE,
+      cultivation: true,
+      sectSeatRegion: true,
+      playerTrek: true,
+    });
     expect(config(["--profile", "basic", "--cultivation"]).setup.life).toEqual({
       cultivation: true,
+      sectSeatRegion: true,
+      playerTrek: true,
     });
   });
 
@@ -56,9 +68,16 @@ describe("perfil de la CLI y la web", () => {
     expect(config(["--con", "cultivo,tecnica"]).setup.life).toEqual({
       ...FULL_PROFILE,
       cultivation: true,
+      sectSeatRegion: true,
+      playerTrek: true,
       mortalTech: true,
     });
-    expect(config(["--mode", "novela"]).setup.life).toEqual({ ...FULL_PROFILE, cultivation: true });
+    expect(config(["--mode", "novela"]).setup.life).toEqual({
+      ...FULL_PROFILE,
+      cultivation: true,
+      sectSeatRegion: true,
+      playerTrek: true,
+    });
     expect(config(["--mode", "novela", "--sin", "cultivo"]).setup.life).toEqual(FULL_PROFILE);
     expect(config(["--profile", "basic", "--con", "cuerpo"]).setup.life).toEqual(
       lifeGroupOptions(["body"]).options,

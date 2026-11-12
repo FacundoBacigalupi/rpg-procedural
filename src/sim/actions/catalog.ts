@@ -58,6 +58,7 @@ export const FAILURE_MODES = [
   "not_here", // lo buscado o la contraparte no está
   "no_means", // no tiene con qué (o el otro no tiene nada)
   "no_deal", // hay con qué, pero no se ponen de acuerdo en el precio
+  "refused", // quien manda en el lugar no lo deja (la cueva de la secta sin pase)
 ] as const;
 export type FailureModeId = (typeof FAILURE_MODES)[number];
 
@@ -94,6 +95,8 @@ export const RESOLVERS = [
   "milk",
   "ponder",
   "resolve",
+  "chore",
+  "redeem",
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];
 

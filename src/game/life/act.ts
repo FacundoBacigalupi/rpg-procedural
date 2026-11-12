@@ -49,6 +49,8 @@ import {
   type ContestClaim,
   CREDIT,
   capabilitiesOf,
+  caveBarred,
+  climateMapAt,
   createEntity,
   DEFICIENCY_EFFECTS,
   type DealBudget,
@@ -633,8 +635,9 @@ function bearingOf(
   hex: number,
   now: Tick,
 ): Bearing {
-  const light = skyLight(o.map, o.clock, o.seed, now);
-  const factor = bearingFactor(weatherAt(o.map, o.clock, o.seed, now), light, !!o.map.forest[hex]);
+  const sky = climateMapAt(o.map, hex);
+  const light = skyLight(sky, o.clock, o.seed, now);
+  const factor = bearingFactor(weatherAt(sky, o.clock, o.seed, now), light, !!o.map.forest[hex]);
   const landmarks = new Set<number>();
   if (light >= LANDMARK_MIN_LIGHT) {
     for (const { place } of places) {
@@ -1655,13 +1658,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     destination,
     shut:
       def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
+    barred:
+      def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
+        ? caveBarred(truth, me as unknown as EntityRef, spaceArg.text as string)
+        : undefined,
     withinSite:
       def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
         ? siteWalk(o.spaces, truth.get(LOCATION, me), spaceArg.text as SpaceKey, strollSeconds)
         : undefined,
     walkFactor:
       def.resolver === "move"
-        ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now)) *
+        ? walkingFactor(weatherAt(climateMapAt(o.map, e.hex), o.clock, o.seed, ctx.now)) *
           (o.footwear ? footwearWalkFactor(truth.get(FOOTWEAR, me)?.wear) : 1)
         : undefined,
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,

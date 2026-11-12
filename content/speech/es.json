@@ -439,6 +439,19 @@
     "dry": ["¿Qué? Repetilo."]
   },
   {
+    "id": "introduce",
+    "lines": ["Me llamo {name}.", "Soy {name}, mucho gusto.", "{name}. ¿Y vos?"],
+    "formal": ["Mi nombre es {name}, para servirle.", "Me dicen {name}."],
+    "warm": ["¡Soy {name}! Un gusto conocerte.", "{name}, a tu disposición."],
+    "dry": ["{name}.", "Me dicen {name}."]
+  },
+  {
+    "id": "introduce.wary",
+    "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
+    "formal": ["Prefiero no decirlo, si no le molesta."],
+    "dry": ["No."]
+  },
+  {
     "id": "greet.cold.theft",
     "lines": ["Mirá quién anda por acá.", "Ah, vos. Me han contado de vos."],
     "formal": ["Buen día. Tengo entendido que usted anda en cosas feas."]

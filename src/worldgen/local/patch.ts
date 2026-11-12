@@ -24,7 +24,15 @@ export interface LocalPatch {
   readonly neighbors: readonly (readonly number[])[];
   /** Celdas del planeta que el hex toca por afuera (vacío si es interior). */
   readonly outside: readonly (readonly number[])[];
+  /**
+   * Los ids canónicos (red fina) de los vecinos de afuera de cada hex: con ellos se cosen dos
+   * parches vecinos en un mapa contiguo (novel-sect-seat-road). Vacío si es interior.
+   */
+  readonly outsideHexes: readonly (readonly number[])[];
 }
+
+/** Un solo arreglo vacío para los hexes interiores: un parche tiene miles y se crean muchos. */
+const NONE: readonly number[] = Object.freeze([]);
 
 export function localPatch(planet: Planet, cell: number): LocalPatch {
   const { grid } = planet;
@@ -33,17 +41,23 @@ export function localPatch(planet: Planet, cell: number): LocalPatch {
   const children = grid.refine(cell, factor);
   const index = new Map(children.map((ch, i) => [ch.id, i]));
   const neighbors: number[][] = [];
-  const outside: number[][] = [];
+  const outside: (readonly number[])[] = [];
+  const outsideHexes: (readonly number[])[] = [];
   for (const ch of children) {
     const inner: number[] = [];
     const out = new Set<number>();
+    const outIds: number[] = [];
     for (const nb of fine.neighborsAt(...ch.at)) {
       const i = index.get(nb.id);
       if (i !== undefined) inner.push(i);
-      else out.add(grid.locate(fine.position(...nb.at), cell));
+      else {
+        out.add(grid.locate(fine.position(...nb.at), cell));
+        outIds.push(nb.id);
+      }
     }
     neighbors.push(inner);
-    outside.push([...out].sort((a, b) => a - b));
+    outside.push(out.size === 0 ? NONE : [...out].sort((a, b) => a - b));
+    outsideHexes.push(outIds.length === 0 ? NONE : outIds.sort((a, b) => a - b));
   }
   return {
     cell,
@@ -53,5 +67,6 @@ export function localPatch(planet: Planet, cell: number): LocalPatch {
     centers: children.map((ch) => ch.center),
     neighbors,
     outside,
+    outsideHexes,
   };
 }

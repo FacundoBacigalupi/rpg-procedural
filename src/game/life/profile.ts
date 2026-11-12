@@ -394,7 +394,8 @@ const BODY_KEYS: readonly (keyof LifeOptions)[] = [
 
 /** El grupo de un flag: por lista o por prefijo; lo demás es de la aldea. */
 export function lifeGroupOf(key: keyof LifeOptions): LifeGroup {
-  if (key === "cultivation") return "cultivation";
+  if (key === "cultivation" || key === "sectSeatRegion" || key === "playerTrek")
+    return "cultivation";
   if (key === "mortalTech") return "tech";
   if (PEOPLE_KEYS.includes(key)) return "people";
   if (ECONOMY_KEYS.includes(key)) return "economy";
@@ -407,7 +408,7 @@ export function lifeGroupOf(key: keyof LifeOptions): LifeGroup {
 
 /** Lo que trae cada grupo solo (sin las dependencias de otros grupos). */
 export function groupOptions(group: LifeGroup): LifeOptions {
-  if (group === "cultivation") return { cultivation: true };
+  if (group === "cultivation") return { cultivation: true, sectSeatRegion: true, playerTrek: true };
   if (group === "tech") return { mortalTech: true };
   const picked: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(structuredClone(FULL_PROFILE))) {

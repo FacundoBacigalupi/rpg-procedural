@@ -46,6 +46,8 @@ export type SelfCue =
   | "blacked_out"
   /** Meditando sintió el qi por primera vez (`cultivation.sensed_qi`, novel-cult-meditate). */
   | "sensed_qi"
+  /** Absorbió en la cueva de la sede, donde el qi de la veta se junta (novel-sect-cave-vein). */
+  | "qi_dense"
   /** Meditando, el qi entra al cuerpo (`cultivation.absorbed`, novel-cult-absorb). */
   | "qi_flows"
   /** El qi se resiste: se parece poco a su raíz. */
@@ -75,7 +77,29 @@ export type SelfCue =
   /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
   | "sect_joined"
   /** Los de la secta le enseñaron su técnica de entrada (`self.technique` la nombra). */
-  | "technique_taught";
+  | "technique_taught"
+  /** Salió de marcha hacia un lugar a días de camino (`life.trek`, novel-sect-seat-trek). */
+  | "trek_started"
+  /** Llegó al final de la marcha. */
+  | "trek_arrived"
+  /** Se rindió: un mes de marcha sin llegar. */
+  | "trek_gave_up"
+  /** Hizo tareas en la sede y se las anotaron (`cultivation.sect_chore`, novel-sect-duty-chore). */
+  | "chore_credited"
+  /** Hizo tareas de la secta sin ser de ella: nadie se las anota. */
+  | "chore_unpaid"
+  /** Cobró el sueldo del mes de la secta (`cultivation.sect_stipend`, novel-sect-duty-stipend). */
+  | "stipend_paid"
+  /** Cobró, pero menos: el tesoro no alcanzaba. */
+  | "stipend_cut"
+  /** Se le acabaron las horas del pase a la cueva (novel-sect-cave-pass). */
+  | "cave_pass_spent"
+  /** Canjeó aportes por horas de pase a la cueva (`cultivation.sect_exchange`, novel-sect-duty-exchange). */
+  | "exchange_done"
+  /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
+  | "exchange_refused"
+  /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
+  | "promoted";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
@@ -376,6 +400,8 @@ export type EffectView =
       readonly stumbled: boolean;
       /** La puerta trabada no lo dejó salir. */
       readonly blocked?: boolean;
+      /** No lo dejaron entrar (la cueva de la secta sin rango ni pase, novel-sect-cave-pass). */
+      readonly barred?: boolean;
     }
   | {
       readonly kind: "observe";
@@ -992,6 +1018,8 @@ function effectView(
   switch (e.kind) {
     case "none":
     case "ponder":
+    case "chore":
+    case "redeem":
     case "resolve":
     case "forge":
     case "hire":
@@ -1001,7 +1029,11 @@ function effectView(
         kind: "move",
         arrived: e.reached === null ? null : e.reached === e.to,
         stumbled: e.stumbled,
-        ...(e.blocked !== undefined ? { blocked: true } : {}),
+        ...(e.blocked === "barred"
+          ? { barred: true }
+          : e.blocked !== undefined
+            ? { blocked: true }
+            : {}),
       };
     case "observe":
       return { kind: "observe", ...target(e.target) };

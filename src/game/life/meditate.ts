@@ -18,7 +18,7 @@
 // La técnica (novel-cult-school): quien aprendió la de entrada de una secta medita y absorbe con su
 // factor (lo que pide; la celda y la capacidad siguen acotando).
 
-import type { AgentId, Event, EventId, Rng } from "../../core/index.ts";
+import type { AgentId, EntityRef, Event, EventId, Rng } from "../../core/index.ts";
 import {
   ABSORBED_EVENT,
   type Aptitude,
@@ -31,22 +31,29 @@ import {
   BREAKTHROUGH_EVENT,
   breakOutcome,
   breakPreparation,
+  CAVE_FOCUS,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
   type CultivationLaw,
   type CultivationState,
   type EventDraft,
+  isSectCave,
+  LOCATION,
+  type LocalMap,
   MAX_MERIDIAN_DAMAGE,
   meditationGain,
   mixedPurity,
   needsFrom,
+  PLACE,
   PLACE_QI,
   type PlaceQi,
   type ProcessDef,
+  patchOf,
   QI_TAKEN,
   type QiTaken,
   qiFactor,
+  type ReadonlyWorldTruth,
   regrown,
   rootMatch,
   SENSE_THRESHOLD,
@@ -167,12 +174,40 @@ function calmOf(plans: ReadonlyMap<string, BodyPlanDef>, b: Body | undefined): n
   return Math.max(0, 1 - (n.pain ?? 0) - 0.3 * distraction);
 }
 
+/**
+ * La reserva de qi donde está `who` (novel-sect-seat-hall-qi): con varios parches, la del lugar con
+ * `PLACE_QI` cuyo hex está en el mismo parche (la sede); en el de la aldea, o sin otra, la del plano.
+ */
+export function qiPoolOf(
+  truth: ReadonlyWorldTruth,
+  map: LocalMap,
+  plane: EntityRef,
+  who: AgentId,
+): EntityRef {
+  const hex = truth.get(LOCATION, who)?.hex;
+  if (hex === undefined || map.patches === undefined) return plane;
+  const base = patchOf(map, hex).base;
+  if (base === 0) return plane;
+  for (const id of [...truth.ids(PLACE_QI)].sort()) {
+    if (id === plane) continue;
+    const at = truth.get(PLACE, id)?.hexes[0];
+    if (at !== undefined && patchOf(map, at).base === base) return id;
+  }
+  return plane;
+}
+
 export function meditateProcess(o: {
   readonly bodyPlans: readonly BodyPlanDef[];
   /** Ticks por año, para la regeneración de la celda. */
   readonly yearTicks: number;
+  /**
+   * Opt-in (novel-sect-seat-hall-qi): el mapa con parches; con él cada uno medita sobre la reserva
+   * del parche donde está (`qiPoolOf`). Sin él, todos sobre la del plano.
+   */
+  readonly map?: LocalMap;
 }): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  const pooled = o.map?.patches !== undefined;
   return {
     id: MEDITATE_PROCESS,
     system: "life",
@@ -188,16 +223,33 @@ export function meditateProcess(o: {
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
       CULTIVATION_TECHNIQUE.name,
+      LOCATION.name,
+      ...(pooled ? [PLACE.name] : []),
     ],
     writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
     run(ctx) {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
       const law = plane ? ctx.truth.get(CULTIVATION_LAW, plane) : undefined;
       if (!plane || !law) return {};
-      const place: PlaceQi | undefined = ctx.truth.get(PLACE_QI, plane);
-      const factor = qiFactor(place);
-      const takenRow = ctx.truth.get(QI_TAKEN, plane);
-      let taken = place && takenRow ? regrown(takenRow, place, ctx.now, o.yearTicks) : undefined;
+      // Cada reserva con su débito; la del plano es la de la aldea.
+      const pools = new Map<
+        EntityRef,
+        { place: PlaceQi | undefined; factor: number; row?: QiTaken; taken?: QiTaken }
+      >();
+      const poolFor = (who: AgentId): EntityRef => {
+        const id = pooled && o.map ? qiPoolOf(ctx.truth, o.map, plane, who) : plane;
+        if (!pools.has(id)) {
+          const place: PlaceQi | undefined = ctx.truth.get(PLACE_QI, id);
+          const row = ctx.truth.get(QI_TAKEN, id);
+          pools.set(id, {
+            place,
+            factor: qiFactor(place),
+            ...(row ? { row } : {}),
+            ...(place && row ? { taken: regrown(row, place, ctx.now, o.yearTicks) } : {}),
+          });
+        }
+        return id;
+      };
       const rows = new Map<AgentId, CultivationState>();
       const events: EventDraft[] = [];
       const stateOf = (who: AgentId): CultivationState =>
@@ -210,10 +262,12 @@ export function meditateProcess(o: {
           const before = stateOf(breaker);
           const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
           const calm = calmOf(plans, ctx.truth.get(BODY_STATE, breaker));
-          const r = resolveBreak(e, breaker, law, apt, before, calm, taken, ctx.rng);
+          const pool = pools.get(poolFor(breaker)) as { taken?: QiTaken };
+          const r = resolveBreak(e, breaker, law, apt, before, calm, pool.taken, ctx.rng);
           if (!r) continue;
           rows.set(breaker, r.next);
-          taken = r.taken;
+          if (r.taken) pool.taken = r.taken;
+          else delete pool.taken;
           events.push(r.event);
           continue;
         }
@@ -225,6 +279,13 @@ export function meditateProcess(o: {
         const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
         const capacity = vesselCapacity(law, before.stage ?? 0);
         const calm = calmOf(plans, ctx.truth.get(BODY_STATE, m.who));
+        const poolId = poolFor(m.who);
+        const pool = pools.get(poolId) as { place?: PlaceQi; factor: number; taken?: QiTaken };
+        const { place } = pool;
+        // En la cueva de la sede, sobre el nudo de la veta, la misma reserva rinde más.
+        const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
+        const factor = pool.factor * focus;
+        const taken = pool.taken;
         const method = ctx.truth.get(CULTIVATION_TECHNIQUE, m.who)?.factor ?? 1;
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
@@ -245,7 +306,7 @@ export function meditateProcess(o: {
           const purity = mixedPurity(qi, before.purity ?? 0, drawn, match);
           next = { ...next, qi: round4(qi + drawn), purity };
           if (drawn > 0) {
-            taken = {
+            pool.taken = {
               ...taken,
               taken: round4(taken.taken + drawn),
               drawn: round4(taken.drawn + drawn),
@@ -255,11 +316,19 @@ export function meditateProcess(o: {
             kind: ABSORBED_EVENT,
             actors: [m.who],
             place: e.place,
-            data: { drawn, qi: next.qi, capacity, match, purity, cell: place.cell },
+            data: {
+              drawn,
+              qi: next.qi,
+              capacity,
+              match,
+              purity,
+              cell: place.cell,
+              ...(focus > 1 ? { focus } : {}),
+            },
             emissions: {},
             causes: [
               { kind: "event", event: e.id },
-              { kind: "state", entity: plane, key: PLACE_QI.name },
+              { kind: "state", entity: poolId, key: PLACE_QI.name },
             ],
           });
         }
@@ -283,8 +352,11 @@ export function meditateProcess(o: {
       const changes: StateChange[] = [...rows].map(([id, row]) =>
         setComponent(CULTIVATION_STATE, id, row),
       );
-      if (taken && taken !== takenRow && changes.length > 0) {
-        changes.push(setComponent(QI_TAKEN, plane, taken));
+      if (changes.length > 0) {
+        for (const [id, pool] of [...pools].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+          if (pool.taken && pool.taken !== pool.row)
+            changes.push(setComponent(QI_TAKEN, id, pool.taken));
+        }
       }
       return changes.length === 0 ? {} : { changes, events };
     },

@@ -382,6 +382,87 @@ export function villageSpaces(input: VillageSpacesInput): SpaceGraph {
   };
 }
 
+/** Los espacios de la sede de una secta, en el orden en que se entra. */
+export const SECT_SITE_SPACES = ["gate", "hall", "dorm", "cave"] as const;
+export type SectSiteSpace = (typeof SECT_SITE_SPACES)[number];
+
+/** La clave de un espacio de la sede `place` (el lugar de la sede, `PLACE` con `kind: "sect"`). */
+export function sectSpaceKey(place: string, part: SectSiteSpace): SpaceKey {
+  return `sect:${place}/${part}`;
+}
+
+/** Si `space` es la cueva de cultivo de una sede (novel-sect-cave-vein). */
+export function isSectCave(space: string | undefined): boolean {
+  return space !== undefined && space.startsWith("sect:") && space.endsWith("/cave");
+}
+
+/**
+ * La sede de una secta como sitio (novel-sect-seat-hall-spaces): un patio tras el portón, al aire
+ * libre (se une al campo del hex); el salón de piedra que da al patio; los dormitorios de los
+ * discípulos detrás del salón; y la cueva de cultivo, excavada en la roca al fondo del patio, sin
+ * luz de día, sin viento y casi sin ruido. Como la aldea mínima, es dato derivado: sale del lugar.
+ */
+export function sectSiteSpaces(place: string, hex: number): SpaceGraph {
+  const node = (part: SectSiteSpace, n: Omit<SpaceNode, "key" | "hex">): SpaceNode => ({
+    key: sectSpaceKey(place, part),
+    hex,
+    ...n,
+  });
+  const gate = node("gate", {
+    kind: "yard",
+    area: 30 * 30,
+    indoor: false,
+    daylight: 1,
+    lamp: 0,
+    noise: 0.03,
+    clearSight: 1,
+  });
+  const hall = node("hall", {
+    kind: "room",
+    area: 15 * 20,
+    indoor: true,
+    daylight: 0.3,
+    lamp: 0.15,
+    noise: 0.02,
+    clearSight: 1,
+    roof: true,
+    openness: 0.2,
+    wall: "stone",
+  });
+  const dorm = node("dorm", {
+    kind: "room",
+    area: 8 * 12,
+    indoor: true,
+    daylight: 0.2,
+    lamp: 0.05,
+    noise: 0.02,
+    clearSight: 1,
+    roof: true,
+    openness: 0.1,
+    wall: "wood",
+  });
+  const cave = node("cave", {
+    kind: "room",
+    area: 6 * 8,
+    indoor: true,
+    daylight: 0,
+    lamp: 0.05,
+    noise: 0.005,
+    clearSight: 1,
+    roof: true,
+    openness: 0.05,
+    wall: "cave",
+  });
+  return {
+    spaces: [gate, hall, dorm, cave],
+    edges: [
+      { a: gate.key, b: hall.key, barrier: "doorway" },
+      { a: hall.key, b: dorm.key, barrier: "door_closed" },
+      { a: gate.key, b: cave.key, barrier: "doorway" },
+    ],
+  };
+}
+
 /** La luz en un espacio (0-1) con la luz del día de afuera. */
 export function spaceLight(space: SpaceNode, daylightNow: number): number {
   return Math.min(1, daylightNow * space.daylight + space.lamp);

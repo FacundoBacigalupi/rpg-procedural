@@ -6,10 +6,12 @@
 import { compareStrings, type HouseholdId } from "../../core/index.ts";
 import {
   ENTITY,
+  PLACE,
   type ReadonlyWorldTruth,
   type SpaceEdge,
   type SpaceGraph,
   type SpaceNode,
+  sectSiteSpaces,
   VILLAGE_SQUARE,
   villageSpaces,
 } from "../world/index.ts";
@@ -17,7 +19,41 @@ import type { MaterialDef } from "./defs.ts";
 import { BUILDING } from "./tables.ts";
 import { partitionBarrier, wallBarrier } from "./upkeep.ts";
 
+/** Las sedes de secta del mundo (`PLACE` con `kind: "sect"` y un hex), por id. */
+function sectSites(truth: ReadonlyWorldTruth): { id: string; hex: number }[] {
+  const out: { id: string; hex: number }[] = [];
+  for (const id of [...truth.ids(PLACE)].sort(compareStrings)) {
+    const p = truth.get(PLACE, id);
+    const hex = p?.kind === "sect" ? p.hexes[0] : undefined;
+    if (hex !== undefined) out.push({ id, hex });
+  }
+  return out;
+}
+
+/** Los sitios de las sedes (novel-sect-seat-hall-spaces) sumados al grafo de la aldea. */
+function withSectSites(truth: ReadonlyWorldTruth, graph: SpaceGraph): SpaceGraph {
+  const sites = sectSites(truth);
+  if (sites.length === 0) return graph;
+  const spaces = [...graph.spaces];
+  const edges = [...graph.edges];
+  for (const { id, hex } of sites) {
+    const g = sectSiteSpaces(id, hex);
+    spaces.push(...g.spaces);
+    edges.push(...g.edges);
+  }
+  return { spaces, edges };
+}
+
 export function settlementSpaces(
+  truth: ReadonlyWorldTruth,
+  hex: number,
+  fallbackHouseholds: readonly HouseholdId[] = [],
+  materials?: ReadonlyMap<string, MaterialDef>,
+): SpaceGraph {
+  return withSectSites(truth, villageSettlementSpaces(truth, hex, fallbackHouseholds, materials));
+}
+
+function villageSettlementSpaces(
   truth: ReadonlyWorldTruth,
   hex: number,
   fallbackHouseholds: readonly HouseholdId[] = [],
@@ -79,6 +115,7 @@ export function liveSettlementSpaces(
       const walls = b.components.find((c) => c.part === "walls");
       parts.push(`${id}:${b.graph.door}:${walls?.materials.map((l) => l.material).join("+")}`);
     }
+    for (const site of sectSites(truth)) parts.push(`sect:${site.id}@${site.hex}`);
     const now = parts.join("|");
     if (graph === undefined || sig !== now) {
       graph = settlementSpaces(truth, hex, fallbackHouseholds, materials);

@@ -10,11 +10,14 @@
 
 import { Rng } from "../../core/index.ts";
 import {
+  climateMapAt,
   dayOf,
   FORECAST_MEMORY_DAYS,
   foreseenMinC,
   foreseenRainChance,
   knownSigns,
+  LOCATION,
+  type LocalMap,
   outdoorTempC,
   rainedToday,
   SIGNS,
@@ -131,21 +134,30 @@ export function seasonOf(phase: number, latDeg: number): SeasonName {
   return "winter";
 }
 
+/**
+ * El mapa con el clima del parche donde está el personaje (novel-sect-seat-weather): en la sede,
+ * las normales y la hora de su celda; en la aldea, el mapa mismo.
+ */
+export function playerSkyOf(w: LifeWorld): LocalMap {
+  return climateMapAt(w.map, w.truth.get(LOCATION, w.player)?.hex);
+}
+
 export function weatherPanel(w: LifeWorld): WeatherPanel {
   const now = w.scheduler.now;
-  const today = dayOf(w.clock, now + Math.round((w.map.lonDeg / 360) * w.clock.day));
+  const skyMap = playerSkyOf(w);
+  const today = dayOf(w.clock, now + Math.round((skyMap.lonDeg / 360) * w.clock.day));
   const root = Rng.root(w.seed);
   // Lee el día con el error de siempre (el mismo del viajero NPC), fijo para el personaje y el día.
   const misread = root.fork("forecast", w.player, today).normal(0, MISREAD_SD_C);
-  const wetToday = rainedToday(w.map.climate, w.clock, root, today);
-  const lore = new Set(knownSigns(root, w.map.climate.cell));
-  const signs = signsShowing(w.map.climate, w.clock, root, w.player, today)
+  const wetToday = rainedToday(skyMap.climate, w.clock, root, today);
+  const lore = new Set(knownSigns(root, skyMap.climate.cell));
+  const signs = signsShowing(skyMap.climate, w.clock, root, w.player, today)
     .filter((id) => lore.has(id))
     .map((id) => {
       const def = SIGNS.find((d) => d.id === id);
       const record = signRecord(
         id,
-        w.map.climate,
+        skyMap.climate,
         w.clock,
         root,
         w.player,
@@ -160,16 +172,16 @@ export function weatherPanel(w: LifeWorld): WeatherPanel {
       };
     });
   return {
-    season: seasonOf(yearPhase(w.clock, today), w.map.climate.latDeg),
-    airNow: airFeel(outdoorTempC(w.map, w.clock, w.seed, now)),
+    season: seasonOf(yearPhase(w.clock, today), skyMap.climate.latDeg),
+    airNow: airFeel(outdoorTempC(skyMap, w.clock, w.seed, now)),
     outlook: HORIZONS.map(([ahead, days]) => ({
       ahead,
-      night: nightCold(foreseenMinC(w.map.climate, w.clock, root, today, days, misread)),
+      night: nightCold(foreseenMinC(skyMap.climate, w.clock, root, today, days, misread)),
       trust: trustAt(days),
     })),
     rain: HORIZONS.map(([ahead, days]) => ({
       ahead,
-      chance: rainBand(foreseenRainChance(w.map.climate, today, days, wetToday)),
+      chance: rainBand(foreseenRainChance(skyMap.climate, today, days, wetToday)),
       trust: rainTrustAt(today, days),
     })),
     signs,

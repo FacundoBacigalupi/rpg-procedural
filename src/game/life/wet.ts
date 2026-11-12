@@ -9,6 +9,7 @@
 import type { AgentId, PlaceRef, PlanetClock, Seed, Tick } from "../../core/index.ts";
 import {
   BODY_STATE,
+  climateMapAt,
   type DayWeather,
   deleteComponent,
   ENTITY,
@@ -164,9 +165,8 @@ export function wetClothesProcess(o: WetClothesOptions): ProcessDef {
       const settled = new Set(o.spaces.spaces.map((s) => s.hex));
       const events: EventDraft[] = [];
       const hours = Math.max(1, ctx.window) / (o.clock.day / 24);
-      const day = weatherAt(o.map, o.clock, o.seed, ctx.now as Tick);
-      const airC = outdoorTempC(o.map, o.clock, o.seed, ctx.now as Tick);
       const changes: StateChange[] = [];
+      const skies = new Map<LocalMap, { day: DayWeather; airC: number }>();
       for (const id of [...ctx.truth.ids(PERSON)].sort()) {
         const who = id as AgentId;
         if (ctx.truth.get(ENTITY, who)?.endedAt !== undefined) continue;
@@ -174,6 +174,17 @@ export function wetClothesProcess(o: WetClothesOptions): ProcessDef {
         const loc = ctx.truth.get(LOCATION, who);
         if (!loc) continue;
         const outdoors = o.spaces.spaces.find((s) => s.key === loc.space)?.indoor !== true;
+        // El tiempo del parche donde está (novel-sect-seat-weather).
+        const sky = climateMapAt(o.map, loc.hex);
+        let here = skies.get(sky);
+        if (here === undefined) {
+          here = {
+            day: weatherAt(sky, o.clock, o.seed, ctx.now as Tick),
+            airC: outdoorTempC(sky, o.clock, o.seed, ctx.now as Tick),
+          };
+          skies.set(sky, here);
+        }
+        const { day, airC } = here;
         const had = ctx.truth.get(WET_CLOTHES, who)?.wet ?? 0;
         let waded = 0;
         if (o.ford) {

@@ -354,6 +354,10 @@ function outcome(
         say("outcome.move.blocked");
         break;
       }
+      if (e.barred === true) {
+        say("outcome.move.barred");
+        break;
+      }
       say(
         e.arrived === true
           ? "outcome.move.arrived"

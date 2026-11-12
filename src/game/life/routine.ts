@@ -70,7 +70,9 @@ import {
   type ProcessDef,
   planLeaves,
   type ReadonlyWorldTruth,
+  SECT,
   SECT_LORE,
+  SECT_MEMBER,
   SOIL,
   SOIL_DAYS,
   type SpaceGraph,
@@ -102,6 +104,7 @@ import { harvestSeasonOf } from "./map.ts";
 import { ROUTINE_BREAK_EVENT, ROUTINE_MEDITATE_EVENT } from "./meditate.ts";
 import { PLAYER } from "./player.ts";
 import { routineToolStep } from "./routine-tools.ts";
+import { ROUTINE_CHORE_EVENT } from "./sect-duty.ts";
 import { SMITH } from "./smith.ts";
 import {
   cropStarts,
@@ -172,7 +175,24 @@ export interface WaterSkin {
 }
 export const WATER_SKIN = table<WaterSkin>("life.water_skin");
 
+/** La casa y el lugar de las horas de trabajo de quien vive en una sede (`RoutineOptions.seatOf`). */
+export interface SeatRoutine {
+  readonly home: string;
+  readonly work: string;
+  /**
+   * Las horas de trabajo son de tareas en `work` (`routine.chore`, que anota `life.sect_duty`) en vez
+   * de meditar: el discípulo externo que vive en la sede (novel-sect-duty-routine).
+   */
+  readonly chores?: boolean;
+}
+
 export interface RoutineOptions {
+  /**
+   * Opt-in (novel-sect-seat-hall-people-keep): quien vive en una sede duerme y come en su casa de
+   * ahí (`home`) y pasa las horas de trabajo meditando en `work` (la hora la resuelve
+   * `life.cultivation.meditate`), sin campo, leña ni herramientas.
+   */
+  readonly seatOf?: (truth: ReadonlyWorldTruth, me: AgentId) => SeatRoutine | undefined;
   /**
    * Opt-in (`life-50`, con `itemClaims` y las cosas de cada casa): la hora de campo se trabaja con la
    * azada o la hoz de la casa (los `instruments` de `work`), que se agarra al salir y se deja al
@@ -454,6 +474,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       ...(o.draft ? draftReads(o.draft) : []),
+      ...(o.seatOf ? [SECT_MEMBER.name, SECT.name, PLACE.name] : []),
     ],
     writes: [
       LOCATION.name,
@@ -568,12 +589,28 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const events: EventDraft[] = [];
       const postings = [];
 
-      // Dónde: la casa del hogar o el campo más cercano a ella.
-      const home = o.spaces.spaces.find((s) => s.key === houseKey(person.household));
+      // Dónde: la casa del hogar o el campo más cercano a ella; en una sede, su casa de ahí y el
+      // lugar donde medita.
+      const seat = o.seatOf?.(truth, me);
+      const home = o.spaces.spaces.find(
+        (s) => s.key === (seat?.home ?? houseKey(person.household)),
+      );
       const here = truth.get(LOCATION, me);
       let there: Location | undefined;
       if (!tendOnly && want.at === "home" && home) there = { hex: home.hex, space: home.key };
-      if (want.at === "fields" && home) {
+      const cultivates = seat !== undefined && want.at === "fields" && !tendOnly;
+      if (cultivates) {
+        const work = o.spaces.spaces.find((s) => s.key === seat.work);
+        if (work) there = { hex: work.hex, space: work.key };
+        events.push({
+          kind: seat.chores === true ? ROUTINE_CHORE_EVENT : ROUTINE_MEDITATE_EVENT,
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: { seconds: 3600 },
+          emissions: {},
+          causes: [{ kind: "state", entity: me, key: "routine" }],
+        });
+      } else if (want.at === "fields" && home) {
         const fields = truth.ids(PLACE).flatMap((id) => {
           const p = truth.get(PLACE, id);
           return p?.kind === "fields" ? [...p.hexes] : [];
@@ -629,7 +666,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       }
       // Leña para el hogar (opt-in `firewood`): la hora de campo de quien le toca se va al monte.
       const wood =
-        o.firewood && want.at === "fields" && home && !tendOnly
+        o.firewood && want.at === "fields" && home && !tendOnly && !cultivates
           ? woodHour(o, o.firewood, truth, ctx.ledger, me, person.household, home.hex, age, ctx.now)
           : undefined;
       if (wood) {
@@ -655,12 +692,12 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           ],
         });
       }
-      const atFields = want.at === "fields" && wood === undefined;
+      const atFields = want.at === "fields" && wood === undefined && !cultivates;
       if (there && (here?.hex !== there.hex || here?.space !== there.space)) {
         changes.push(setComponent(LOCATION, me, there));
       }
       const toolStep =
-        o.fieldTools && home
+        o.fieldTools && home && !cultivates
           ? routineToolStep({
               truth,
               me,
@@ -686,7 +723,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         }
       }
 
-      let next = setActivity(body, want.activity);
+      let next = setActivity(body, cultivates ? "rest" : want.activity);
       // Trabajar la tierra rinde: una hora de campo es grano para la despensa del hogar (fuente
       // externa `harvest`; economy §1), según la estación del día: en invierno o con helada el
       // campo no da y la hora no deja asiento.

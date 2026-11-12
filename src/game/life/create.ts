@@ -96,12 +96,15 @@ import {
   PERSON,
   type Person,
   PLACE,
+  PLACE_QI,
   PLANS,
   type PlaceFeature,
   type PlaceQi,
   type PlaceToName,
   PRESSURE_CURVES,
+  patchesOf,
   pickTrajectory,
+  QI_TAKEN,
   RECIPES,
   REGISTERS,
   RELATION_BONDS,
@@ -196,12 +199,13 @@ import { roughShareOf } from "./herd-land.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
-import { harvestSeasonOf, localMapOf } from "./map.ts";
+import { harvestSeasonOf, localMapOf, regionMapOf } from "./map.ts";
 import { medicalSchools, schoolOfCulture, schoolOfPerson } from "./medschools.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
+import { SECT_UPKEEP } from "./sect-hall.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { FORGE_TRADE, seedSmith } from "./smith.ts";
 import { SOWN_FIELD } from "./sowing.ts";
@@ -493,6 +497,10 @@ export interface LifeOptions {
   readonly mortalTech?: boolean;
   /** Opt-in: cultivo mínimo (novel-cultivation-min, cultivation §1-§3): la ley del seed en la fila del plano (`cultivation.law`) y el talento heredable y oculto de cada persona (`cultivation.talent`, `content/talents/`), también de los que nacen; apagado, hashes idénticos. */
   readonly cultivation?: boolean;
+  /** Opt-in (requiere `cultivation`): la sede de la secta en su celda (novel-sect-seat-switch): el mapa de la vida es la región por tierra (`regionMapOf`: aldea, franjas del camino y la celda de la sede) y la sede es un lugar (`sect`) con un hex allí, al que se llega caminando; apagado, el mapa es solo el parche de la aldea. */
+  readonly sectSeatRegion?: boolean;
+  /** Opt-in: el `move` del jugador a un lugar a más de 8 h de camino es una marcha de varios días (`life.trek`, novel-sect-seat-trek): sale con odre y grano de la despensa, bebe con sed, come a la hora, duerme de noche y retoma el tramo tras un tropiezo, hasta llegar o rendirse a los 30 días; apagado, hashes idénticos. */
+  readonly playerTrek?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
@@ -906,6 +914,21 @@ function sectSeatOf(planet: Planet, cell: number, content: Content): SectSeat | 
   };
 }
 
+/**
+ * El hex de la sede en el parche de su celda: el más alto en tierra (a igualdad, el de menor
+ * índice); `undefined` si el mapa no tiene ese parche.
+ */
+function seatHexOf(map: LocalMap, cell: LocalMap["cell"]): number | undefined {
+  const span = patchesOf(map).find((p) => p.cell === cell);
+  if (!span) return undefined;
+  let best: number | undefined;
+  for (let h = span.base; h < span.base + span.size; h++) {
+    if ((map.water?.[h] ?? 0) >= 2) continue;
+    if (best === undefined || (map.elevationM?.[h] ?? 0) > (map.elevationM?.[best] ?? 0)) best = h;
+  }
+  return best;
+}
+
 /** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
 export function mortalTechParts(
   options: LifeOptions,
@@ -1050,6 +1073,7 @@ export function optInParts(
   | "npcProvisions"
   | "npcWater"
   | "npcNightRest"
+  | "playerTrek"
   | "npcPace"
   | "npcFootwear"
   | "npcFootSores"
@@ -1248,6 +1272,7 @@ export function optInParts(
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),
     ...(options.npcWater ? { npcWater: options.npcWater } : {}),
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
+    ...(options.playerTrek ? { playerTrek: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
@@ -1405,18 +1430,19 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
       : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
-  return {
-    village,
+  const home = localMapOf(
     planet,
     site,
-    map: localMapOf(
-      planet,
-      site,
-      options.legacyNoOscillation === true,
-      options.legacyNoOscillationEvents === true,
-    ),
-    population,
-  };
+    options.legacyNoOscillation === true,
+    options.legacyNoOscillationEvents === true,
+  );
+  // La región hasta la sede (novel-sect-seat-switch): la aldea conserva sus índices.
+  const seat =
+    options.cultivation && options.sectSeatRegion
+      ? sectSeatOf(planet, site.cell, content)
+      : undefined;
+  const map = seat ? regionMapOf(planet, { map: home, patch: site.patch }, seat.cell) : home;
+  return { village, planet, site, map, population };
 }
 
 /**
@@ -1657,6 +1683,7 @@ export function ledgerConfigOf(
   livestockCheese = false,
   livestockSheep = false,
   livestockCow = false,
+  sectUpkeep = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1726,6 +1753,8 @@ export function ledgerConfigOf(
       ...(livestockFeed ? { [FED_SINK]: units } : {}),
       ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
       ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
+      // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
+      ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER] } : {}),
     },
   };
 }
@@ -1897,6 +1926,7 @@ export function createLife(
         options.livestockCheese === true,
       options.villageLivestock === true && options.livestockSheep === true,
       options.villageLivestock === true && options.livestockCow === true,
+      options.cultivation === true && options.sectSeatRegion === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -2144,6 +2174,16 @@ export function createLife(
           event: sect.sect.originEventId,
         },
       ]);
+      // Con la región, la sede es un lugar con un hex en su celda (novel-sect-seat-switch).
+      const seatHex = options.sectSeatRegion
+        ? seatHexOf(map, terrain.planet.grid.cellId(sect.sect.seat.cell))
+        : undefined;
+      if (seatHex !== undefined) {
+        truth.set(PLACE, sect.sect.seatPlace, { kind: "sect", hexes: [seatHex] });
+        // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
+        truth.set(PLACE_QI, sect.sect.seatPlace, sect.sect.seat.qi);
+        truth.set(QI_TAKEN, sect.sect.seatPlace, { taken: 0, drawn: 0, at: pop.now });
+      }
     }
     // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.
     if (sect) {

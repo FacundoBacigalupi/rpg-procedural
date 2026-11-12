@@ -788,6 +788,38 @@
     }
   },
   {
+    "id": "chore",
+    "text": "barro el patio un par de horas",
+    "scene": "Estás en el patio de la sede de la secta, a la mañana.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "chore",
+        "args": [
+          { "role": "for", "duration": { "amount": 2, "unit": "hour" } },
+          { "role": "what", "text": "barrer" }
+        ]
+      }
+    }
+  },
+  {
+    "id": "redeem",
+    "text": "canjeo mis puntos por tres horas de cueva",
+    "scene": "Estás en el salón de la sede de la secta, frente al encargado de las cuentas.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "redeem",
+        "args": [
+          { "role": "for", "duration": { "amount": 3, "unit": "hour" } },
+          { "role": "what", "text": "cueva" }
+        ]
+      }
+    }
+  },
+  {
     "id": "meditate-hours",
     "text": "me siento a sentir el qi un par de horas",
     "scene": "Estás en el patio de tu casa, a la tarde.",

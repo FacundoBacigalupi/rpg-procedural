@@ -986,7 +986,7 @@ function journeyEvent(
   };
 }
 
-function startPlan(
+export function startPlan(
   me: AgentId,
   plan: ActionPlan,
   prevSeq: number,

@@ -9,6 +9,7 @@ import {
   COPPER,
   PERSON,
   type ProcessDef,
+  SECT_STIPEND_EVENT,
   type StateChange,
   setComponent,
   table,
@@ -85,6 +86,8 @@ export interface Touched {
 
 /** Las unidades que el personaje tocó en este evento (y sabe que tocó): gastar, dar, comer, guardar. */
 export function touchedBy(e: Event, household: HolderRef | null): Touched[] {
+  // El sueldo de la secta se cobra en mano: sabe que la bolsa cambió (novel-sect-duty-stipend).
+  if (e.kind === SECT_STIPEND_EVENT) return [{ unit: COPPER, carried: true, larder: false }];
   const data = e.data as { effect?: EffectGist } | null;
   const fx = data?.effect;
   if (!fx || typeof fx.kind !== "string") return [];

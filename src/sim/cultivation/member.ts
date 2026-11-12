@@ -5,25 +5,26 @@
 // miembro sigue en su casa, sabiéndose de la secta.
 
 import type { EntityRef, Tick } from "../../core/index.ts";
-import { table } from "../world/index.ts";
-import { compassOf, type Sect, type SectLore, WALK_KM_PER_DAY } from "./sect.ts";
+import { isSectCave, type ReadonlyWorldTruth, table } from "../world/index.ts";
+import { compassOf, SECT, type Sect, type SectLore, WALK_KM_PER_DAY } from "./sect.ts";
 
 export const SECT_JOINED_EVENT = "cultivation.sect_joined";
 
 /** Cuántos días le dan al aceptado para presentarse en la sede. */
 export const SECT_REPORT_DAYS = 30;
 
-export type MemberRank = "outer";
+/** Externo (el aceptado en la aldea), interno (discípulo de la sede), anciano y maestro. */
+export type MemberRank = "outer" | "inner" | "elder" | "master";
 
 /** Que alguien es de una secta: desde cuándo, con qué rango y hasta cuándo tiene para subir. */
 export interface SectMember {
   readonly org: EntityRef;
   readonly rank: MemberRank;
   readonly since: Tick;
-  /** El año de la prueba que lo aceptó. */
-  readonly trialYear: number;
+  /** El año de la prueba que lo aceptó (los de la sede no pasaron por la de la aldea). */
+  readonly trialYear?: number;
   /** Hasta cuándo tiene para presentarse en la sede (lo sabe: se lo dijeron). */
-  readonly reportBy: Tick;
+  readonly reportBy?: Tick;
 }
 
 export const SECT_MEMBER = table<SectMember>("cultivation.sect_member");
@@ -44,4 +45,158 @@ export function summonedLore(
     confidence: 1,
     learnedAt: before?.learnedAt ?? now,
   };
+}
+
+/** Las tareas de discípulo en la sede (novel-sect-duty-chore, organizations §6). */
+export type SectChore = "sweep" | "guard" | "firewood";
+
+export const SECT_CHORE_EVENT = "cultivation.sect_chore";
+
+/** Cuántos puntos da una hora de tarea bien hecha (sin calibrar). */
+export const CHORE_POINTS_PER_HOUR = 1;
+
+/**
+ * Los puntos de contribución de un miembro: un derecho contra la secta, no una cosa (organizations
+ * §6). Se ganan con tareas y, cuando haya con qué, se canjean contra el tesoro.
+ */
+export interface SectContribution {
+  readonly org: EntityRef;
+  readonly points: number;
+  /** Las horas de tarea que se le anotaron, en total. */
+  readonly hours: number;
+  /** La última vez que se le anotó algo. */
+  readonly last: Tick;
+}
+
+export const SECT_CONTRIBUTION = table<SectContribution>("cultivation.sect_contribution");
+
+/**
+ * El pase a la cueva de cultivo (novel-sect-cave-pass): horas que el miembro puede pasar adentro
+ * sin el rango. Se gastan meditando ahí; sin horas, no queda pase.
+ */
+export interface SectCavePass {
+  readonly org: EntityRef;
+  readonly hours: number;
+  readonly since: Tick;
+}
+export const SECT_CAVE_PASS = table<SectCavePass>("cultivation.sect_cave_pass");
+/** Se le acabaron las horas del pase. */
+export const SECT_CAVE_PASS_SPENT_EVENT = "cultivation.sect_cave_pass_spent";
+
+/** El ascenso de externo a interno (novel-sect-duty-rank, organizations §6). */
+export const SECT_PROMOTED_EVENT = "cultivation.sect_promoted";
+/** Las horas de tarea anotadas que pide la secta para subir a interno (sin calibrar). */
+export const PROMOTION_CHORE_HOURS = 240;
+/** Los umbrales del qi cruzados que pide la secta para subir a interno. */
+export const PROMOTION_STAGE = 1;
+
+/**
+ * Si el miembro externo ya subiría a interno: aportó las horas de tarea en esa secta y cruzó el
+ * tramo de cultivo pedido. Las horas no se gastan al canjear (los puntos sí).
+ */
+export function promotionDue(
+  member: SectMember | undefined,
+  contribution: SectContribution | undefined,
+  stage: number,
+): boolean {
+  return (
+    member?.rank === "outer" &&
+    contribution?.org === member.org &&
+    contribution.hours >= PROMOTION_CHORE_HOURS &&
+    stage >= PROMOTION_STAGE
+  );
+}
+
+/** El canje de aportes por horas de pase (novel-sect-duty-exchange). */
+export const SECT_EXCHANGE_EVENT = "cultivation.sect_exchange";
+/** Cuántos puntos de contribución cuesta una hora de cueva (sin calibrar). */
+export const CAVE_PASS_POINTS_PER_HOUR = 2;
+/** Las horas que se piden si no se dice cuántas. */
+export const REDEEM_DEFAULT_HOURS = 4;
+/** Por qué la secta no canjea. */
+export type ExchangeRefusal = "not_member" | "no_need" | "no_points";
+
+/**
+ * Cuántas horas enteras de pase da la secta si se piden `wanted` (o las de siempre) y hay `points`:
+ * lo pedido o lo que alcance, lo menor; y los puntos que se descuentan.
+ */
+export function exchangeHours(
+  points: number,
+  wanted: number | null,
+): { readonly hours: number; readonly cost: number } {
+  const want = Math.max(1, Math.floor(wanted ?? REDEEM_DEFAULT_HOURS));
+  const hours = Math.max(0, Math.min(want, Math.floor(points / CAVE_PASS_POINTS_PER_HOUR)));
+  return { hours, cost: hours * CAVE_PASS_POINTS_PER_HOUR };
+}
+
+/** Los rangos que entran a la cueva sin pase. */
+export const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
+
+/**
+ * Si la secta no deja a `who` entrar a `space`: es la cueva de su sede y no tiene rango interno o
+ * más ni un pase con horas de esa secta (el que no es de la secta, tampoco entra).
+ */
+export function caveBarred(
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  space: string | undefined,
+): boolean {
+  if (!isSectCave(space)) return false;
+  const org = (truth.ids(SECT) as EntityRef[]).find((id) => {
+    const seat = truth.get(SECT, id)?.seatPlace;
+    return seat !== undefined && space?.startsWith(`sect:${seat}/`);
+  });
+  if (org === undefined) return false;
+  const member = truth.get(SECT_MEMBER, who);
+  if (member?.org === org && CAVE_RANKS.has(member.rank)) return false;
+  const pass = truth.get(SECT_CAVE_PASS, who);
+  return !(pass?.org === org && pass.hours > 0);
+}
+
+/** El sueldo del mes desde el tesoro de la secta (novel-sect-duty-stipend). */
+export const SECT_STIPEND_EVENT = "cultivation.sect_stipend";
+/** Cada cuántos días se paga el sueldo. */
+export const STIPEND_EVERY_DAYS = 30;
+/** El sueldo de cada rango en cobre por mes (sin calibrar). */
+export const STIPEND_BY_RANK: Readonly<Record<MemberRank, number>> = {
+  outer: 30,
+  inner: 60,
+  elder: 150,
+  master: 300,
+};
+
+/**
+ * Lo que recibe cada uno si en el tesoro hay `have`: lo pedido si alcanza; si no, todos recortados
+ * por la misma fracción (hacia abajo, en cobre entero), así nunca sale más de lo que hay.
+ */
+export function stipendShares(
+  want: readonly number[],
+  have: number,
+): { readonly shares: readonly number[]; readonly ratio: number } {
+  const total = want.reduce((a, b) => a + b, 0);
+  if (total <= have) return { shares: want, ratio: 1 };
+  const ratio = total > 0 ? Math.max(0, have) / total : 0;
+  return { shares: want.map((x) => Math.floor(x * ratio)), ratio: Math.round(ratio * 100) / 100 };
+}
+
+/** Qué tarea es: la que dice quien la hace («barro», «hago guardia», «leña») o la del lugar. */
+export function choreOf(said: string | undefined, space: string | undefined): SectChore {
+  const s = (said ?? "").toLowerCase();
+  if (/barr|limpi|escoba/.test(s)) return "sweep";
+  if (/guardia|vigil|porton|portón/.test(s)) return "guard";
+  if (/leña|lena/.test(s)) return "firewood";
+  if (space?.endsWith("/gate")) return "guard";
+  if (space?.startsWith("sect:")) return "sweep";
+  return "firewood";
+}
+
+/**
+ * Los puntos que da una tarea según cuánto duró y cómo salió (a medias, la mitad; mal, nada). El
+ * resultado excepcional cuenta según el signo del margen.
+ */
+export function chorePoints(hours: number, outcome: string | undefined, margin = 0): number {
+  const good =
+    outcome === "success" || outcome === "discovered" || (outcome === "critical" && margin > 0);
+  const k = good ? 1 : outcome === "partial" ? 0.5 : 0;
+  return Math.round(hours * CHORE_POINTS_PER_HOUR * k * 100) / 100;
 }

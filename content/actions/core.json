@@ -936,6 +936,127 @@
     "evidence": 1
   },
   {
+    "id": "chore",
+    "name": "hacer las tareas de la secta",
+    "domain": "work",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      },
+      {
+        "role": "what",
+        "kind": "text",
+        "required": false
+      }
+    ],
+    "manners": [
+      {
+        "id": "careful",
+        "ease": 0.3
+      },
+      {
+        "id": "fast",
+        "ease": -0.4
+      }
+    ],
+    "requires": [
+      {
+        "kind": "capability",
+        "cap": "strength",
+        "min": 0.15
+      },
+      {
+        "kind": "position",
+        "at": ["sect"]
+      }
+    ],
+    "occupies": {
+      "handL": "full",
+      "handR": "full",
+      "legs": "partial"
+    },
+    "duration": {
+      "kind": "arg",
+      "role": "for",
+      "default": 14400,
+      "max": 43200
+    },
+    "checkpoint": 1800,
+    "emissions": {
+      "sight": 0.5,
+      "sound": 0.3
+    },
+    "serves": {
+      "status": 0.3,
+      "tradition": 0.3,
+      "rest": -0.3,
+      "meaning": 0.2
+    },
+    "resolver": "chore",
+    "ease": 1,
+    "failureModes": [
+      {
+        "id": "not_here",
+        "factor": "position"
+      },
+      {
+        "id": "too_weak",
+        "factor": "capability"
+      }
+    ],
+    "evidence": 0.5
+  },
+  {
+    "id": "redeem",
+    "name": "canjear aportes en la secta",
+    "domain": "social",
+    "args": [
+      {
+        "role": "for",
+        "kind": "duration",
+        "required": false
+      },
+      {
+        "role": "what",
+        "kind": "text",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [
+      {
+        "kind": "position",
+        "at": ["sect"]
+      }
+    ],
+    "occupies": {
+      "voice": "full"
+    },
+    "duration": {
+      "kind": "fixed",
+      "seconds": 600
+    },
+    "checkpoint": 600,
+    "emissions": {
+      "sight": 0.2,
+      "sound": 0.3
+    },
+    "serves": {
+      "status": 0.1
+    },
+    "resolver": "redeem",
+    "ease": 1,
+    "failureModes": [
+      {
+        "id": "not_here",
+        "factor": "position"
+      }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "wait",
     "name": "esperar",
     "domain": "time",

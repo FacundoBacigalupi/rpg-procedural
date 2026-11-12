@@ -19,9 +19,11 @@ import {
   type BodyPlanDef,
   type BondDef,
   bodyProcess,
+  COPPER,
   type ConcernWords,
   type CurdRule,
   cheeseProcess,
+  climateMapAt,
   type Demography,
   type DietDef,
   type DimensionDef,
@@ -32,6 +34,7 @@ import {
   type GarmentDef,
   type GoodDef,
   goodUnit,
+  HARVEST_GOOD,
   type HabitDef,
   HEARTH,
   HEARTH_BURN_G_PER_H,
@@ -58,6 +61,7 @@ import {
   PERSON,
   type PressureCurve,
   type ProcessDef,
+  patchOf,
   type ReadonlyWorldTruth,
   type RecipeDef,
   RUMORS,
@@ -233,6 +237,8 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
+import { sectDutyProcess } from "./sect-duty.ts";
+import { SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
@@ -268,6 +274,7 @@ import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { transitProcess } from "./transit.ts";
+import { TREK_PROVISIONS, trekProcess } from "./trek.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
@@ -705,6 +712,8 @@ export interface LifeWorld {
   readonly npcWater?: { readonly liters: number };
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`rest`) y sigue al alba (`NpcVerbsOptions.nightRest`). */
   readonly npcNightRest?: boolean;
+  /** Opt-in: el `move` del jugador a un lugar lejos es una marcha de varios días que bebe, come, duerme y retoma el tramo (`life.trek`, novel-sect-seat-trek). */
+  readonly playerTrek?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje, modo `careful` o `fast` del `move` (`NpcVerbsOptions.pace`). */
   readonly npcPace?: "careful" | "fast";
   /** Opt-in: el calzado de quien camina se gasta (más por monte) y gastado cuesta más caminar (`life.act`); apagado, nada cambia. */
@@ -1034,7 +1043,9 @@ function draftSeasonOf(parts: LifeParts): NonNullable<DraftOptions["restSeason"]
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
     const at = truth.get(LOCATION, who);
-    return at && at.space !== undefined ? village : { kind: "cell", cell: parts.map.cell };
+    return at && at.space !== undefined
+      ? village
+      : { kind: "cell", cell: at ? patchOf(parts.map, at.hex).cell : parts.map.cell };
   };
 }
 
@@ -2330,7 +2341,10 @@ export function lifeWorld(
             ? {
                 altitude: {
                   baseM: parts.map.baseElevationM ?? 0,
-                  altitudeOf: altitudeOf ?? (() => parts.map.baseElevationM ?? 0),
+                  altitudeOf:
+                    altitudeOf ??
+                    ((t: ReadonlyWorldTruth, w: AgentId) =>
+                      climateMapAt(parts.map, t.get(LOCATION, w)?.hex).baseElevationM ?? 0),
                   ...(parts.ambientQi
                     ? {
                         qiC: (t: ReadonlyWorldTruth, w: AgentId) =>
@@ -2360,6 +2374,29 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(parts.playerTrek === true
+          ? [
+              trekProcess({
+                catalog: parts.catalog,
+                plans: parts.plans,
+                map: parts.map,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+                ...(() => {
+                  const food = parts.goods.find((g) => g.id === TREK_PROVISIONS.good);
+                  return food
+                    ? {
+                        provisions: {
+                          unit: goodUnit(food),
+                          name: food.name,
+                          grams: TREK_PROVISIONS.grams,
+                        },
+                      }
+                    : {};
+                })(),
+              }),
+            ]
+          : []),
         ...(altitudeOf && parts.travelCell
           ? [travelCellProcess({ cellOf: parts.travelCell })]
           : []),
@@ -2448,8 +2485,51 @@ export function lifeWorld(
         resolveGoalProcess(parts.goalSketches ?? []),
         ...(parts.cultivation
           ? [
-              meditateProcess({ bodyPlans: parts.plans, yearTicks: parts.clock.year }),
+              meditateProcess({
+                bodyPlans: parts.plans,
+                yearTicks: parts.clock.year,
+                ...(parts.map.patches ? { map: parts.map } : {}),
+              }),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
+              sectDutyProcess(),
+              // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
+              ...(parts.map.patches
+                ? [
+                    sectHallProcess({
+                      map: parts.map,
+                      yearTicks: parts.clock.year,
+                      dayTicks: parts.clock.day,
+                      ...(() => {
+                        const grain = parts.foods.find((f) => `good:${f.id}` === HARVEST_GOOD);
+                        return grain
+                          ? {
+                              store: {
+                                unit: HARVEST_GOOD,
+                                kcalPerGram: grain.kcalPerGram,
+                                days: SECT_STORE_DAYS,
+                                coin: COPPER,
+                              },
+                            }
+                          : {};
+                      })(),
+                      traits: parts.traits,
+                      bodyPlans: parts.plans,
+                      ...(parts.form
+                        ? {
+                            language: parts.form.language,
+                            names: nameRules(parts),
+                            mind: {
+                              clock: parts.clock,
+                              schemas: parts.schemas,
+                              cultureTraits: parts.cultureTraits,
+                              skills: parts.skills,
+                              tastes: parts.tastes,
+                            },
+                          }
+                        : {}),
+                    }),
+                  ]
+                : []),
             ]
           : []),
         divinersProcess({
@@ -2833,6 +2913,10 @@ export function lifeWorld(
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.cultivation ? { sectLore: true } : {}),
+          // Quien vive en la sede duerme en los dormitorios y medita en la cueva (hall-people-keep).
+          ...(parts.cultivation && parts.map.patches
+            ? { seatOf: (t, me) => seatRoutineOf(t, me, parts.map) }
+            : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
             : {}),
