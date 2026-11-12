@@ -34,12 +34,14 @@ import {
   absorbDraw,
   absorbWant,
   aptitudeOf,
+  BLIND_PREP,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
   BREAKTHROUGH_EVENT,
   breakOutcome,
   breakPreparation,
+  breaksBlind,
   CAVE_FOCUS,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
@@ -52,10 +54,12 @@ import {
   HEAVEN_LAW,
   injure,
   isSectCave,
+  type KnownTechnique,
   LOCATION,
   type LocalMap,
   MAX_MERIDIAN_DAMAGE,
   meditationGain,
+  methodCovers,
   mixedPurity,
   needsFrom,
   PLACE,
@@ -70,6 +74,8 @@ import {
   regrown,
   rootMatch,
   type ScheduleRequest,
+  type School,
+  SECT_SCHOOL,
   SENSE_THRESHOLD,
   SENSED_QI_EVENT,
   type StateChange,
@@ -131,6 +137,8 @@ function resolveBreak(
   calm: number,
   taken: QiTaken | undefined,
   rng: Rng,
+  /** Sin método que cubra el tramo al que se llega (novel2-method-school): la preparación baja. */
+  blind: boolean,
   /** Lo que templó una tribulación aguantada: suma a la calidad si rompe. */
   temper = 0,
 ): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
@@ -140,7 +148,7 @@ function resolveBreak(
   if (!threshold) return undefined;
   const qi = before.qi ?? 0;
   const capacity = threshold.capacity;
-  const prep = breakPreparation(apt, {
+  const ready = breakPreparation(apt, {
     qi,
     capacity,
     purity: before.purity ?? 0,
@@ -148,6 +156,7 @@ function resolveBreak(
     meridianDamage: before.meridianDamage ?? 0,
     foundation: before.foundation ?? 0,
   });
+  const prep = blind ? round4(ready * BLIND_PREP) : ready;
   const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
   let next = before;
   let lost = 0;
@@ -189,6 +198,7 @@ function resolveBreak(
         prep,
         lost,
         ...outcome,
+        ...(blind ? { blind } : {}),
         ...(temper > 0 ? { temper } : {}),
       },
       emissions: seen > 0 ? { sight: seen } : {},
@@ -198,6 +208,28 @@ function resolveBreak(
       ],
     },
   };
+}
+
+/** El método que alguien sabe y la escuela que lo enseñó. */
+function methodOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+): { known: KnownTechnique | undefined; school: School | undefined } {
+  const known = truth.get(CULTIVATION_TECHNIQUE, who);
+  return { known, school: known ? truth.get(SECT_SCHOOL, known.org) : undefined };
+}
+
+/** Si romper desde `stage` va a ciegas para `who` (novel2-method-school). */
+function blindAt(truth: ReadonlyWorldTruth, who: AgentId, stage: number): boolean {
+  const { known, school } = methodOf(truth, who);
+  return breaksBlind(school, known, stage);
+}
+
+/** Lo que rinde el método al meditar en `stage`: nada fuera de su reino (o sin método). */
+function methodFactor(truth: ReadonlyWorldTruth, who: AgentId, stage: number): number {
+  const { known, school } = methodOf(truth, who);
+  if (!known) return 1;
+  return !school || methodCovers(school, known, stage) ? known.factor : 1;
 }
 
 /**
@@ -354,6 +386,7 @@ export function meditateProcess(o: {
       CULTIVATION_STATE.name,
       QI_TAKEN.name,
       CULTIVATION_TECHNIQUE.name,
+      SECT_SCHOOL.name,
       LOCATION.name,
       ...(pooled ? [PLACE.name] : []),
       ...(o.dayTicks !== undefined ? [HEAVEN_LAW.name, TRIBULATION.name] : []),
@@ -433,6 +466,7 @@ export function meditateProcess(o: {
             calm,
             pool.taken,
             ctx.rng,
+            blindAt(ctx.truth, struck, before.stage ?? 0),
             waved.temper,
           );
           if (!r) continue;
@@ -507,7 +541,17 @@ export function meditateProcess(o: {
           const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
           const calm = calmOf(plans, ctx.truth.get(BODY_STATE, breaker));
           const pool = pools.get(poolFor(breaker)) as { taken?: QiTaken };
-          const r = resolveBreak(e, breaker, law, apt, before, calm, pool.taken, ctx.rng);
+          const r = resolveBreak(
+            e,
+            breaker,
+            law,
+            apt,
+            before,
+            calm,
+            pool.taken,
+            ctx.rng,
+            blindAt(ctx.truth, breaker, before.stage ?? 0),
+          );
           if (!r) continue;
           rows.set(breaker, r.next);
           if (r.taken) pool.taken = r.taken;
@@ -530,7 +574,7 @@ export function meditateProcess(o: {
         const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
         const factor = pool.factor * focus;
         const taken = pool.taken;
-        const method = ctx.truth.get(CULTIVATION_TECHNIQUE, m.who)?.factor ?? 1;
+        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0);
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
           ...before,

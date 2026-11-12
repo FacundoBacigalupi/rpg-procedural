@@ -2,6 +2,9 @@
 // nombre; cada escuela los agrupa en reinos con nombre y capas (un mapeo cultural sobre la verdad) y
 // tiene una técnica de entrada que enseña a quien acepta. Los nombres salen de `content/schools/`
 // por familia de mundo; la secta elige uno por reino y cuántos umbrales le caben a cada uno.
+// Más arriba, un método por reino (novel2-method-school): el de entrada es el del primero; cada
+// método rinde solo hasta su reino, y romper hacia un tramo que el método que uno sabe no cubre es
+// ir a ciegas (la preparación baja). Sin método, se intuyen los primeros tramos y nada más.
 // Todavía sin mapeos equivocados (un reino partido donde no hay barrera, dos umbrales juntados en
 // uno): cada borde de capa es un umbral de la ley.
 
@@ -41,11 +44,19 @@ export interface EntryTechnique {
   readonly factor: number;
 }
 
+/** El método de un reino de la escuela: el de entrada es el del reino 0. */
+export interface SchoolMethod extends EntryTechnique {
+  /** El índice del reino (en `realms`) que cubre. */
+  readonly realm: number;
+}
+
 export interface School {
   readonly realms: readonly SchoolRealm[];
   /** La palabra para las capas de un reino («capa»). */
   readonly layer: string;
   readonly technique: EntryTechnique;
+  /** Un método por reino, en orden (novel2-method-school); sin él, solo la técnica de entrada. */
+  readonly methods?: readonly SchoolMethod[];
 }
 
 /** La escuela, en la entidad de la secta. */
@@ -53,6 +64,15 @@ export const SECT_SCHOOL = table<School>("cultivation.school");
 
 /** Lo que rinde la técnica de entrada, entre estos extremos. */
 export const TECHNIQUE_FACTOR = [1.2, 1.6] as const;
+
+/** Lo que rinde el método de un reino más alto, entre estos extremos (sin calibrar). */
+export const METHOD_FACTOR = [1.2, 1.8] as const;
+
+/** Cuánto queda de la preparación al romper a ciegas, sin método que cubra el tramo (sin calibrar). */
+export const BLIND_PREP = 0.5;
+
+/** Sin método, los primeros tramos se intuyen (el primer reino de toda escuela cabe en ellos). */
+export const UNGUIDED_TRAMOS = 3;
 
 /**
  * La escuela de una secta: recorre los tramos de la ley (uno por umbral, desde el 0) y los reparte
@@ -82,7 +102,44 @@ export function generateSchool(rng: Rng, law: CultivationLaw, names: SchoolNames
     Math.round(
       (TECHNIQUE_FACTOR[0] + (TECHNIQUE_FACTOR[1] - TECHNIQUE_FACTOR[0]) * t.float()) * 100,
     ) / 100;
-  return { realms, layer: names.layer, technique: { name, factor } };
+  // Los métodos de los reinos de arriba: nombres sin repetir mientras alcancen; después, partes.
+  const methods: SchoolMethod[] = [{ name, factor, realm: 0 }];
+  const left = names.techniques.filter((x) => x !== name);
+  for (let i = 1; i < realms.length; i++) {
+    const m = rng.fork("method", i);
+    const pick = left.length > 0 ? m.int(0, left.length - 1) : -1;
+    const base = pick >= 0 ? (left.splice(pick, 1)[0] as string) : `${name}, parte ${i + 1}`;
+    const f =
+      Math.round((METHOD_FACTOR[0] + (METHOD_FACTOR[1] - METHOD_FACTOR[0]) * m.float()) * 100) /
+      100;
+    methods.push({ name: base, factor: f, realm: i });
+  }
+  return { realms, layer: names.layer, technique: { name, factor }, methods };
+}
+
+/** El índice del reino de un tramo según la escuela; pasado el último umbral, el último. */
+export function realmIndex(school: School, stage: number): number {
+  const i = school.realms.findIndex((r) => stage >= r.from && stage <= r.to);
+  return i >= 0 ? i : Math.max(0, school.realms.length - 1);
+}
+
+/** Si el método que alguien sabe cubre un tramo: el de su reino y los de abajo. */
+export function methodCovers(school: School, known: KnownTechnique, stage: number): boolean {
+  return realmIndex(school, stage) <= (known.realm ?? 0);
+}
+
+/**
+ * Si romper desde `stage` (hacia `stage + 1`) va a ciegas: con método, si no cubre el tramo al que
+ * se llega; sin método (o sin la escuela que lo enseñó), pasados los tramos que se intuyen.
+ */
+export function breaksBlind(
+  school: School | undefined,
+  known: KnownTechnique | undefined,
+  stage: number,
+): boolean {
+  const target = stage + 1;
+  if (known && school) return !methodCovers(school, known, target);
+  return target >= UNGUIDED_TRAMOS;
 }
 
 /** El reino y la capa de un tramo según la escuela; pasado el último umbral, la cima del último. */
@@ -106,6 +163,8 @@ export interface KnownTechnique {
   readonly name: string;
   readonly factor: number;
   readonly learnedAt: Tick;
+  /** El reino de la escuela que cubre (novel2-method-school); sin él, el primero. */
+  readonly realm?: number;
 }
 
 export const CULTIVATION_TECHNIQUE = table<KnownTechnique>("cultivation.technique");
