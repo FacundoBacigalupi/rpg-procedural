@@ -118,3 +118,22 @@ export function masterGuide(g: {
     prep: Math.round(GUIDE_PREP_PER_STAGE * gap * 1e4) / 1e4,
   };
 }
+
+/** La parte de cada ola que carga el maestro por tramo que le lleva, y el tope (sin calibrar). */
+export const GUARD_SHARE_PER_STAGE = 0.15;
+export const GUARD_MAX_SHARE = 0.5;
+
+/**
+ * Cuánto de cada ola de la tribulación del discípulo carga el maestro (novel2-master-guard): solo si
+ * está ahí y va más arriba; cuanto más le lleva, más se pone delante, hasta la mitad. Lo que carga le
+ * pega a él: el riesgo se comparte, no desaparece.
+ */
+export function guardShare(g: {
+  readonly present: boolean;
+  readonly masterStage: number;
+  readonly discipleStage: number;
+}): number {
+  const gap = Math.min(GUIDE_MAX_GAP, g.masterStage - g.discipleStage);
+  if (!g.present || gap <= 0) return 0;
+  return Math.round(Math.min(GUARD_MAX_SHARE, GUARD_SHARE_PER_STAGE * gap) * 1e4) / 1e4;
+}

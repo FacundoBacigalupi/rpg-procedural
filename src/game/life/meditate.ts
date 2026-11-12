@@ -53,6 +53,7 @@ import {
   ENTITY,
   type EventDraft,
   gatherHours,
+  guardShare,
   HEAVEN_LAW,
   injure,
   isSectCave,
@@ -298,14 +299,24 @@ function strikeWaves(
   law: CultivationLaw,
   plans: ReadonlyMap<string, BodyPlanDef>,
   ctx: { readonly truth: ReadonlyWorldTruth; readonly now: number; readonly rng: Rng },
+  /** El maestro que se pone delante (novel2-master-guard): carga `share` de cada ola. */
+  guard?: { readonly who: AgentId; readonly share: number; readonly state: CultivationState },
 ): {
   state: CultivationState;
   body: Body | undefined;
   temper: number;
   dead: boolean;
   events: EventDraft[];
+  /** Cómo quedó el maestro que cargó parte (sin guardia, nada). */
+  guarded?: { readonly state: CultivationState; readonly body: Body | undefined };
 } {
   let body = ctx.truth.get(BODY_STATE, who);
+  // El maestro: su cuerpo y su recipiente aguantan su parte con lo suyo.
+  let gBody = guard ? ctx.truth.get(BODY_STATE, guard.who) : undefined;
+  const gPlan = gBody ? plans.get(gBody.plan) : undefined;
+  const gCapacity = guard ? vesselCapacity(law, guard.state.stage ?? 0) : 0;
+  let gMeridian = guard?.state.meridianDamage ?? 0;
+  let gHit = false;
   const plan = body ? plans.get(body.plan) : undefined;
   const capacity = vesselCapacity(law, state.stage ?? 0);
   const per = t.waves > 0 ? t.energy / t.waves : 0;
@@ -317,12 +328,43 @@ function strikeWaves(
   for (let i = 0; i < t.waves; i++) {
     if (!body || !plan || body.death) break;
     const rng = ctx.rng.fork("tribulation", who, t.attempt, i);
+    // El maestro se pone delante (novel2-master-guard): carga su parte con su cuerpo, mientras viva.
+    const share = guard && gBody && gPlan && !gBody.death ? guard.share : 0;
+    let shielded: Record<string, unknown> | undefined;
+    if (guard && gBody && gPlan && share > 0) {
+      const g = ctx.rng.fork("guard", who, t.attempt, i);
+      const gForce = waveForce(
+        per * share,
+        {
+          capacity: gCapacity,
+          qi: guard.state.qi ?? 0,
+          foundation: guard.state.foundation ?? 0,
+          health: 1 - Math.min(1, openOf(gBody) / 2),
+        },
+        g.float(),
+      );
+      const gInjury = injure(
+        gPlan,
+        gBody,
+        { kind: "blunt", force: gForce, dirt: 0, cause: e.id as EventId, at: ctx.now },
+        g.fork("injure"),
+      );
+      gBody = gInjury.body;
+      gHit = true;
+      gMeridian = round4(Math.min(MAX_MERIDIAN_DAMAGE, gMeridian + WAVE_MERIDIAN * gForce));
+      shielded = {
+        by: guard.who,
+        share,
+        force: gForce,
+        zone: gInjury.wound.zone,
+        severity: round4(gInjury.wound.severity),
+        ...(gInjury.died ? { died: gInjury.died } : {}),
+      };
+    }
     // Las heridas abiertas pesan a medias: dos graves dejan el cuerpo sin aguante.
-    const open = body.wounds
-      .filter((w) => w.stage !== "healed")
-      .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+    const open = openOf(body);
     const force = waveForce(
-      per,
+      per * (1 - share),
       {
         capacity,
         qi: state.qi ?? 0,
@@ -353,11 +395,13 @@ function strikeWaves(
         zone: injury.wound.zone,
         severity: round4(injury.wound.severity),
         ...(injury.died ? { died: injury.died } : {}),
+        ...(shielded ? { guard: shielded } : {}),
       },
       emissions: { sight: 1, sound: 1 },
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+        ...(shielded ? [{ kind: "state" as const, entity: who, key: MASTER_OF.name }] : []),
       ],
     });
     if (injury.died) {
@@ -372,7 +416,52 @@ function strikeWaves(
     temper,
     dead,
     events,
+    ...(guard && gHit
+      ? {
+          guarded: {
+            state:
+              gMeridian !== (guard.state.meridianDamage ?? 0)
+                ? { ...guard.state, meridianDamage: gMeridian }
+                : guard.state,
+            body: gBody,
+          },
+        }
+      : {}),
   };
+}
+
+/** Lo abierto de las heridas de un cuerpo (lo que todavía no cerró). */
+function openOf(body: Body): number {
+  return body.wounds
+    .filter((w) => w.stage !== "healed")
+    .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+}
+
+/**
+ * El maestro que se pone delante en la tribulación de `who` (novel2-master-guard): vivo, en el mismo
+ * hex y más arriba. Sin eso, nadie.
+ */
+function guardOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  stage: number,
+  stateOf: (id: AgentId) => CultivationState,
+): { who: AgentId; share: number; state: CultivationState } | undefined {
+  const bond = truth.get(MASTER_OF, who);
+  if (!bond) return undefined;
+  const master = bond.master;
+  if (!truth.has(ENTITY, master) || truth.get(ENTITY, master)?.endedAt !== undefined) {
+    return undefined;
+  }
+  const here = truth.get(LOCATION, who);
+  const there = truth.get(LOCATION, master);
+  const state = stateOf(master);
+  const share = guardShare({
+    present: here !== undefined && there !== undefined && here.hex === there.hex,
+    masterStage: state.stage ?? 0,
+    discipleStage: stage,
+  });
+  return share > 0 ? { who: master, share, state } : undefined;
 }
 
 /** La calma para meditar: el dolor la corta, el hambre y la sed la distraen. */
@@ -504,9 +593,15 @@ export function meditateProcess(o: {
           }
           const talent = ctx.truth.get(TALENT, struck);
           if (!talent) continue;
-          const waved = strikeWaves(e, struck, t, stateOf(struck), law, plans, ctx);
+          const struckState = stateOf(struck);
+          const guard = guardOf(ctx.truth, struck, struckState.stage ?? 0, stateOf);
+          const waved = strikeWaves(e, struck, t, struckState, law, plans, ctx, guard);
           events.push(...waved.events);
           if (waved.body) bodies.set(struck, waved.body);
+          if (guard && waved.guarded) {
+            rows.set(guard.who, waved.guarded.state);
+            if (waved.guarded.body) bodies.set(guard.who, waved.guarded.body);
+          }
           rows.set(struck, waved.state);
           // Murió bajo el rayo: no hay ruptura que resolver.
           if (waved.dead) continue;

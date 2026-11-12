@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   discipleWorth,
+  GUARD_MAX_SHARE,
+  GUARD_SHARE_PER_STAGE,
   GUIDE_GAIN_PER_STAGE,
   GUIDE_MAX_GAP,
   GUIDE_PREP_PER_STAGE,
+  guardShare,
   MAX_DISCIPLES,
   type MasterAsk,
   masterAccepts,
@@ -63,5 +66,18 @@ describe("masterAccepts (novel2-master-bond)", () => {
   });
   it("un externo vale menos que un interno igual", () => {
     expect(discipleWorth(ask({ rank: "outer" }))).toBeLessThan(discipleWorth(ask()));
+  });
+});
+
+describe("el maestro se pone delante (novel2-master-guard)", () => {
+  it("carga más cuanto más le lleva, hasta la mitad; ausente o no más alto, nada", () => {
+    expect(guardShare({ present: false, masterStage: 5, discipleStage: 1 })).toBe(0);
+    expect(guardShare({ present: true, masterStage: 2, discipleStage: 2 })).toBe(0);
+    expect(guardShare({ present: true, masterStage: 3, discipleStage: 2 })).toBe(
+      GUARD_SHARE_PER_STAGE,
+    );
+    expect(guardShare({ present: true, masterStage: 9, discipleStage: 0 })).toBeLessThanOrEqual(
+      GUARD_MAX_SHARE,
+    );
   });
 });

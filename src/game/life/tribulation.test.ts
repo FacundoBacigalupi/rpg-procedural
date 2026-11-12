@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AgentId,
   type ContentSource,
+  type EntityRef,
   type EventId,
   HOUR,
   loadContent,
@@ -15,11 +16,14 @@ import {
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   ENTITY,
+  guardShare,
   HEAVEN_LAW,
   LOCATION,
+  MASTER_OF,
   MEMORIES,
   PERSON,
   QI_TAKEN,
+  SECT,
   TALENT,
   TRIBULATION,
   TRIBULATION_GATHERS_EVENT,
@@ -153,6 +157,78 @@ describe("la tribulación se junta y cae en olas (novel2-trib-gather, novel2-tri
     const cues = playerView(w, [], { heardSince: beforeStrike }).self.cues;
     expect(cues).toContain("tribulation_strikes");
     expect(cues.some((c) => c.startsWith("break_"))).toBe(true);
+  }, 600_000);
+
+  it("con su maestro al lado, él carga parte de cada ola y se lleva su herida (novel2-master-guard)", () => {
+    const life = Life.create(3, content, { cultivation: true });
+    const w = life.world;
+    const me = life.player;
+    const plane = w.truth.ids(CULTIVATION_LAW)[0];
+    const law = plane ? w.truth.get(CULTIVATION_LAW, plane) : undefined;
+    if (!plane || !law) throw new Error("sin ley");
+    const ts = law.paths[0]?.thresholds ?? [];
+    const stage = ts.length - 1;
+    const threshold = ts[stage];
+    if (!threshold) throw new Error("sin umbral");
+    const sensedBy = w.log.all()[0]?.id as EventId;
+    w.truth.set(CULTIVATION_STATE, me, {
+      sensitivity: 2,
+      hours: 500,
+      sensed: { at: life.now, event: sensedBy },
+      stage,
+      qi: threshold.capacity,
+      purity: 1,
+      foundation: 1,
+    });
+    // El maestro: alguien vivo, dos tramos más arriba, al lado.
+    const home = w.truth.get(PERSON, me)?.household;
+    const master = w.truth
+      .ids(PERSON)
+      .find(
+        (id) =>
+          id !== me &&
+          w.truth.get(PERSON, id)?.household !== home &&
+          w.truth.get(ENTITY, id)?.endedAt === undefined &&
+          w.truth.has(BODY_STATE, id),
+      ) as AgentId;
+    w.truth.set(CULTIVATION_STATE, master, {
+      sensitivity: 2,
+      hours: 900,
+      sensed: { at: life.now, event: sensedBy },
+      stage: stage + 2,
+      qi: threshold.capacity,
+      purity: 1,
+      foundation: 1,
+    });
+    const org = w.truth.ids(SECT)[0] as EntityRef;
+    w.truth.set(MASTER_OF, me, { master, org, since: life.now });
+    const keepNear = () => {
+      const here = w.truth.get(LOCATION, me);
+      if (here) w.truth.set(LOCATION, master, here);
+    };
+    keepNear();
+    w.truth.set(QI_TAKEN, plane, { taken: 0, drawn: 0, at: life.now });
+    let seq = 1;
+    freshTurn(life, doFor(me, "breakthrough", 1), seq++);
+    expect(w.truth.get(TRIBULATION, me)).toBeDefined();
+    const masterWounds = w.truth.get(BODY_STATE, master)?.wounds.length ?? 0;
+    for (let i = 0; i < 8 && w.truth.get(TRIBULATION, me); i++) {
+      keepNear();
+      life.turn(doFor(me, "wait", 1), seq++);
+    }
+    const waves = w.log.all().filter((e) => e.kind === TRIBULATION_WAVE_EVENT);
+    expect(waves.length).toBeGreaterThan(0);
+    const share = guardShare({ present: true, masterStage: stage + 2, discipleStage: stage });
+    for (const wave of waves) {
+      const guard = (wave.data as { guard?: { by: AgentId; share: number; force: number } }).guard;
+      expect(guard?.by).toBe(master);
+      expect(guard?.share).toBe(share);
+      expect(guard?.force ?? 0).toBeGreaterThan(0);
+      expect(wave.causes).toContainEqual({ kind: "state", entity: me, key: MASTER_OF.name });
+    }
+    // El riesgo se comparte: el maestro se lleva una herida por ola.
+    expect(w.truth.get(BODY_STATE, master)?.wounds.length ?? 0).toBe(masterWounds + waves.length);
+    expect(w.truth.get(CULTIVATION_STATE, master)?.meridianDamage ?? 0).toBeGreaterThan(0);
   }, 600_000);
 
   it("quien la ve caer la recuerda con quién fue (novel2-trib-seen)", () => {
