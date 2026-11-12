@@ -8,6 +8,21 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
+### Novela 2: subir de reino (2026-11-12, elegido por el usuario)
+Cerrada «Novela jugable primero», el usuario eligió seguir por el progreso del cultivo después del
+primer reino: que subir cueste, se vea y tenga ayudas y gente. Cada ítem se parte antes de codear;
+lo de combate (misiones con bestias) espera a combat. Orden:
+- [ ] (novel2-tribulation) La tribulación mínima ([heaven-karma.md](systems/heaven-karma.md) §1, §5; [cultivation.md](systems/cultivation.md) §6): los umbrales altos ofenden al Cielo y la ruptura dispara un evento físico que se ve. Partido (2026-11-12):
+  - [x] (novel2-trib-heaven) La fuerza del Cielo del mundo: fila `HEAVEN_LAW` en el plano (`sim/heaven`, evento de origen, generada por el seed) con el umbral de transgresión por encima del cual una ruptura llama tribulación; `tribulationDue(heaven, transgression)` puro. Hecho (2026-11-12): fuerza 0,25-0,85, umbral `0,5 − 0,45·fuerza`, sembrada con la ley del cultivo (evento `heaven.law`); los dos primeros umbrales nunca la llaman y el último siempre.
+  - [ ] (novel2-trib-gather) Las nubes: el intento de ruptura que la llama no se resuelve en el acto; abre `TRIBULATION` (blanco, umbral, energía que el Cielo junta de la reserva de qi de la celda, con débito: conservación) y unas horas de nubes que todos en el parche ven (percept de cielo, señal); el narrador lo cuenta.
+  - [ ] (novel2-trib-waves) Las olas: rayos con energía repartida, daño al cuerpo y a los meridianos según lo que aguanta (tramo, fundamento, salud), templado que suma a la calidad de la ruptura; morir es posible; el qi de la tribulación vuelve a la celda (conservación). La ruptura se resuelve después de la última ola con lo que quedó.
+  - [ ] (novel2-trib-seen) Que se sepa: quien la vio la recuerda y la cuenta (rumor «alguien enfrentó el rayo en la sede»); la crónica la registra.
+- [ ] (novel2-method) Método por tramo: la técnica de entrada cubre el primer reino; más arriba, romper sin método va a ciegas (preparación baja); el pabellón de escrituras de la sede da la técnica del reino siguiente por puntos o por rango ([cultivation.md](systems/cultivation.md) §6, §8).
+- [ ] (novel2-pills) Alquimia menor: hierbas espirituales que crecen donde hay qi (con origen), el alquimista de la sede refina píldoras de reunir qi y de ruptura como lotes con origen ([crafts.md](systems/crafts.md) §4); tomarlas mete qi con impureza o ayuda a romper a costa del fundamento (§7, rápido o sólido); el canje de puntos ya puede pagarlas.
+- [ ] (novel2-master) Maestro y discípulo: pedirle a un anciano que te tome de discípulo directo (pedido de dialogue que decide su utilidad), enseña, aconseja antes de romper y protege en la ruptura y la tribulación (`guardians`, comparte riesgo) ([organizations.md](systems/organizations.md)).
+- [ ] (novel2-rank-up) Ascensos más arriba: de interno a núcleo o anciano, decididos por alguien de la secta (asunto y deliberación, organizations §13), con tramo, aporte y relación.
+- [ ] (novel2-missions) Misiones fuera de la sede sin combate: llevar algo a la aldea, juntar hierbas, vigilar un camino, pedidas por necesidades reales de la secta (despensa, alquimista), con puntos al volver.
+
 ### Novela jugable primero (2026-11-05, pedido del usuario)
 El usuario quiere **jugar una novela: tomar decisiones y avanzar** (años, reinos, secta), no
 administrar la aldea día por día. Se **congela** el detalle fino de ganado y economía (las líneas

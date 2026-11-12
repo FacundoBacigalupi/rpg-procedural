@@ -1,7 +1,8 @@
 // La siembra del cultivo en una vida nueva (novel-cult-law): la ley del seed en la fila del plano,
 // con su evento de origen (`cultivation.law`, condición del seed), y el talento de cada persona que
 // ya existe, heredado de sus padres cuando están (los mayores primero) o del fondo de la población.
-// Solo con el cultivo encendido; apagado no se escribe nada.
+// Con la ley va la fuerza del Cielo (`HEAVEN_LAW`, novel2-trib-heaven). Solo con el cultivo
+// encendido; apagado no se escribe nada.
 
 import {
   type AgentId,
@@ -16,6 +17,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import { PERSON, type Trait } from "../family/index.ts";
+import { generateHeavenLaw, HEAVEN_LAW, HEAVEN_LAW_EVENT } from "../heaven/index.ts";
 import { ENTITY, type WorldTruth } from "../world/index.ts";
 import { QI_TAKEN } from "./absorb.ts";
 import { CULTIVATION_LAW, type CultivationLaw, generateCultivationLaw } from "./law.ts";
@@ -83,6 +85,24 @@ export function seedCultivation(
   });
   truth.set(ENTITY, plane, { id: plane, originEventId: event, createdAt: since });
   truth.set(CULTIVATION_LAW, plane, law);
+  // La fuerza del Cielo (novel2-trib-heaven): también del seed y tan vieja como la ley.
+  const heavenEvent = ids.next("event") as EventId;
+  log.append({
+    id: heavenEvent,
+    tick: since,
+    kind: HEAVEN_LAW_EVENT,
+    actors: [],
+    place: o.place,
+    data: { plane },
+    emissions: {},
+    causes: [{ kind: "seed" }],
+    resolution: "world",
+  });
+  truth.set(
+    HEAVEN_LAW,
+    plane,
+    generateHeavenLaw(Rng.root(o.seed).fork("heaven", "law"), heavenEvent),
+  );
   if (o.qi) {
     truth.set(PLACE_QI, plane, o.qi);
     truth.set(QI_TAKEN, plane, { taken: 0, drawn: 0, at: o.now });
