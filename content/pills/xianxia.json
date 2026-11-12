@@ -5,7 +5,8 @@
     "effect": "gather",
     "qi": 20,
     "purity": 0.7,
-    "endowPerHead": 3
+    "endowPerHead": 3,
+    "points": 10
   },
   {
     "id": "spirit-gathering",
@@ -13,7 +14,8 @@
     "effect": "gather",
     "qi": 120,
     "purity": 0.8,
-    "endowPerHead": 0.5
+    "endowPerHead": 0.5,
+    "points": 60
   },
   {
     "id": "foundation",
@@ -22,6 +24,7 @@
     "purity": 0.8,
     "prep": 0.2,
     "cost": 0.15,
-    "endowPerHead": 0.2
+    "endowPerHead": 0.2,
+    "points": 240
   }
 ]

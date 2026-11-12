@@ -24,6 +24,8 @@ export const PillDef = z
     cost: z.number().min(0).max(1).optional(),
     /** Cuántas por cabeza trae el tesoro de una secta al llegar a la carne (novel2-pills-stock). */
     endowPerHead: z.number().min(0).optional(),
+    /** Cuántos puntos de contribución pide la secta por una (novel2-pills-exchange); sin él, no la canjea. */
+    points: z.number().positive().optional(),
   })
   .refine((p) => (p.effect === "gather" ? p.qi !== undefined : p.prep !== undefined), {
     message: "una de reunir lleva qi; una de romper, prep",
@@ -62,3 +64,23 @@ function round4(x: number): number {
 
 /** Alguien tragó una píldora: qué hizo (qi tomado y escapado, o la ayuda que dejó). */
 export const PILL_TAKEN_EVENT = "cultivation.pill_taken";
+
+/** Por qué la secta no da la píldora pedida (novel2-pills-exchange). */
+export type PillRefusal = "not_member" | "no_pill" | "no_stock" | "no_points";
+
+/**
+ * Canjear puntos por una píldora del tesoro: la pide quien es de la secta (`member`), la secta la
+ * vende por puntos (`PillDef.points`; sin ellos no la canjea), tiene que haber (`stock`) y alcanzar.
+ */
+export function pillExchange(
+  pill: PillDef | undefined,
+  member: boolean,
+  points: number,
+  stock: number,
+): { kind: "given"; cost: number } | { kind: "refused"; refused: PillRefusal } {
+  if (!member) return { kind: "refused", refused: "not_member" };
+  if (!pill || pill.points === undefined) return { kind: "refused", refused: "no_pill" };
+  if (stock < 1) return { kind: "refused", refused: "no_stock" };
+  if (pill.points > points) return { kind: "refused", refused: "no_points" };
+  return { kind: "given", cost: pill.points };
+}

@@ -773,6 +773,12 @@ export function playerView(
       if (d.refused === "too_soon") cues.add("method_too_soon");
       else if (d.refused === "no_points") cues.add("method_no_points");
       else if (refused) cues.add("exchange_refused");
+    } else if (d?.what === "pill") {
+      // El tesoro (novel2-pills-exchange): la píldora o por qué no.
+      if (!refused) cues.add("pill_bought");
+      else if (d.refused === "no_stock") cues.add("pill_no_stock");
+      else if (d.refused === "no_points") cues.add("pill_no_points");
+      else cues.add("exchange_refused");
     } else cues.add(refused ? "exchange_refused" : "exchange_done");
   }
   if (

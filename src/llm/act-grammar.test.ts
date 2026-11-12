@@ -48,6 +48,13 @@ describe("la gramática y el acto de habla declarado", () => {
     expect(parseCommand("canjeo mis puntos por la técnica del reino siguiente")).toMatchObject({
       plan: { verb: "redeem", args: [{ role: "what", text: "técnica" }] },
     });
+    // El tesoro (novel2-pills-exchange).
+    expect(parseCommand("canjeo mis puntos por una píldora de reunir qi")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "píldora de reunir qi" }] },
+    });
+    expect(parseCommand("pido una píldora de fundamento")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "píldora de fundamento" }] },
+    });
   });
 
   it("tragar una píldora es consumirla (novel2-pills-take)", () => {

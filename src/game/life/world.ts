@@ -2508,7 +2508,18 @@ export function lifeWorld(
               }),
               tribulationProcess(),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
-              sectDutyProcess({ dayTicks: parts.clock.day }),
+              sectDutyProcess({
+                dayTicks: parts.clock.day,
+                // El tesoro canjea píldoras por puntos (novel2-pills-exchange).
+                ...(parts.cultivation.pills
+                  ? {
+                      pills: parts.cultivation.pills.map((def) => ({
+                        def,
+                        name: parts.goods.find((g) => g.id === def.good)?.name ?? def.good,
+                      })),
+                    }
+                  : {}),
+              }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [

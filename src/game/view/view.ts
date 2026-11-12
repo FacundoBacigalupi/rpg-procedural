@@ -102,6 +102,12 @@ export type SelfCue =
   | "exchange_done"
   /** Pidió canjear y la secta no le dio nada (no es de ella, no le hace falta o no le alcanza). */
   | "exchange_refused"
+  /** El tesoro de la secta le dio una píldora por puntos (novel2-pills-exchange). */
+  | "pill_bought"
+  /** Pidió una píldora y en el tesoro no queda. */
+  | "pill_no_stock"
+  /** Pidió una píldora y su aporte no alcanza. */
+  | "pill_no_points"
   /** El pabellón de escrituras le dio el método del reino siguiente (`self.technique` lo nombra; novel2-method-pavilion). */
   | "method_given"
   /** Pidió el método siguiente sin estar en la cima de su reino: todavía no. */

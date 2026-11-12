@@ -1222,6 +1222,27 @@
     ]
   },
   {
+    "id": "self.pill_bought",
+    "lines": [
+      "El encargado del tesoro descuenta tus puntos en el libro, abre un frasco de porcelana y te pone una píldora en la palma.",
+      "Te anotan el canje y te dan una píldora envuelta en papel encerado. Huele a hierbas amargas."
+    ]
+  },
+  {
+    "id": "self.pill_no_stock",
+    "lines": [
+      "El encargado sacude el frasco vacío: de esas no queda ninguna hasta la próxima entrega.",
+      "No hay más de esas en el tesoro; te dicen que vuelvas cuando repongan."
+    ]
+  },
+  {
+    "id": "self.pill_no_points",
+    "lines": [
+      "El encargado repasa tus cuentas y niega con la cabeza: tu aporte no alcanza para esa píldora.",
+      "Con lo que aportaste no te dan esa píldora."
+    ]
+  },
+  {
     "id": "self.exchange_done",
     "lines": [
       "El encargado tacha puntos de tu aporte y te anota horas de pase a la cueva.",
