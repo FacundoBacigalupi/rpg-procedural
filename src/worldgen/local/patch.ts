@@ -31,6 +31,9 @@ export interface LocalPatch {
   readonly outsideHexes: readonly (readonly number[])[];
 }
 
+/** Un solo arreglo vacío para los hexes interiores: un parche tiene miles y se crean muchos. */
+const NONE: readonly number[] = Object.freeze([]);
+
 export function localPatch(planet: Planet, cell: number): LocalPatch {
   const { grid } = planet;
   const factor = localFactor(planet);
@@ -38,8 +41,8 @@ export function localPatch(planet: Planet, cell: number): LocalPatch {
   const children = grid.refine(cell, factor);
   const index = new Map(children.map((ch, i) => [ch.id, i]));
   const neighbors: number[][] = [];
-  const outside: number[][] = [];
-  const outsideHexes: number[][] = [];
+  const outside: (readonly number[])[] = [];
+  const outsideHexes: (readonly number[])[] = [];
   for (const ch of children) {
     const inner: number[] = [];
     const out = new Set<number>();
@@ -53,8 +56,8 @@ export function localPatch(planet: Planet, cell: number): LocalPatch {
       }
     }
     neighbors.push(inner);
-    outside.push([...out].sort((a, b) => a - b));
-    outsideHexes.push(outIds.sort((a, b) => a - b));
+    outside.push(out.size === 0 ? NONE : [...out].sort((a, b) => a - b));
+    outsideHexes.push(outIds.length === 0 ? NONE : outIds.sort((a, b) => a - b));
   }
   return {
     cell,
