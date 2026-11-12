@@ -18,6 +18,8 @@ export const HerbDef = z.strictObject({
   gramsPerRatio: z.number().positive(),
   /** Tasa de rebrote por día (logístico) cuando lo que hay es poco respecto del techo. */
   regrowth: z.number().positive().max(1),
+  /** Qi que lleva cada gramo (novel2-alch-qi): sale de la reserva de la celda al crecer y vuelve si se seca o se quema. */
+  qiPerGram: z.number().positive(),
 });
 export type HerbDef = z.infer<typeof HerbDef>;
 export const HERBS = defineContent("herbs", HerbDef);
@@ -26,6 +28,8 @@ export const HERBS = defineContent("herbs", HerbDef);
 export interface HerbStand {
   readonly standing: Readonly<Record<string, number>>;
   readonly day: number;
+  /** En la sede: la última vez que la secta cosechó y refinó (novel2-alch-sect). */
+  readonly brewed?: number;
 }
 
 export const HERB_STAND = table<HerbStand>("cultivation.herb_stand");

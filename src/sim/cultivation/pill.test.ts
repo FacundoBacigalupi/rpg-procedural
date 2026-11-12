@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { Rng } from "../../core/index.ts";
-import { PillDef, pillExchange, REFINE_ODDS, refineBatch } from "./pill.ts";
+import { PillDef, pillExchange, REFINE_ODDS, refineBatch, refineReleasedQi } from "./pill.ts";
 
 const qi: PillDef = {
   id: "qi-gathering",
@@ -25,6 +25,25 @@ describe("pillExchange", () => {
     });
     expect(pillExchange(qi, true, 99, 0)).toMatchObject({ refused: "no_stock" });
     expect(pillExchange(qi, true, 9, 9)).toMatchObject({ refused: "no_points" });
+  });
+});
+
+describe("refineReleasedQi (novel2-alch-qi)", () => {
+  const pill = (qi?: number): PillDef =>
+    PillDef.parse({
+      id: "p",
+      good: "pill-p",
+      effect: qi === undefined ? "break" : "gather",
+      ...(qi === undefined ? { prep: 0.2 } : { qi }),
+      purity: 0.7,
+      recipe: { herb: "h", grams: 20 },
+    });
+  it("vuelve el qi de lo quemado y lo que la píldora no se lleva", () => {
+    expect(refineReleasedQi(pill(20), { attempts: 5, made: 3, used: 100 }, 1)).toBe(40);
+    expect(refineReleasedQi(pill(15), { attempts: 2, made: 2, used: 40 }, 1)).toBe(10);
+  });
+  it("las de romper no llevan qi: vuelve entero", () => {
+    expect(refineReleasedQi(pill(), { attempts: 2, made: 2, used: 40 }, 2)).toBe(80);
   });
 });
 
@@ -56,14 +75,23 @@ describe("refineBatch (novel2-alch-refine)", () => {
       used: 0,
     });
   });
-  it("cada receta del contenido nombra una hierba que existe", () => {
-    const herbs = new Set(
-      (JSON.parse(readFileSync("content/herbs/xianxia.json", "utf8")) as { id: string }[]).map(
-        (h) => h.id,
-      ),
+  it("cada receta del contenido nombra una hierba que existe y no lleva más qi que sus hierbas", () => {
+    const herbs = new Map(
+      (
+        JSON.parse(readFileSync("content/herbs/xianxia.json", "utf8")) as {
+          id: string;
+          qiPerGram: number;
+        }[]
+      ).map((h) => [h.id, h]),
     );
     const pills = JSON.parse(readFileSync("content/pills/xianxia.json", "utf8")) as PillDef[];
-    for (const p of pills) if (p.recipe) expect(herbs.has(p.recipe.herb)).toBe(true);
+    for (const p of pills) {
+      if (!p.recipe) continue;
+      const herb = herbs.get(p.recipe.herb);
+      expect(herb).toBeDefined();
+      // novel2-alch-qi: el qi de la píldora sale de sus hierbas.
+      expect(p.qi ?? 0).toBeLessThanOrEqual(p.recipe.grams * (herb?.qiPerGram ?? 0));
+    }
     expect(pills.every((p) => PillDef.safeParse(p).success)).toBe(true);
   });
 });

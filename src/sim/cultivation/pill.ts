@@ -65,6 +65,14 @@ function round4(x: number): number {
 }
 
 /** Lo que sale como mínimo y como máximo de cada intento según la mano (0-1) del alquimista. */
+/**
+ * El qi que vuelve a la celda de una tanda (novel2-alch-qi): el de las hierbas usadas menos el que
+ * se llevan las píldoras que salieron (las de romper no llevan qi: el de sus hierbas vuelve entero).
+ */
+export function refineReleasedQi(pill: PillDef, batch: RefineBatch, qiPerGram: number): number {
+  return Math.max(0, batch.used * qiPerGram - batch.made * (pill.qi ?? 0));
+}
+
 export const REFINE_ODDS = [0.2, 0.9] as const;
 
 /** Una tanda de refinado: cuántos intentos, cuántas píldoras salieron y los gramos que se usaron. */

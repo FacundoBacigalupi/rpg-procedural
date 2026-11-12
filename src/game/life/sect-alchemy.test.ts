@@ -16,8 +16,9 @@ import {
 } from "../../core/index.ts";
 import { checkInvariants, LOCATION, PLACE, SECT } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { SECT_ALCHEMY_EVENT } from "./herbs.ts";
 import { Life } from "./life.ts";
-import { SECT_ALCHEMY_EVENT, SECT_HALL, treasuryAccount } from "./sect-hall.ts";
+import { SECT_HALL, treasuryAccount } from "./sect-hall.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -33,6 +34,7 @@ interface Brewed {
   readonly org: EntityRef;
   readonly harvested: Record<string, number>;
   readonly refined: readonly { pill: string; attempts: number; made: number; used: number }[];
+  readonly qiBack?: number;
 }
 
 describe("la alquimia de la secta (novel2-alch-sect)", () => {
@@ -74,6 +76,12 @@ describe("la alquimia de la secta (novel2-alch-sect)", () => {
     expect(qi?.attempts ?? 0).toBeGreaterThan(0);
     expect(qi?.made ?? 0).toBeLessThanOrEqual(qi?.attempts ?? 0);
     expect(qi?.used).toBe((qi?.attempts ?? 0) * 20);
+    // novel2-alch-qi: el qi de lo que se quemó vuelve a la celda (cada píldora lleva sus 20 g de qi).
+    const back = data.refined.reduce(
+      (s, r) => s + (r.pill === "qi-gathering" ? (r.attempts - r.made) * 20 : 0),
+      0,
+    );
+    if (data.refined.length === 1) expect(data.qiBack ?? 0).toBeCloseTo(back, 3);
     // Lo refinado está en el tesoro (salvo lo que se canjeó después, que acá nadie canjea).
     const made = brews.reduce(
       (s, b) =>

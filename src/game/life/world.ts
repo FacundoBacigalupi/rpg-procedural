@@ -2514,7 +2514,25 @@ export function lifeWorld(
               }),
               tribulationProcess(),
               ...(parts.cultivation.herbs && parts.cultivation.herbs.length > 0
-                ? [herbsProcess({ dayTicks: parts.clock.day, herbs: parts.cultivation.herbs })]
+                ? [
+                    herbsProcess({
+                      dayTicks: parts.clock.day,
+                      yearTicks: parts.clock.year,
+                      herbs: parts.cultivation.herbs,
+                      // La secta cosecha y refina en su sede (novel2-alch-sect).
+                      ...(parts.cultivation.pills
+                        ? {
+                            alchemy: {
+                              pills: parts.cultivation.pills,
+                              ...(() => {
+                                const skill = parts.skills.skill("medicine");
+                                return skill ? { skill } : {};
+                              })(),
+                            },
+                          }
+                        : {}),
+                    }),
+                  ]
                 : []),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
               sectDutyProcess({
@@ -2558,19 +2576,6 @@ export function lifeWorld(
                             }
                           : {};
                       })(),
-                      // La secta cosecha y refina (novel2-alch-sect).
-                      ...(parts.cultivation?.herbs && parts.cultivation.pills
-                        ? {
-                            alchemy: {
-                              herbs: parts.cultivation.herbs,
-                              pills: parts.cultivation.pills,
-                              ...(() => {
-                                const skill = parts.skills.skill("medicine");
-                                return skill ? { skill } : {};
-                              })(),
-                            },
-                          }
-                        : {}),
                       traits: parts.traits,
                       bodyPlans: parts.plans,
                       ...(parts.form
