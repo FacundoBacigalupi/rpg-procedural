@@ -446,6 +446,60 @@
     "dry": ["{name}.", "Me dicen {name}."]
   },
   {
+    "id": "apprentice.no",
+    "lines": ["¿Discípulo mío? Yo no tomo discípulos.", "Eso pedíselo a un anciano, no a mí."],
+    "formal": ["No está en mí tomar discípulos."],
+    "dry": ["No soy quién."]
+  },
+  {
+    "id": "apprentice.accept",
+    "lines": [
+      "Está bien. Desde hoy sos mi discípulo; no me hagas arrepentir.",
+      "Te tomo. Mañana empezás conmigo, y lo que te diga se hace."
+    ],
+    "formal": ["Lo acepto como discípulo. Que no tenga que lamentarlo."],
+    "warm": ["Hace rato que te miraba. Sí: desde hoy sos de los míos."],
+    "dry": ["Sí. No me hagas perder el tiempo."]
+  },
+  {
+    "id": "apprentice.refuse.not_member",
+    "lines": [
+      "No sos de esta secta. ¿Con qué cara me pedís eso?",
+      "Primero entrá a la secta; después hablamos."
+    ],
+    "formal": ["Usted no pertenece a esta secta."]
+  },
+  {
+    "id": "apprentice.refuse.has_master",
+    "lines": [
+      "Ya tenés maestro. No le saco discípulos a nadie.",
+      "Andá con tu maestro, que para eso lo tenés."
+    ],
+    "formal": ["Usted ya tiene maestro; no sería correcto."]
+  },
+  {
+    "id": "apprentice.refuse.full",
+    "lines": [
+      "Ya cargo con los que puedo. No tomo más.",
+      "Tengo demasiados discípulos; buscá a otro."
+    ],
+    "formal": ["Mis discípulos ya son bastantes; no puedo atender a otro."]
+  },
+  {
+    "id": "apprentice.refuse.grudge",
+    "lines": ["¿Vos? Ni lo sueñes.", "Después de lo que hiciste, ¿me venís con eso?"],
+    "dry": ["No."]
+  },
+  {
+    "id": "apprentice.refuse.unworthy",
+    "lines": [
+      "Todavía no veo en vos nada que valga la pena. Volvé cuando hayas avanzado.",
+      "Te falta. Trabajá para la secta, cultivá, y después veremos."
+    ],
+    "formal": ["Aún no lo considero preparado. Vuelva más adelante."],
+    "warm": ["No es que no me caigas bien; es que todavía no estás. Seguí y volvé."]
+  },
+  {
     "id": "introduce.wary",
     "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
     "formal": ["Prefiero no decirlo, si no le molesta."],

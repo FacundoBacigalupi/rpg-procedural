@@ -1,10 +1,10 @@
 // Maestro y discípulo (novel2-master-bond, organizations §9, cultivation §15): el vínculo vive en el
-// discípulo (`MASTER_OF`: quién es su maestro, de qué secta, desde cuándo y por qué evento). Quien
+// discípulo (`MASTER_OF`: quién es su maestro, de qué secta y desde cuándo). Quien
 // decide es el anciano: lo que pesa es lo que él puede saber del que pide (el talento que le midió la
 // prueba, no el verdadero; el tramo, que un cultivador más alto siente; el aporte anotado en la
 // secta y cómo lo trata), y cuántos discípulos ya carga. La regla es pura: sí, o por qué no.
 
-import type { AgentId, EntityRef, EventId, Tick } from "../../core/index.ts";
+import type { AgentId, EntityRef, Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 import type { MemberRank } from "./member.ts";
 
@@ -12,9 +12,8 @@ import type { MemberRank } from "./member.ts";
 export interface MasterOf {
   readonly master: AgentId;
   readonly org: EntityRef;
+  /** Cuándo lo tomó (el evento `cultivation.master_taken` de ese tick lo cuenta). */
   readonly since: Tick;
-  /** El evento que lo creó (`cultivation.master_taken`). */
-  readonly event: EventId;
 }
 
 export const MASTER_OF = table<MasterOf>("cultivation.master_of");

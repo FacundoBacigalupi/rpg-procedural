@@ -143,6 +143,14 @@ export interface ReplyInput {
    */
   readonly prophecy?: { readonly credence: number };
   /**
+   * Si el oyente toma como discípulo a quien se lo pide (novel2-master-ask): lo decide quien lo
+   * cablea con `masterAccepts`; `refused` es el motivo. Sin esto el oyente no es quien toma
+   * discípulos y dice que no.
+   */
+  readonly apprentice?:
+    | { readonly accepted: true }
+    | { readonly accepted: false; readonly refused: string };
+  /**
    * Cómo pesó el oyente el rumor que le pasan (information §3, `hearRumor`): ya hecho por quien
    * lo cablea porque necesita el estado y el sorteo. Sin esto el rumor no tiene respaldo (nada
    * que el oyente pueda ubicar en un hecho real) y lo toma como charla.
@@ -289,6 +297,8 @@ export interface Reply {
   readonly accusation?: AccuseOutcome;
   /** Cómo tomó el oyente la profecía que le contaron (solo si `prophecy` estaba). */
   readonly prophecy?: { readonly verdict: "believed" | "doubted" | "dismissed" };
+  /** Lo tomó como discípulo: el vínculo lo escribe quien lo cablea. */
+  readonly disciple?: true;
   /** Cómo tomó el oyente el rumor que le pasaron (solo si `hearsay` estaba). */
   readonly rumor?: { readonly verdict: Hearsay };
   /** Cómo juzgó el oyente la forma en que le hablaron (registro y palabras vedadas), si venía. */
@@ -369,6 +379,10 @@ function decideBody(i: ReplyInput, at: number): Reply {
         return say("introduce.wary");
       }
       return say("introduce", { name: i.nameOf(i.listener) });
+    case "apprentice":
+      if (!i.apprentice) return say("apprentice.no");
+      if (i.apprentice.accepted) return { ...say("apprentice.accept"), disciple: true };
+      return say(`apprentice.refuse.${i.apprentice.refused}`);
     case "greet":
       if (i.reproach) return say(`greet.cold.${i.reproach}`);
       if (memory.bias >= FOND_BIAS && memory.vivid >= FOND_VIVID) return say("greet.fond");
