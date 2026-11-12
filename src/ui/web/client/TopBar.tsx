@@ -177,6 +177,26 @@ function clothingChips(c: Hud["clothing"]): Chip[] {
   return [{ icon: "🧥", text, title: `Lo que tenés puesto: ${pieces}`, alert: c.short }];
 }
 
+const QI_FILL = ["poco qi", "qi a medias", "qi casi lleno", "qi lleno"] as const;
+
+/** El cultivo como lo siente (play-hud-qi): el tramo con el nombre de su escuela y el recipiente. */
+function cultivationChips(c: Hud["cultivation"]): Chip[] {
+  if (c === undefined) return [];
+  const realm = c.realm
+    ? `${c.realm.name}${c.realm.layer !== undefined ? `, ${c.realm.word ?? "capa"} ${c.realm.layer}` : ""} · `
+    : "";
+  const out: Chip[] = [
+    {
+      icon: "🌀",
+      text: `${realm}${QI_FILL[c.fill]}`,
+      title: "Tu cultivo: el tramo y el qi que juntaste",
+    },
+  ];
+  if (c.hurt)
+    out.push({ icon: "💢", text: "meridianos dañados", title: "El qi se mueve mal", alert: 2 });
+  return out;
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -215,6 +235,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
     { icon: placeIcon, text: place, title: "Dónde estás" },
     { icon: "👥", text: people, title: "Gente que ves o notás" },
     { icon: "🪙", text: String(hud.coins), title: "Monedas de cobre" },
+    ...cultivationChips(hud.cultivation).filter((c) => c.alert === undefined),
   ];
   return (
     <header className="topbar">
@@ -233,6 +254,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
           ...loadChips(hud.load),
           ...clothingChips(hud.clothing),
           ...moodChips(hud.mood, hud.warmth),
+          ...cultivationChips(hud.cultivation).filter((c) => c.alert !== undefined),
         ].map((c) => (
           <span key={c.title} className={`chip alert-${c.alert ?? 0}`} title={c.title}>
             <span aria-hidden="true">{c.icon}</span>

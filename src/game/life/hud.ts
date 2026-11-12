@@ -23,6 +23,8 @@ import {
   type BuildingRecord,
   CORE_NORMAL_C,
   type ConditionKind,
+  CULTIVATION_LAW,
+  CULTIVATION_STATE,
   EMOTION_HALF_LIFE_TICKS,
   EMOTIONS,
   type EmotionId,
@@ -39,7 +41,10 @@ import {
   type Percept,
   type PlaceKind,
   RELATIONS,
+  realmOf,
   relationship,
+  SECT_MEMBER,
+  SECT_SCHOOL,
   type Sex,
   type SpaceKind,
   STAKES_RISK,
@@ -48,6 +53,7 @@ import {
   spaceLight,
   THERMAL,
   unitGrams,
+  vesselCapacity,
   weatherAt,
 } from "../../sim/index.ts";
 import {
@@ -160,6 +166,47 @@ export interface Hud {
    * guardarropa encendido no hay prendas: `undefined`.
    */
   readonly clothing?: Outfit;
+  /**
+   * El cultivo como lo siente por dentro (play-hud-qi): solo desde que sintió el qi. `fill` es cuánto
+   * qi tiene el recipiente contra lo que cabe en su tramo (`QI_FILL_BANDS`); `realm`, el nombre que
+   * su escuela le da al tramo, si es de una secta que se lo dijo; `hurt`, meridianos dañados por
+   * retrocesos (`MERIDIAN_HURT`).
+   */
+  readonly cultivation?: HudCultivation;
+}
+
+export interface HudCultivation {
+  readonly fill: Level;
+  readonly realm?: { readonly name: string; readonly layer?: number; readonly word?: string };
+  readonly hurt: boolean;
+}
+
+/** Fracción del recipiente desde la que se siente a medias, casi lleno y lleno. */
+export const QI_FILL_BANDS = [0.25, 0.6, 0.95] as const;
+/** Daño de meridianos desde el que lo nota al mover el qi. */
+export const MERIDIAN_HURT = 0.2;
+
+/**
+ * Lo que siente del propio cultivo: nada hasta sentir el qi (o haber cruzado un umbral); después,
+ * el recipiente en bandas y, si su escuela le puso nombre al tramo, ese nombre.
+ */
+export function cultivationOf(w: LifeWorld): HudCultivation | undefined {
+  const s = w.truth.get(CULTIVATION_STATE, w.player);
+  const stage = s?.stage ?? 0;
+  if (!s || (s.sensed === undefined && stage === 0)) return undefined;
+  const plane = w.truth.ids(CULTIVATION_LAW)[0];
+  const law = plane === undefined ? undefined : w.truth.get(CULTIVATION_LAW, plane);
+  const cap = law ? vesselCapacity(law, stage) : 0;
+  const ratio = cap > 0 ? (s.qi ?? 0) / cap : 0;
+  const fill = QI_FILL_BANDS.filter((b) => ratio >= b).length as Level;
+  const member = w.truth.get(SECT_MEMBER, w.player);
+  const school = member ? w.truth.get(SECT_SCHOOL, member.org) : undefined;
+  const named = school ? realmOf(school, stage) : undefined;
+  const realm =
+    named && school
+      ? { ...named, ...(named.layer !== undefined ? { word: school.layer } : {}) }
+      : undefined;
+  return { fill, ...(realm ? { realm } : {}), hurt: (s.meridianDamage ?? 0) >= MERIDIAN_HURT };
 }
 
 /**
@@ -579,6 +626,7 @@ export function hudPanel(
   const look = skyLook(day.cloud, day.precip.kind, indoor);
   const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(skyMap), 0, now) : null;
   const outfit = outfitOf(w);
+  const cultivation = cultivationOf(w);
   return {
     hour,
     phase,
@@ -609,6 +657,7 @@ export function hudPanel(
     danger: dangerOf(seen, threatOfIn(w), riskOfIn(w)),
     load: loadOf(w),
     ...(outfit ? { clothing: outfit } : {}),
+    ...(cultivation ? { cultivation } : {}),
   };
 }
 
