@@ -13,6 +13,7 @@ import {
   HOUR,
   type HolderRef,
   holderAccount,
+  type LedgerUnit,
   loadContent,
 } from "../../core/index.ts";
 import {
@@ -80,6 +81,11 @@ describe("el tesoro de la secta", () => {
     const given = (endowment.data as { grams: number }).grams;
     expect(w.ledger.balance(treasury, HARVEST_GOOD)).toBe(given - grams);
     expect(w.ledger.balance(treasury, COPPER)).toBe((endowment.data as { amount: number }).amount);
+    // Y llega con píldoras, en el mismo asiento (novel2-pills-stock).
+    const pills = (endowment.data as { pills?: Record<string, number> }).pills ?? {};
+    expect(pills["good:pill-qi-gathering"]).toBeGreaterThan(0);
+    for (const [unit, n] of Object.entries(pills))
+      expect(w.ledger.balance(treasury, unit as LedgerUnit)).toBe(n);
     expect(w.ledger.balance(larder, HARVEST_GOOD)).toBeGreaterThan(0);
 
     // Una semana y un poco: entra el tributo y sale lo que comieron.

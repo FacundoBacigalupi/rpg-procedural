@@ -4,14 +4,16 @@
     "good": "pill-qi-gathering",
     "effect": "gather",
     "qi": 20,
-    "purity": 0.7
+    "purity": 0.7,
+    "endowPerHead": 3
   },
   {
     "id": "spirit-gathering",
     "good": "pill-spirit-gathering",
     "effect": "gather",
     "qi": 120,
-    "purity": 0.8
+    "purity": 0.8,
+    "endowPerHead": 0.5
   },
   {
     "id": "foundation",
@@ -19,6 +21,7 @@
     "effect": "break",
     "purity": 0.8,
     "prep": 0.2,
-    "cost": 0.15
+    "cost": 0.15,
+    "endowPerHead": 0.2
   }
 ]

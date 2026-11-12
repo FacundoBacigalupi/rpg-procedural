@@ -22,6 +22,8 @@ export const PillDef = z
     prep: z.number().min(0).max(1).optional(),
     /** De romper: lo que resta a la calidad (el fundamento) si rompe con ella. */
     cost: z.number().min(0).max(1).optional(),
+    /** Cuántas por cabeza trae el tesoro de una secta al llegar a la carne (novel2-pills-stock). */
+    endowPerHead: z.number().min(0).optional(),
   })
   .refine((p) => (p.effect === "gather" ? p.qi !== undefined : p.prep !== undefined), {
     message: "una de reunir lleva qi; una de romper, prep",

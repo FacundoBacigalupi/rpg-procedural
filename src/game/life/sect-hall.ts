@@ -140,6 +140,8 @@ export interface SectStore {
   readonly days: number;
   /** El dinero del tributo (novel-sect-duty-treasury); sin él, el tesoro es solo de grano. */
   readonly coin?: LedgerUnit;
+  /** Las píldoras con que llega el tesoro a la carne, por cabeza (novel2-pills-stock). */
+  readonly pills?: readonly { readonly unit: LedgerUnit; readonly perHead: number }[];
 }
 
 /** El tributo de cada semana (novel-sect-duty-treasury). */
@@ -404,6 +406,10 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
               grams: grams + reserve,
               coin: o.store.coin ? people.length * TRIBUTE_COIN_PER_HEAD * ENDOWMENT_COIN_WEEKS : 0,
               endowment: true,
+              // Las píldoras de la fundación (novel2-pills-stock): solo en la dotación.
+              pills: (o.store.pills ?? [])
+                .map((p) => ({ unit: p.unit, amount: Math.ceil(p.perHead * people.length) }))
+                .filter((p) => p.amount > 0),
             },
             grams,
             {
@@ -568,7 +574,12 @@ function restock(
   org: EntityRef,
   seat: EntityRef,
   house: HouseholdId,
-  tribute: { readonly grams: number; readonly coin: number; readonly endowment?: boolean },
+  tribute: {
+    readonly grams: number;
+    readonly coin: number;
+    readonly endowment?: boolean;
+    readonly pills?: readonly { readonly unit: LedgerUnit; readonly amount: number }[];
+  },
   want: number,
   out: {
     readonly balance: number;
@@ -579,7 +590,8 @@ function restock(
 ): void {
   const treasury = treasuryAccount(org);
   let causes = out.causes;
-  if (tribute.grams > 0 || tribute.coin > 0) {
+  const pills = tribute.pills ?? [];
+  if (tribute.grams > 0 || tribute.coin > 0 || pills.length > 0) {
     const at = out.events.length;
     out.postings.push({
       event: draftEvent(at),
@@ -604,6 +616,12 @@ function restock(
               },
             ]
           : []),
+        ...pills.map((p) => ({
+          unit: p.unit,
+          from: externalAccount(SECT_UPKEEP),
+          to: treasury,
+          amount: p.amount,
+        })),
       ],
     });
     out.events.push({
@@ -616,6 +634,9 @@ function restock(
         grams: tribute.grams,
         ...(store.coin ? { coin: store.coin, amount: tribute.coin } : {}),
         ...(tribute.endowment ? { endowment: true } : {}),
+        ...(pills.length > 0
+          ? { pills: Object.fromEntries(pills.map((p) => [p.unit, p.amount])) }
+          : {}),
       },
       emissions: {},
       causes,

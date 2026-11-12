@@ -2527,6 +2527,13 @@ export function lifeWorld(
                                 kcalPerGram: grain.kcalPerGram,
                                 days: SECT_STORE_DAYS,
                                 coin: COPPER,
+                                // El tesoro llega con píldoras (novel2-pills-stock).
+                                pills: (parts.cultivation?.pills ?? [])
+                                  .filter((p) => (p.endowPerHead ?? 0) > 0)
+                                  .map((p) => ({
+                                    unit: ledgerUnit(`good:${p.good}`),
+                                    perHead: p.endowPerHead ?? 0,
+                                  })),
                               },
                             }
                           : {};
