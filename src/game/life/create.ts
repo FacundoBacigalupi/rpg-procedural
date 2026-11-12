@@ -208,7 +208,7 @@ import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
-import { SECT_UPKEEP } from "./sect-hall.ts";
+import { SECT_FURNACE, SECT_UPKEEP } from "./sect-hall.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { FORGE_TRADE, seedSmith } from "./smith.ts";
 import { SOWN_FIELD } from "./sowing.ts";
@@ -1773,6 +1773,9 @@ export function ledgerConfigOf(
       // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
       ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER, ...pillUnits] } : {}),
       ...(herbUnits.length > 0 ? { [HERB_SOURCE]: herbUnits } : {}),
+      ...(sectUpkeep && herbUnits.length > 0
+        ? { [SECT_FURNACE]: [...herbUnits, ...pillUnits] }
+        : {}),
     },
   };
 }

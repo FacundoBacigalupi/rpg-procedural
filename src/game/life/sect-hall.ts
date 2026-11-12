@@ -29,6 +29,7 @@ import {
   holderAccount,
   type LedgerAccount,
   type LedgerUnit,
+  ledgerUnit,
   type PlaceId,
   type PlaceRef,
   type PlanetClock,
@@ -47,6 +48,7 @@ import {
   expressInnate,
   founderGenome,
   GENOME,
+  type HerbDef,
   INNATE,
   type Language,
   LOCATION,
@@ -63,12 +65,14 @@ import {
   PERSON,
   PERSON_CULTURE,
   PERSON_NAME,
+  type PillDef,
   PLACE,
   type PostingDraft,
   type ProcessDef,
   patchOf,
   practicesOfKind,
   type ReadonlyWorldTruth,
+  refineBatch,
   type SchemaDef,
   SECT,
   SECT_MEMBER,
@@ -77,6 +81,7 @@ import {
   type SectRank,
   SKILL_STATE,
   type SkillCatalog,
+  type SkillDef,
   STIPEND_BY_RANK,
   STIPEND_EVERY_DAYS,
   type StateChange,
@@ -84,6 +89,7 @@ import {
   seedPersonCulture,
   seedSelfImages,
   setComponent,
+  skillLevel,
   standardize,
   stipendShares,
   TALENT,
@@ -173,6 +179,8 @@ export interface SectHallOptions {
   readonly store?: SectStore;
   /** Con esto llegan con mente, cultura, habilidades y gustos (novel-sect-seat-hall-people-talk). */
   readonly mind?: SectHallMind;
+  /** La alquimia de la secta (novel2-alch-sect): cosecha hierbas de la sede y refina píldoras. */
+  readonly alchemy?: SectAlchemy;
 }
 
 /** Lo que hace falta para darles la mente de un adulto de la siembra. */
@@ -213,6 +221,20 @@ export function seatRoutineOf(
 }
 
 /** Escritor de `SECT_HALL` y de la gente de la secta que materializa (cableado opt-in). */
+/** Lo que necesita la alquimia semanal de la secta (novel2-alch-sect). */
+export interface SectAlchemy {
+  readonly herbs: readonly HerbDef[];
+  readonly pills: readonly PillDef[];
+  /** El saber hacer que da la mano del alquimista; sin él, la mano es 0. */
+  readonly skill?: SkillDef;
+}
+
+/** Fuente externa del horno de la secta: entran hierbas, salen píldoras (novel2-alch-sect). */
+export const SECT_FURNACE = "sect.furnace";
+export const SECT_ALCHEMY_EVENT = "cultivation.sect_alchemy";
+/** Qué parte de lo que crece en la sede cosecha la secta cada semana. */
+export const HERB_HARVEST_SHARE = 0.5;
+
 export function sectHallProcess(o: SectHallOptions): ProcessDef {
   return {
     id: SECT_HALL_PROCESS,
@@ -229,6 +251,7 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
       PLACE.name,
       ENTITY.name,
       SECT_MEMBER.name,
+      ...(o.alchemy && !o.mind ? [SKILL_STATE.name] : []),
     ],
     writes: [
       SECT_HALL.name,
@@ -293,6 +316,15 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             causes: [{ kind: "state", entity: org, key: SECT.name }],
           },
         );
+        if (o.alchemy)
+          brew(o.alchemy, truth, ctx.ledger, Rng.root(ctx.rng.seed).fork("alchemy", ctx.now), {
+            org,
+            seat: sect.seatPlace,
+            hall,
+            alive,
+            events,
+            postings,
+          });
       }
       const plan = o.bodyPlans.find((p) => p.id === "human");
       const here = (truth.ids(PLAYER) as AgentId[])
@@ -536,6 +568,101 @@ function payStipend(
     },
     emissions: {},
     causes: [{ kind: "state", entity: org, key: SECT_HALL.name }],
+  });
+}
+
+/**
+ * La alquimia de la semana (novel2-alch-sect): la secta cosecha `HERB_HARVEST_SHARE` de las hierbas
+ * en pie en su sede (de la cuenta del lugar al tesoro) y el anciano o maestro vivo con mejor mano
+ * refina, píldora por píldora en el orden del contenido, lo que falta para tener `endowPerHead` por
+ * cabeza en el tesoro, hasta donde den las hierbas. Lo que se quema entra al horno (`sect.furnace`)
+ * y de ahí salen las píldoras.
+ */
+function brew(
+  alchemy: SectAlchemy,
+  truth: ReadonlyWorldTruth,
+  ledger: { balance(account: LedgerAccount, unit: LedgerUnit): number },
+  rng: Rng,
+  at: {
+    readonly org: EntityRef;
+    readonly seat: EntityRef;
+    readonly hall: SectHall;
+    readonly alive: number;
+    readonly events: EventDraft[];
+    readonly postings: PostingDraft[];
+  },
+): void {
+  const treasury = treasuryAccount(at.org);
+  const field = holderAccount({ kind: "place", place: at.seat as unknown as PlaceId });
+  const furnace = externalAccount(SECT_FURNACE);
+  const transfers: { unit: LedgerUnit; from: LedgerAccount; to: LedgerAccount; amount: number }[] =
+    [];
+  const harvested: Record<string, number> = {};
+  const herbs = new Map<string, number>();
+  for (const herb of alchemy.herbs) {
+    const unit = ledgerUnit(`good:${herb.good}`);
+    const cut = Math.floor(Math.max(0, ledger.balance(field, unit)) * HERB_HARVEST_SHARE);
+    if (cut > 0) {
+      transfers.push({ unit, from: field, to: treasury, amount: cut });
+      harvested[herb.id] = cut;
+    }
+    herbs.set(herb.id, Math.max(0, ledger.balance(treasury, unit)) + cut);
+  }
+  // El alquimista: el anciano o maestro vivo con mejor mano.
+  let alchemist: AgentId | undefined;
+  let hand = 0;
+  for (const { person } of at.hall.people) {
+    const ref = person as unknown as EntityRef;
+    if (truth.get(ENTITY, ref)?.endedAt !== undefined) continue;
+    const rank = truth.get(SECT_MEMBER, ref);
+    if (rank?.org !== at.org || (rank.rank !== "elder" && rank.rank !== "master")) continue;
+    const level = alchemy.skill
+      ? skillLevel(alchemy.skill, truth.get(SKILL_STATE, ref)?.[alchemy.skill.id])
+      : 0;
+    if (alchemist === undefined || level > hand) {
+      alchemist = person;
+      hand = level;
+    }
+  }
+  hand = Math.min(1, Math.max(0, hand));
+  const refined: { pill: string; attempts: number; made: number; used: number }[] = [];
+  for (const pill of alchemist === undefined ? [] : alchemy.pills) {
+    const recipe = pill.recipe;
+    const herb = recipe ? alchemy.herbs.find((h) => h.id === recipe.herb) : undefined;
+    if (!recipe || !herb) continue;
+    const unit = ledgerUnit(`good:${pill.good}`);
+    const need = Math.ceil((pill.endowPerHead ?? 0) * at.alive) - ledger.balance(treasury, unit);
+    const have = herbs.get(herb.id) ?? 0;
+    if (need <= 0 || have < recipe.grams) continue;
+    const r = refineBatch(pill, Math.min(have, need * recipe.grams), hand, rng.fork(pill.id));
+    if (r.attempts === 0) continue;
+    herbs.set(herb.id, have - r.used);
+    const herbUnit = ledgerUnit(`good:${herb.good}`);
+    transfers.push({ unit: herbUnit, from: treasury, to: furnace, amount: r.used });
+    if (r.made > 0) transfers.push({ unit, from: furnace, to: treasury, amount: r.made });
+    refined.push({ pill: pill.id, ...r });
+  }
+  if (transfers.length === 0) return;
+  const i = at.events.length;
+  at.postings.push({ event: draftEvent(i), transfers });
+  at.events.push({
+    kind: SECT_ALCHEMY_EVENT,
+    actors: alchemist !== undefined && refined.length > 0 ? [alchemist] : [],
+    place: seatRef(at.seat),
+    data: { org: at.org, harvested, refined, ...(refined.length > 0 ? { hand } : {}) },
+    emissions: {},
+    causes: [
+      { kind: "state", entity: at.org, key: SECT.name },
+      ...(alchemist !== undefined && refined.length > 0
+        ? [
+            {
+              kind: "state" as const,
+              entity: alchemist as unknown as EntityRef,
+              key: SKILL_STATE.name,
+            },
+          ]
+        : []),
+    ],
   });
 }
 

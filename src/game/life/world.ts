@@ -2558,6 +2558,19 @@ export function lifeWorld(
                             }
                           : {};
                       })(),
+                      // La secta cosecha y refina (novel2-alch-sect).
+                      ...(parts.cultivation?.herbs && parts.cultivation.pills
+                        ? {
+                            alchemy: {
+                              herbs: parts.cultivation.herbs,
+                              pills: parts.cultivation.pills,
+                              ...(() => {
+                                const skill = parts.skills.skill("medicine");
+                                return skill ? { skill } : {};
+                              })(),
+                            },
+                          }
+                        : {}),
                       traits: parts.traits,
                       bodyPlans: parts.plans,
                       ...(parts.form
