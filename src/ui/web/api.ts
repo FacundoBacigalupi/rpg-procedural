@@ -106,6 +106,11 @@ export interface Hud {
     }[];
     readonly short: 0 | 1 | 2;
   };
+  readonly cultivation?: {
+    readonly fill: 0 | 1 | 2 | 3;
+    readonly realm?: { readonly name: string; readonly layer?: number; readonly word?: string };
+    readonly hurt: boolean;
+  };
 }
 
 export interface Panels {
