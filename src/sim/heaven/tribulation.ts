@@ -36,6 +36,13 @@ export const TRIBULATION_GATHERS_EVENT = "heaven.tribulation_gathers";
 /** La tribulación cae; la ruptura se resuelve después. */
 export const TRIBULATION_STRIKES_EVENT = "heaven.tribulation_strikes";
 
+/** Lo que de una tribulación ven y oyen los de alrededor (novel2-trib-seen): nubes, caída y rayos. */
+export const TRIBULATION_SEEN: ReadonlySet<string> = new Set([
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_STRIKES_EVENT,
+  "heaven.tribulation_wave",
+]);
+
 /** Qué parte de la capacidad del umbral pide el Cielo por unidad de fuerza × ofensa (sin calibrar). */
 export const TRIBULATION_SCALE = 0.5;
 /** Cuántas horas tardan las nubes, entre estos extremos según fuerza × ofensa (sin calibrar). */

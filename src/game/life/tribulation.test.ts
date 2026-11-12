@@ -14,7 +14,11 @@ import {
   BREAKTHROUGH_EVENT,
   CULTIVATION_LAW,
   CULTIVATION_STATE,
+  ENTITY,
   HEAVEN_LAW,
+  LOCATION,
+  MEMORIES,
+  PERSON,
   QI_TAKEN,
   TALENT,
   TRIBULATION,
@@ -149,6 +153,46 @@ describe("la tribulación se junta y cae en olas (novel2-trib-gather, novel2-tri
     const cues = playerView(w, [], { heardSince: beforeStrike }).self.cues;
     expect(cues).toContain("tribulation_strikes");
     expect(cues.some((c) => c.startsWith("break_"))).toBe(true);
+  }, 600_000);
+
+  it("quien la ve caer la recuerda con quién fue (novel2-trib-seen)", () => {
+    const life = Life.create(3, content, { cultivation: true });
+    const w = life.world;
+    const me = life.player;
+    const plane = w.truth.ids(CULTIVATION_LAW)[0];
+    const law = plane ? w.truth.get(CULTIVATION_LAW, plane) : undefined;
+    const ts = law?.paths[0]?.thresholds ?? [];
+    const last = ts[ts.length - 1];
+    if (!plane || !last) throw new Error("sin ley");
+    w.truth.set(CULTIVATION_STATE, me, {
+      sensitivity: 2,
+      hours: 500,
+      sensed: { at: life.now, event: w.log.all()[0]?.id as EventId },
+      stage: ts.length - 1,
+      qi: last.capacity,
+      purity: 1,
+      foundation: 1,
+    });
+    let seq = 1;
+    freshTurn(life, doFor(me, "breakthrough", 1), seq++);
+    // Un vecino despierto al lado, cada hora, hasta que cae.
+    const witness = [...w.truth.ids(PERSON)]
+      .sort()
+      .find((id) => id !== me && !w.truth.get(ENTITY, id)?.endedAt) as AgentId | undefined;
+    if (!witness) throw new Error("sin vecinos");
+    for (let i = 0; i < 8 && w.truth.get(TRIBULATION, me); i++) {
+      const at = w.truth.get(LOCATION, me);
+      if (at) w.truth.set(LOCATION, witness, at);
+      const b = w.truth.get(BODY_STATE, witness);
+      if (b) w.truth.set(BODY_STATE, witness, { ...b, activity: "idle" });
+      life.turn(doFor(me, "wait", 1), seq++);
+    }
+    const strike = w.log.all().find((e) => e.kind === TRIBULATION_STRIKES_EVENT);
+    if (!strike) throw new Error("no cayó");
+    const mem = w.truth.get(MEMORIES, witness)?.items.find((m) => m.eventId === strike.id);
+    expect(mem).toBeDefined();
+    expect(mem?.source).toBe("witnessed");
+    expect(mem?.valence).toBeLessThan(0);
   }, 600_000);
 
   it("el primer umbral no llama tribulación: la ruptura se resuelve en el acto", () => {
