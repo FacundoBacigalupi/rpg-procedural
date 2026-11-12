@@ -279,6 +279,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { transitProcess } from "./transit.ts";
 import { TREK_PROVISIONS, trekProcess } from "./trek.ts";
+import { tribulationProcess } from "./tribulation.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
@@ -2493,7 +2494,10 @@ export function lifeWorld(
                 bodyPlans: parts.plans,
                 yearTicks: parts.clock.year,
                 ...(parts.map.patches ? { map: parts.map } : {}),
+                // Los umbrales altos llaman tribulación (novel2-trib-gather).
+                dayTicks: parts.clock.day,
               }),
+              tribulationProcess(),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
               sectDutyProcess({ dayTicks: parts.clock.day }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).

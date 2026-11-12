@@ -1,4 +1,5 @@
-// El Cielo (heaven-karma): por ahora su fuerza por mundo y cuándo una ruptura llama tribulación.
+// El Cielo (heaven-karma): por ahora su fuerza por mundo, cuándo una ruptura llama tribulación y la
+// tribulación en curso (nubes que se juntan con qi del lugar, y caen).
 
 export {
   generateHeavenLaw,
@@ -11,3 +12,14 @@ export {
   THRESHOLD_TOP,
   tribulationDue,
 } from "./law.ts";
+export {
+  GATHER_HOURS,
+  gatherHours,
+  TRIBULATION,
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_SCALE,
+  TRIBULATION_STRIKES_EVENT,
+  type Tribulation,
+  tribulationEnergy,
+  tribulationWeight,
+} from "./tribulation.ts";

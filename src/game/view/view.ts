@@ -64,6 +64,10 @@ export type SelfCue =
   | "break_backlash"
   /** Intentó romper sin sentir el qi: no hay nada que empujar. */
   | "break_nothing"
+  /** El umbral ofende al Cielo: las nubes se juntan sobre él (`heaven.tribulation_gathers`). */
+  | "tribulation_gathers"
+  /** La tribulación cae sobre él (`heaven.tribulation_strikes`, novel2-trib-gather). */
+  | "tribulation_strikes"
   /** Oyó el aviso: en unos días baja la secta a la plaza a buscar discípulos (novel-cult-sect-visit). */
   | "sect_coming"
   /** La gente de la secta está en la plaza. */

@@ -17,6 +17,11 @@
 //
 // La técnica (novel-cult-school): quien aprendió la de entrada de una secta medita y absorbe con su
 // factor (lo que pide; la celda y la capacidad siguen acotando).
+//
+// La tribulación (novel2-trib-gather): si el umbral ofende al Cielo (`tribulationDue`), el intento no
+// se resuelve en el acto: el Cielo saca qi de la reserva (`TRIBULATION`, débito en `QI_TAKEN`), las
+// nubes se juntan a la vista y `tribulationProcess` agenda la caída; al verla, la ruptura se resuelve
+// y la energía vuelve a la reserva. Mientras hay una en curso, otro intento no hace nada.
 
 import type { AgentId, EntityRef, Event, EventId, Rng } from "../../core/index.ts";
 import {
@@ -37,7 +42,10 @@ import {
   CULTIVATION_TECHNIQUE,
   type CultivationLaw,
   type CultivationState,
+  deleteComponent,
   type EventDraft,
+  gatherHours,
+  HEAVEN_LAW,
   isSectCave,
   LOCATION,
   type LocalMap,
@@ -56,13 +64,21 @@ import {
   type ReadonlyWorldTruth,
   regrown,
   rootMatch,
+  type ScheduleRequest,
   SENSE_THRESHOLD,
   SENSED_QI_EVENT,
   type StateChange,
   setComponent,
   TALENT,
+  TRIBULATION,
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_STRIKES_EVENT,
+  type Tribulation,
+  tribulationDue,
+  tribulationEnergy,
   vesselCapacity,
 } from "../../sim/index.ts";
+import { TRIBULATION_PROCESS } from "./tribulation.ts";
 
 export const MEDITATE_PROCESS = "life.cultivation.meditate";
 /** Una hora de meditar o un intento de romper de la rutina delegada (novel-cult-delegate). */
@@ -205,6 +221,11 @@ export function meditateProcess(o: {
    * del parche donde está (`qiPoolOf`). Sin él, todos sobre la del plano.
    */
   readonly map?: LocalMap;
+  /**
+   * Ticks por día (novel2-trib-gather): con él, los umbrales que ofenden al Cielo llaman
+   * tribulación (las horas de nubes se cuentan con él). Sin él, toda ruptura se resuelve en el acto.
+   */
+  readonly dayTicks?: number;
 }): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   const pooled = o.map?.patches !== undefined;
@@ -225,12 +246,25 @@ export function meditateProcess(o: {
       CULTIVATION_TECHNIQUE.name,
       LOCATION.name,
       ...(pooled ? [PLACE.name] : []),
+      ...(o.dayTicks !== undefined ? [HEAVEN_LAW.name, TRIBULATION.name] : []),
     ],
-    writes: [CULTIVATION_STATE.name, QI_TAKEN.name],
+    writes: [
+      CULTIVATION_STATE.name,
+      QI_TAKEN.name,
+      ...(o.dayTicks !== undefined ? [TRIBULATION.name] : []),
+    ],
     run(ctx) {
       const plane = ctx.truth.ids(CULTIVATION_LAW)[0];
       const law = plane ? ctx.truth.get(CULTIVATION_LAW, plane) : undefined;
       if (!plane || !law) return {};
+      const heaven = o.dayTicks !== undefined ? ctx.truth.get(HEAVEN_LAW, plane) : undefined;
+      /** Las tribulaciones que esta corrida abre (`Tribulation`) o cierra (`null`). */
+      const tribs = new Map<AgentId, Tribulation | null>();
+      const schedule: ScheduleRequest[] = [];
+      const pending = (who: AgentId): Tribulation | undefined => {
+        const t = tribs.get(who);
+        return t === null ? undefined : (t ?? ctx.truth.get(TRIBULATION, who));
+      };
       // Cada reserva con su débito; la del plano es la de la aldea.
       const pools = new Map<
         EntityRef,
@@ -255,11 +289,92 @@ export function meditateProcess(o: {
       const stateOf = (who: AgentId): CultivationState =>
         rows.get(who) ?? ctx.truth.get(CULTIVATION_STATE, who) ?? { sensitivity: 0, hours: 0 };
       for (const e of ctx.recent) {
+        // La tribulación cayó: la energía vuelve a su reserva y la ruptura se resuelve.
+        const struck = e.kind === TRIBULATION_STRIKES_EVENT ? (e.actors[0] as AgentId) : undefined;
+        if (struck) {
+          const t = pending(struck);
+          if (!t) continue;
+          tribs.set(struck, null);
+          poolFor(struck);
+          const back = pools.get(t.pool);
+          if (back?.taken) {
+            back.taken = { ...back.taken, taken: round4(Math.max(0, back.taken.taken - t.energy)) };
+          }
+          const talent = ctx.truth.get(TALENT, struck);
+          if (!talent) continue;
+          const before = stateOf(struck);
+          const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
+          const calm = calmOf(plans, ctx.truth.get(BODY_STATE, struck));
+          const pool = pools.get(poolFor(struck)) as { taken?: QiTaken };
+          const r = resolveBreak(e, struck, law, apt, before, calm, pool.taken, ctx.rng);
+          if (!r) continue;
+          rows.set(struck, r.next);
+          if (r.taken) pool.taken = r.taken;
+          else delete pool.taken;
+          events.push(r.event);
+          continue;
+        }
         const breaker = breakAttempt(e);
         if (breaker) {
           const talent = ctx.truth.get(TALENT, breaker);
           if (!talent) continue;
+          // Ya hay nubes sobre él: el intento no agrega nada.
+          if (pending(breaker)) continue;
           const before = stateOf(breaker);
+          const threshold = law.paths[0]?.thresholds[before.stage ?? 0];
+          if (
+            o.dayTicks !== undefined &&
+            heaven &&
+            before.sensed &&
+            threshold &&
+            tribulationDue(heaven, threshold.transgression)
+          ) {
+            const poolId = poolFor(breaker);
+            const pool = pools.get(poolId) as { place?: PlaceQi; taken?: QiTaken };
+            const inCell =
+              pool.place && pool.taken ? Math.max(0, pool.place.level - pool.taken.taken) : 0;
+            const energy = tribulationEnergy(
+              heaven,
+              threshold.transgression,
+              threshold.capacity,
+              inCell,
+            );
+            if (pool.taken && energy > 0) {
+              pool.taken = { ...pool.taken, taken: round4(pool.taken.taken + energy) };
+            }
+            const hours = gatherHours(heaven, threshold.transgression);
+            const strikeAt = ctx.now + Math.max(1, Math.round((hours * o.dayTicks) / 24));
+            tribs.set(breaker, {
+              threshold: threshold.id,
+              stage: before.stage ?? 0,
+              energy,
+              pool: poolId,
+              gatheredAt: ctx.now,
+              strikeAt,
+              place: e.place,
+              attempt: e.id,
+            });
+            schedule.push({
+              at: strikeAt,
+              phase: "physics",
+              process: TRIBULATION_PROCESS,
+              scope: breaker,
+              reason: { kind: "event", event: e.id },
+            });
+            events.push({
+              kind: TRIBULATION_GATHERS_EVENT,
+              actors: [breaker],
+              place: e.place,
+              data: { threshold: threshold.id, energy, hours, strikeAt },
+              emissions: { sight: 1 },
+              causes: [
+                { kind: "event", event: e.id },
+                { kind: "state", entity: plane, key: HEAVEN_LAW.name },
+                { kind: "state", entity: poolId, key: PLACE_QI.name },
+              ],
+            });
+            continue;
+          }
           const apt = healthyAptitude(aptitudeOf(law, talent.innate), before);
           const calm = calmOf(plans, ctx.truth.get(BODY_STATE, breaker));
           const pool = pools.get(poolFor(breaker)) as { taken?: QiTaken };
@@ -352,13 +467,19 @@ export function meditateProcess(o: {
       const changes: StateChange[] = [...rows].map(([id, row]) =>
         setComponent(CULTIVATION_STATE, id, row),
       );
+      for (const [id, t] of [...tribs].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        changes.push(
+          t === null ? deleteComponent(TRIBULATION, id) : setComponent(TRIBULATION, id, t),
+        );
+      }
       if (changes.length > 0) {
         for (const [id, pool] of [...pools].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
           if (pool.taken && pool.taken !== pool.row)
             changes.push(setComponent(QI_TAKEN, id, pool.taken));
         }
       }
-      return changes.length === 0 ? {} : { changes, events };
+      if (changes.length === 0) return {};
+      return { changes, events, ...(schedule.length > 0 ? { schedule } : {}) };
     },
   };
 }

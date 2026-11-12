@@ -302,6 +302,20 @@
     ]
   },
   {
+    "id": "percept.action.heaven.tribulation_gathers",
+    "lines": [
+      "Sobre {who} el cielo se oscurece: nubes que se juntan en un solo lugar, bajas y pesadas.",
+      "Las nubes se arremolinan encima de {who}, y el aire se pone espeso, como antes de una tormenta."
+    ]
+  },
+  {
+    "id": "percept.action.heaven.tribulation_strikes",
+    "lines": [
+      "Un rayo baja de las nubes sobre {who}; el estruendo te llega al pecho.",
+      "El cielo se abre sobre {who} con un golpe de luz y un trueno que sacude todo."
+    ]
+  },
+  {
     "id": "percept.action.family.birth",
     "lines": [
       "Se oye llorar a {who}, apenas nacido.",
@@ -1299,6 +1313,20 @@
   {
     "id": "self.break_nothing",
     "lines": ["Empujás hacia adentro, pero no hay nada que empujar: ni corriente, ni pared."]
+  },
+  {
+    "id": "self.tribulation_gathers",
+    "lines": [
+      "Empujás, y el umbral no cede: algo arriba responde. El aire se pone pesado y el cielo se oscurece justo encima de vos.",
+      "Antes de que el qi pase, sentís que te miran desde arriba. Las nubes empiezan a juntarse sobre tu cabeza, y no sobre otra parte."
+    ]
+  },
+  {
+    "id": "self.tribulation_strikes",
+    "lines": [
+      "Las nubes se abren y el peso de arriba cae sobre vos de una vez, como un trueno que se mete adentro.",
+      "El cielo se rompe encima tuyo. Un golpe blanco, un estruendo, y el qi que empujabas se sacude contra el umbral."
+    ]
   },
   {
     "id": "self.sect_coming",

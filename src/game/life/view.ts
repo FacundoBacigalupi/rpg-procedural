@@ -70,6 +70,8 @@ import {
   TASTES_OF,
   TECHNIQUE_TAUGHT_EVENT,
   TRACE,
+  TRIBULATION_GATHERS_EVENT,
+  TRIBULATION_STRIKES_EVENT,
   type TradeRecipeDef,
   thingStimulus,
   traceStrength,
@@ -575,6 +577,7 @@ function sectCue(w: LifeWorld, since: Tick): SelfCue | undefined {
  * el resultado, es que no sentía el qi y no hubo nada que empujar.
  */
 function breakCue(e: Event): SelfCue {
+  if (e.kind === TRIBULATION_GATHERS_EVENT) return "tribulation_gathers";
   if (e.kind !== BREAKTHROUGH_EVENT) return "break_nothing";
   const outcome = (e.data as { outcome?: string } | null)?.outcome;
   if (outcome === "success") return "break_success";
@@ -708,13 +711,22 @@ export function playerView(
     // En la cueva de la sede, el qi se junta (novel-sect-cave-vein).
     if ((absorbed.data as { focus?: unknown } | null)?.focus !== undefined) cues.add("qi_dense");
   }
+  // La tribulación cae (novel2-trib-gather): antes que el resultado de la ruptura.
+  if (
+    options.heardSince !== undefined &&
+    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TRIBULATION_STRIKES_EVENT)
+  )
+    cues.add("tribulation_strikes");
   const broke =
     options.heardSince === undefined
       ? undefined
       : lastPlayerEventSince(
           w,
           options.heardSince,
-          (e) => e.kind === BREAKTHROUGH_EVENT || e.kind === "action.breakthrough",
+          (e) =>
+            e.kind === BREAKTHROUGH_EVENT ||
+            e.kind === "action.breakthrough" ||
+            e.kind === TRIBULATION_GATHERS_EVENT,
         );
   if (broke) cues.add(breakCue(broke));
   const chore =
