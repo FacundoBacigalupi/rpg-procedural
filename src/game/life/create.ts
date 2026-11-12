@@ -71,6 +71,7 @@ import {
   HABITS_CONTENT,
   HARVEST,
   HARVEST_GOOD,
+  HERBS,
   HOUSEHOLD_TOOLS,
   type Household,
   herdSpecies,
@@ -196,6 +197,7 @@ import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
 import { BURNED_SINK, seedHearths } from "./hearth.ts";
+import { HERB_SOURCE } from "./herbs.ts";
 import { roughShareOf } from "./herd-land.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
@@ -865,7 +867,13 @@ export function cultivationParts(
   content: Content,
 ): Pick<LifeParts, "cultivation"> {
   return options.cultivation
-    ? { cultivation: { talents: content.all(TALENTS), pills: content.all(PILLS) } }
+    ? {
+        cultivation: {
+          talents: content.all(TALENTS),
+          pills: content.all(PILLS),
+          herbs: content.all(HERBS),
+        },
+      }
     : {};
 }
 
@@ -1691,6 +1699,8 @@ export function ledgerConfigOf(
   cultivation = false,
 ): LedgerConfig {
   const pillUnits = cultivation ? content.all(PILLS).map((p) => ledgerUnit(`good:${p.good}`)) : [];
+  // Las hierbas espirituales (novel2-pills-herbs): crecen del qi del lugar (fuente `herb`).
+  const herbUnits = cultivation ? content.all(HERBS).map((h) => ledgerUnit(`good:${h.good}`)) : [];
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
     ...new Set(
@@ -1762,6 +1772,7 @@ export function ledgerConfigOf(
       ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
       // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
       ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER, ...pillUnits] } : {}),
+      ...(herbUnits.length > 0 ? { [HERB_SOURCE]: herbUnits } : {}),
     },
   };
 }

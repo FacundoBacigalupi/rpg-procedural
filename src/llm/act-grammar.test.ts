@@ -57,6 +57,12 @@ describe("la gramática y el acto de habla declarado", () => {
     });
   });
 
+  it("juntar hierbas espirituales las nombra (novel2-pills-herbs)", () => {
+    expect(parseCommand("junto hierbas espirituales")).toMatchObject({
+      plan: { verb: "gather", args: [{ role: "what", text: "hierbas espirituales" }] },
+    });
+  });
+
   it("tragar una píldora es consumirla (novel2-pills-take)", () => {
     expect(parseCommand("tomo una píldora de reunir qi")).toMatchObject({
       plan: { verb: "consume", args: [{ role: "what", text: "píldora de reunir qi" }] },

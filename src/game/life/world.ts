@@ -39,6 +39,7 @@ import {
   HEARTH,
   HEARTH_BURN_G_PER_H,
   HEARTH_WARMING,
+  type HerbDef,
   type HouseholdToolDef,
   KNOWN_DEEDS,
   LIVESTOCK_PASTURE_SHARE,
@@ -158,6 +159,7 @@ import {
   hearthEnv,
   hearthProcess,
 } from "./hearth.ts";
+import { herbsProcess } from "./herbs.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess, npcLarderProcess } from "./inventory-belief.ts";
@@ -846,6 +848,8 @@ export interface LifeWorld {
     readonly talents: readonly Trait[];
     /** Las píldoras que se pueden tragar (`content/pills/`, novel2-pills-take). */
     readonly pills?: readonly PillDef[];
+    /** Las hierbas espirituales que crecen del qi del lugar (`content/herbs/`, novel2-pills-herbs). */
+    readonly herbs?: readonly HerbDef[];
   };
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
@@ -1277,7 +1281,9 @@ export function lifeWorld(
           ...(parts.npcPace && parts.npcStrain === true ? { strain: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.itemClaims === true ? { itemClaims: true } : {}),
-          ...(parts.wildHarvest === true && parts.wildFirewood === true
+          // Las hierbas espirituales se juntan nombrándolas (novel2-pills-herbs).
+          ...((parts.wildHarvest === true && parts.wildFirewood === true) ||
+          (parts.cultivation?.herbs?.length ?? 0) > 0
             ? { gatherByWords: true }
             : {}),
           ...(parts.tasteDemand === true ? { tasteDemand: parts.tastes } : {}),
@@ -2507,6 +2513,9 @@ export function lifeWorld(
                 ...(parts.cultivation.pills ? { pills: parts.cultivation.pills } : {}),
               }),
               tribulationProcess(),
+              ...(parts.cultivation.herbs && parts.cultivation.herbs.length > 0
+                ? [herbsProcess({ dayTicks: parts.clock.day, herbs: parts.cultivation.herbs })]
+                : []),
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
               sectDutyProcess({
                 dayTicks: parts.clock.day,

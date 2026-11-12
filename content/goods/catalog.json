@@ -360,5 +360,12 @@
     "form": "good",
     "priceCopperPerKg": 1000000,
     "halfLifeDays": 3650
+  },
+  {
+    "id": "spirit-herb",
+    "name": "hierba espiritual",
+    "form": "good",
+    "priceCopperPerKg": 20000,
+    "halfLifeDays": 120
   }
 ]

@@ -1371,6 +1371,10 @@ const gather: Resolver = (c) => {
     return {
       effect: { kind: "gather", good: null, amount: 0, what, stumbled: false },
       seconds: c.nominal,
+      // En la sede solo hay lo que se nombra (las hierbas, novel2-pills-herbs): lo otro no está.
+      ...(!c.roll.unmet
+        ? { override: { outcome: "failure", failure: "not_here", believed: "failure" } as const }
+        : {}),
     };
   }
   const good = ledgerUnit(`good:${spec.good}`);
