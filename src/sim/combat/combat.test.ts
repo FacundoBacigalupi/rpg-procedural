@@ -283,3 +283,50 @@ describe("cuerpo templado (novel3-refined-core)", () => {
     expect(fight([...fs].reverse(), 4)).toEqual(fight(fs, 4));
   });
 });
+
+describe("práctica (novel3-spar-core)", () => {
+  const spar = (seed: number, over: Partial<FighterInput> = {}) =>
+    fight(
+      [fighter(A, "a", 0, { intent: "spar", ...over }), fighter(B, "b", 0.7, { intent: "spar" })],
+      seed,
+    );
+  const real = (seed: number) =>
+    fight(
+      [fighter(A, "a", 0, { intent: "subdue" }), fighter(B, "b", 0.7, { intent: "subdue" })],
+      seed,
+    );
+  const worst = (r: ReturnType<typeof fight>) =>
+    Math.max(0, ...r.fighters.flatMap((f) => f.body.wounds.map((w) => w.severity)));
+
+  it("es determinista y termina por concesión, nunca con muerte ni huida", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = spar(seed);
+      expect(spar(seed)).toEqual(r);
+      for (const f of r.fighters) expect(["standing", "yielded"]).toContain(f.outcome);
+      expect(r.log.some((l) => l.kind === "flee")).toBe(false);
+    }
+  });
+
+  it("los golpes frenados lastiman menos que una pelea de verdad, sin cabeza ni cuello", () => {
+    let soft = 0;
+    let hard = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = spar(seed, { skill: 0.9 });
+      soft += worst(s);
+      hard += worst(real(seed));
+      for (const l of s.log) {
+        if (l.kind === "hit" && l.zone) expect(["head", "neck"]).not.toContain(l.zone);
+      }
+    }
+    expect(soft).toBeLessThan(hard / 2);
+  });
+
+  it("concede el que va perdiendo: el más hábil gana la mayoría", () => {
+    let wins = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = spar(seed, { skill: 0.9 });
+      if (r.fighters.find((f) => f.id === B)?.outcome === "yielded") wins++;
+    }
+    expect(wins).toBeGreaterThan(20);
+  });
+});
