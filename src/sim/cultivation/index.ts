@@ -7,6 +7,7 @@ export * from "./meditation.ts";
 export * from "./member.ts";
 export * from "./pavilion.ts";
 export * from "./pill.ts";
+export * from "./rank.ts";
 export * from "./school.ts";
 export * from "./sect.ts";
 export * from "./seed.ts";
