@@ -246,6 +246,7 @@ import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sectDutyProcess } from "./sect-duty.ts";
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
+import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
@@ -2571,6 +2572,15 @@ export function lifeWorld(
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
+                    // Los discípulos practican entre ellos a su hora (novel3-spar-npc).
+                    sectSparProcess({
+                      bodyPlans: parts.plans,
+                      skills: parts.skills,
+                      traits: parts.traits,
+                      dayTicks: parts.clock.day,
+                      light: SECT_SPAR_LIGHT,
+                      refined: true,
+                    }),
                     // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
                     sectHallProcess({
@@ -3013,7 +3023,11 @@ export function lifeWorld(
           ...(parts.cultivation ? { sectLore: true } : {}),
           // Quien vive en la sede duerme en los dormitorios y medita en la cueva (hall-people-keep).
           ...(parts.cultivation && parts.map.patches
-            ? { seatOf: (t, me) => seatRoutineOf(t, me, parts.map) }
+            ? {
+                seatOf: (t, me) => seatRoutineOf(t, me, parts.map),
+                // Una hora de la tarde practican entre ellos (novel3-spar-npc).
+                sparHour: SECT_SPAR_HOUR,
+              }
             : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
