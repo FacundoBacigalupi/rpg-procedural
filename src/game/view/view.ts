@@ -129,6 +129,9 @@ export type SelfCue =
   | "rank_refused"
   | "mission_herbs"
   | "mission_watch"
+  | "mission_progress"
+  | "mission_done"
+  | "mission_lapsed"
   | "rank_unheard"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */
   | "leave_granted"

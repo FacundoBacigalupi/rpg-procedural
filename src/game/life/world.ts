@@ -2541,6 +2541,7 @@ export function lifeWorld(
               sectDutyProcess({
                 dayTicks: parts.clock.day,
                 relations: { dims: parts.relationDims, bonds: parts.relationBonds },
+                ...(parts.cultivation.herbs ? { herbs: parts.cultivation.herbs } : {}),
                 // El tesoro canjea píldoras por puntos (novel2-pills-exchange).
                 ...(parts.cultivation.pills
                   ? {

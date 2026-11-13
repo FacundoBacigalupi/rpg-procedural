@@ -11,6 +11,8 @@ import {
   type EntityRef,
   externalAccount,
   HOUR,
+  type HolderRef,
+  holderAccount,
   ledgerUnit,
   loadContent,
 } from "../../core/index.ts";
@@ -21,9 +23,13 @@ import {
   checkInvariants,
   LOCATION,
   MISSION_ASSIGNED_EVENT,
+  MISSION_DONE_EVENT,
+  MISSION_LAPSED_EVENT,
+  MISSION_PROGRESS_EVENT,
   normalize,
   PLACE,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_MEMBER,
   SECT_MISSION,
   understand,
@@ -145,8 +151,78 @@ describe("pedir una misión (novel2-missions-ask)", () => {
     // Una a la vez.
     expect(ask(elder, "Dame otra misión").line).toBe("mission.refuse.busy");
 
+    // Entregar las hierbas al anciano en la sede (novel2-missions-herbs): pasan al tesoro y se anotan
+    // los puntos de lo que cuenta; la que la completa la cierra.
+    const grams = mission?.grams ?? 0;
+    const herb = ledgerUnit("good:spirit-herb");
+    w.ledger.post({
+      tick: first.tick,
+      eventId: first.id,
+      transfers: [
+        {
+          unit: herb,
+          from: externalAccount("herb"),
+          to: holderAccount(me as unknown as HolderRef),
+          amount: grams + 10,
+        },
+      ],
+    });
+    const give = (text: string) => {
+      meet(elder);
+      return life.turn(
+        {
+          actor: me,
+          source: "player",
+          root: {
+            kind: "do",
+            verb: "give",
+            args: [
+              { role: "to", entity: elder },
+              { role: "what", text },
+            ],
+            manner: [],
+          },
+          manner: [],
+          causes: [{ kind: "state", entity: me, key: "intent" }],
+        },
+        1,
+      ).events;
+    };
+    const inTreasury = () => w.ledger.balance(treasury, herb);
+    const pointsBefore = w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0;
+    const half = Math.floor(grams / 2);
+    const firstGive = give(`${half} g de hierba espiritual`);
+    const progress = firstGive.find((e) => e.kind === MISSION_PROGRESS_EVENT);
+    expect(progress?.actors).toEqual([me, elder]);
+    expect(progress?.causes).toContainEqual({ kind: "event", event: given.assigned?.id });
+    expect(inTreasury()).toBe(half);
+    expect(w.truth.get(SECT_MISSION, me)?.done).toBe(half);
+    const partial = (w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0) - pointsBefore;
+    expect(partial).toBeGreaterThan(0);
+    const rest = grams - half + 10;
+    const done = give(`${rest} g de hierba espiritual`).find((e) => e.kind === MISSION_DONE_EVENT);
+    expect(done).toBeDefined();
+    expect(w.truth.has(SECT_MISSION, me)).toBe(false);
+    // Lo de más también va al tesoro, pero solo lo que pedía la misión da puntos.
+    expect(inTreasury()).toBe(grams + 10);
+    const total = (w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0) - pointsBefore;
+    expect(total).toBeCloseTo(mission?.points ?? 0, 1);
+
+    // La misión vencida se cae sin más puntos.
+    if (!mission) throw new Error("sin misión");
+    w.truth.set(SECT_MISSION, me, { ...mission, done: 0, due: life.now - 1 });
+    const before = w.log.all().length;
+    life.advanceTo(life.now + 2 * HOUR);
+    expect(
+      w.log
+        .all()
+        .slice(before)
+        .some((e) => e.kind === MISSION_LAPSED_EVENT && e.actors[0] === me),
+    ).toBe(true);
+    expect(w.truth.has(SECT_MISSION, me)).toBe(false);
+
     // Con el tesoro lleno de hierbas, no hace falta nada.
-    w.truth.deleteRaw(SECT_MISSION.name, me);
+    if (w.truth.has(SECT_MISSION, me)) w.truth.deleteRaw(SECT_MISSION.name, me);
     move("spirit-herb", 1_000_000);
     const none = ask(elder, "¿Hay alguna misión?");
     expect(none.line).toBe("mission.refuse.none");

@@ -1316,6 +1316,22 @@
     "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
   },
   {
+    "id": "self.mission_progress",
+    "lines": [
+      "El anciano recibe las hierbas y las anota a tu nombre; todavía falta para cumplir la misión."
+    ]
+  },
+  {
+    "id": "self.mission_done",
+    "lines": [
+      "El anciano recibe las hierbas y da la misión por cumplida; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
+    "id": "self.mission_lapsed",
+    "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
+  },
+  {
     "id": "self.chore_unpaid",
     "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },

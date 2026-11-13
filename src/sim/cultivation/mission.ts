@@ -56,6 +56,8 @@ export const SECT_MISSION = table<SectMission>("cultivation.sect_mission");
 
 export const MISSION_ASSIGNED_EVENT = "cultivation.mission_assigned";
 export const MISSION_DONE_EVENT = "cultivation.mission_done";
+/** Una entrega que no la completa (novel2-missions-herbs): se anotan los puntos de lo entregado. */
+export const MISSION_PROGRESS_EVENT = "cultivation.mission_progress";
 export const MISSION_LAPSED_EVENT = "cultivation.mission_lapsed";
 
 /** Lo más que pide una misión de hierbas; lo que falta de más queda para otras. */
@@ -185,6 +187,20 @@ export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number): Tick
 
 /** Si la misión ya venció sin cumplirse. */
 export const missionLapsed = (m: SectMission, now: Tick): boolean => now > m.due;
+
+/**
+ * Lo que vale una entrega de `amount` (gramos u horas) para la misión: cuánto cuenta (hasta lo que
+ * falta), los puntos de eso (a prorrata de los de la misión) y si con eso se cumple.
+ */
+export function missionCredit(
+  m: SectMission,
+  amount: number,
+): { readonly counted: number; readonly points: number; readonly complete: boolean } {
+  const total = m.kind === "herbs" ? (m.grams ?? 0) : (m.hours ?? 0);
+  const counted = Math.max(0, Math.min(amount, missionLeft(m)));
+  const points = total > 0 ? Math.round((counted / total) * m.points * 100) / 100 : 0;
+  return { counted, points, complete: total > 0 && m.done + counted >= total };
+}
 
 /** Lo que falta para cumplirla (gramos u horas). */
 export const missionLeft = (m: SectMission): number =>

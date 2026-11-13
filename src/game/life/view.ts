@@ -38,6 +38,9 @@ import {
   localHour,
   MEMORIES,
   MISSION_ASSIGNED_EVENT,
+  MISSION_DONE_EVENT,
+  MISSION_LAPSED_EVENT,
+  MISSION_PROGRESS_EVENT,
   mentionableTastes,
   PERSON,
   type Percept,
@@ -806,6 +809,26 @@ export function playerView(
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
     cues.add(kind === "watch" ? "mission_watch" : "mission_herbs");
+  }
+  const missionEnd =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) =>
+            e.kind === MISSION_DONE_EVENT ||
+            e.kind === MISSION_PROGRESS_EVENT ||
+            e.kind === MISSION_LAPSED_EVENT,
+        );
+  if (missionEnd) {
+    cues.add(
+      missionEnd.kind === MISSION_DONE_EVENT
+        ? "mission_done"
+        : missionEnd.kind === MISSION_PROGRESS_EVENT
+          ? "mission_progress"
+          : "mission_lapsed",
+    );
   }
   const leave =
     options.heardSince === undefined
