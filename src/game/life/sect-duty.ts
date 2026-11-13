@@ -9,6 +9,8 @@
 // Pedir el método (novel2-method-pavilion): si lo que se canjea es una técnica, el pabellón de
 // escrituras da el del reino siguiente (`methodExchange`) por puntos o por rango, con
 // `cultivation.sect_exchange` (`what: "method"`) y, si lo da, `cultivation.technique_taught`.
+// Las misiones (novel2-missions-ask): el `cultivation.mission_assigned` que deja el anciano al darla
+// se anota acá en `SECT_MISSION` (una por miembro), con el evento como causa.
 // Y el permiso para bajar (novel-sect-seat-return-leave): `furlough` en la sede deja `SECT_LEAVE`
 // con `cultivation.sect_leave`; la ausencia la lleva `life.sect_absence` (`sect-leave.ts`).
 
@@ -39,6 +41,7 @@ import {
   LOCATION,
   leaveDays,
   MASTER_OF,
+  MISSION_ASSIGNED_EVENT,
   methodExchange,
   type PillDef,
   PLACE,
@@ -59,11 +62,13 @@ import {
   SECT_LEAVE,
   SECT_LEAVE_EVENT,
   SECT_MEMBER,
+  SECT_MISSION,
   SECT_PROMOTED_EVENT,
   SECT_RANK_RULING,
   SECT_SCHOOL,
   type SectCavePass,
   type SectContribution,
+  type SectMission,
   type StateChange,
   setComponent,
   TECHNIQUE_TAUGHT_EVENT,
@@ -157,6 +162,7 @@ export function sectDutyProcess(
       ...RANK_REVIEW_READS,
     ],
     writes: [
+      SECT_MISSION.name,
       SECT_RANK_RULING.name,
       SECT_CONTRIBUTION.name,
       SECT_CAVE_PASS.name,
@@ -186,6 +192,16 @@ export function sectDutyProcess(
       // Los asuntos de ascenso que alguien planteó en este paso (novel2-rank-review).
       const issues: RankIssue[] = [];
       for (const e of ctx.recent) {
+        if (e.kind === MISSION_ASSIGNED_EVENT) {
+          const d = e.data as Omit<SectMission, "at" | "done" | "cause"> | null;
+          const who = e.actors[0] as AgentId | undefined;
+          if (who !== undefined && d) {
+            changes.push(
+              setComponent(SECT_MISSION, who, { ...d, at: ctx.now, done: 0, cause: e.id }),
+            );
+          }
+          continue;
+        }
         if (e.kind === RANK_PETITION_EVENT) {
           const d = e.data as { org?: EntityRef; refused?: unknown } | null;
           const [who, raisedBy] = e.actors as AgentId[];

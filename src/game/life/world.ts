@@ -1598,6 +1598,9 @@ export function lifeWorld(
           day: parts.clock.day,
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
+          ...(parts.cultivation?.pills && parts.cultivation.herbs
+            ? { missions: { pills: parts.cultivation.pills, herbs: parts.cultivation.herbs } }
+            : {}),
         }),
         ...(economicBatch ? [converseProjectionProcess()] : []),
         ...(economicBatch

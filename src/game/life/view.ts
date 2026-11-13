@@ -37,6 +37,7 @@ import {
   type Location,
   localHour,
   MEMORIES,
+  MISSION_ASSIGNED_EVENT,
   mentionableTastes,
   PERSON,
   type Percept,
@@ -797,6 +798,14 @@ export function playerView(
   if (rankRefused) {
     const why = (rankRefused.data as { refused?: unknown } | null)?.refused;
     cues.add(why === "no_one" ? "rank_unheard" : "rank_refused");
+  }
+  const mission =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
+  if (mission) {
+    const kind = (mission.data as { kind?: unknown } | null)?.kind;
+    cues.add(kind === "watch" ? "mission_watch" : "mission_herbs");
   }
   const leave =
     options.heardSince === undefined

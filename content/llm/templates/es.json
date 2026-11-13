@@ -1308,6 +1308,14 @@
     "lines": ["No hay en la sede nadie que pueda decidir tu ascenso; el pedido queda en el aire."]
   },
   {
+    "id": "self.mission_herbs",
+    "lines": ["Te tocó una misión: juntar hierbas espirituales para el alquimista."]
+  },
+  {
+    "id": "self.mission_watch",
+    "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
+  },
+  {
     "id": "self.chore_unpaid",
     "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },

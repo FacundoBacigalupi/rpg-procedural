@@ -577,6 +577,50 @@
     "formal": ["Su caso se resolvió hace poco; no corresponde volver a plantearlo todavía."]
   },
   {
+    "id": "mission.no",
+    "lines": ["¿Misiones? Las da un anciano, no yo.", "Eso pedíselo a los ancianos."]
+  },
+  {
+    "id": "mission.give.herbs",
+    "lines": [
+      "Al alquimista le faltan hierbas espirituales. Andá al monte, juntá lo que puedas y traéselas a un anciano antes de dos semanas.",
+      "Hay que juntar hierbas para las píldoras. Tenés dos semanas; entregáselas a un anciano."
+    ],
+    "formal": [
+      "El alquimista necesita hierbas espirituales. Recójalas en el monte y entréguelas a un anciano en el plazo de dos semanas."
+    ]
+  },
+  {
+    "id": "mission.give.watch",
+    "lines": [
+      "Anda una banda cerca de la sede. Vigilá el camino donde la vieron y volvé a contar; tenés una semana.",
+      "Hay bandidos cerca. Hacé guardia donde andan y volvé antes de una semana."
+    ],
+    "formal": [
+      "Hay una banda cerca de la sede. Vigile el camino donde se la vio y regrese a informar en una semana."
+    ]
+  },
+  {
+    "id": "mission.refuse.not_member",
+    "lines": ["No sos de esta secta. Las misiones son para los nuestros."],
+    "formal": ["Usted no pertenece a esta secta."]
+  },
+  {
+    "id": "mission.refuse.elder",
+    "lines": ["Un anciano no sale a misiones; las da."]
+  },
+  {
+    "id": "mission.refuse.busy",
+    "lines": ["Ya tenés una misión. Terminala primero.", "Primero cumplí la que tenés."]
+  },
+  {
+    "id": "mission.refuse.none",
+    "lines": [
+      "Ahora no hace falta nada que puedas hacer. Volvé en unos días.",
+      "No hay misiones para vos por ahora."
+    ]
+  },
+  {
     "id": "introduce.wary",
     "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
     "formal": ["Prefiero no decirlo, si no le molesta."],

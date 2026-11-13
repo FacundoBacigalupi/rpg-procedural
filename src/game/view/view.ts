@@ -127,6 +127,8 @@ export type SelfCue =
   | "promoted_elder"
   /** La secta trató su ascenso y dijo que no, o no había nadie en la sede para decidirlo. */
   | "rank_refused"
+  | "mission_herbs"
+  | "mission_watch"
   | "rank_unheard"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */
   | "leave_granted"
