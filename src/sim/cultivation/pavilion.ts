@@ -13,6 +13,7 @@ export const METHOD_POINTS_PER_REALM = 60;
 export const METHOD_FREE_REALM: Readonly<Record<MemberRank, number>> = {
   outer: 0,
   inner: 1,
+  core: 2,
   elder: 99,
   master: 99,
 };
