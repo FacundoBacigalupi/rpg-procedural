@@ -40,6 +40,7 @@ import {
   type ConceptDef,
   CREDIT,
   type Credit,
+  CULTIVATION_STATE,
   callName,
   clampTemper,
   credulity,
@@ -84,8 +85,12 @@ import {
   learnDeed,
   liveBetween,
   looseCounter,
+  MASTER_OF,
+  MASTER_TAKEN_EVENT,
+  type MasterDecision,
   MEMORIES,
   MIND,
+  masterAccepts,
   memoriesAbout,
   normalize,
   type Offense,
@@ -113,6 +118,9 @@ import {
   rumorAsKnown,
   type ScheduleRequest,
   SECRETS,
+  SECT_CONTRIBUTION,
+  SECT_MEMBER,
+  SECT_TRIAL,
   type SpaceGraph,
   type SpeakAct,
   type SpeechAct,
@@ -144,6 +152,7 @@ import {
   understand,
   utter,
   villageCulture,
+  warmth,
   worstDeed,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
@@ -1251,8 +1260,14 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       STATUS.name,
       STANDING_BELIEFS.name,
       RELIGIOUS_IDENTITY.name,
+      SECT_MEMBER.name,
+      SECT_TRIAL.name,
+      SECT_CONTRIBUTION.name,
+      CULTIVATION_STATE.name,
+      MASTER_OF.name,
     ],
     writes: [
+      MASTER_OF.name,
       ...(o.settleEconomy ? [CONVERSATION_INTENT.name] : []),
       PENDING.name,
       OPEN_DEALS.name,
@@ -1394,6 +1409,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               : ("dismissed" as const)
         : undefined;
       const source = act.kind === "source" ? sourceKnown(truth, me, act.about) : undefined;
+      const apprentice = act.kind === "apprentice" ? apprenticeOf(truth, me, speaker, feel) : null;
       const reply = decideReply(
         {
           act,
@@ -1403,6 +1419,14 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(hearsayVerdict ? { hearsay: { verdict: hearsayVerdict } } : {}),
           ...(source ? { source } : {}),
           ...(prophecy ? { prophecy: { credence: prophecy.heard.credence } } : {}),
+          ...(apprentice
+            ? {
+                apprentice:
+                  apprentice.decision.kind === "accepted"
+                    ? { accepted: true as const }
+                    : { accepted: false as const, refused: apprentice.decision.refused },
+              }
+            : {}),
           ...(act.kind === "tell"
             ? {
                 detect: detectionOf(
@@ -1577,6 +1601,32 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(setComponent(KNOWN_DEEDS, me, learnDeed(truth.get(KNOWN_DEEDS, me), learned)));
       }
       // Un rumor que el personaje pasa: el oyente lo guarda con su salto y, si lo cree, como hecho `told`.
+      // Lo tomó como discípulo (novel2-master-ask): el vínculo queda en quien pidió.
+      let masterEvent: EventDraft | undefined;
+      if (apprentice) {
+        if (reply.disciple && apprentice.decision.kind === "accepted") {
+          changes.push(
+            setComponent(MASTER_OF, speaker, { master: me, org: apprentice.org, since: ctx.now }),
+          );
+        }
+        masterEvent = {
+          kind: MASTER_TAKEN_EVENT,
+          actors: [speaker, me],
+          place: o.placeOf(truth, me),
+          data: {
+            org: apprentice.org,
+            score: apprentice.decision.score ?? null,
+            ...(apprentice.decision.kind === "refused"
+              ? { refused: apprentice.decision.refused }
+              : {}),
+          },
+          emissions: {},
+          causes: [
+            { kind: "event", event: draftEvent(0) },
+            { kind: "state", entity: me as unknown as EntityRef, key: SECT_MEMBER.name },
+          ],
+        };
+      }
       let rumorEvent: EventDraft | undefined;
       if (rumor) {
         const { heard, told } = rumor;
@@ -1855,6 +1905,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(inquiryEvent ? [inquiryEvent] : []),
           ...(falseAccusationEvent ? [falseAccusationEvent] : []),
           ...(rumorEvent ? [rumorEvent] : []),
+          ...(masterEvent ? [masterEvent] : []),
         ],
         postings:
           swaps.length > 0
@@ -1903,4 +1954,39 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       return result;
     },
   };
+}
+
+/**
+ * Lo que el anciano pesa cuando le piden ser discípulo (novel2-master-ask): solo un anciano o el
+ * maestro de la secta toma discípulos (si no, null y dice que no). Mira lo que puede saber del que
+ * pide: si es de su secta y con qué rango, si ya tiene maestro, el talento que le midió la prueba,
+ * el tramo, el aporte anotado y cómo lo trata; y cuántos discípulos ya carga.
+ */
+function apprenticeOf(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  speaker: AgentId,
+  feel: Parameters<typeof warmth>[0],
+): { readonly org: EntityRef; readonly decision: MasterDecision } | null {
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
+  const theirs = truth.get(SECT_MEMBER, speaker);
+  const sameOrg = theirs?.org === mine.org;
+  const trial = truth.get(SECT_TRIAL, speaker);
+  const contribution = truth.get(SECT_CONTRIBUTION, speaker);
+  let disciples = 0;
+  for (const id of truth.ids(MASTER_OF)) {
+    if (truth.get(MASTER_OF, id)?.master === me) disciples++;
+  }
+  const decision = masterAccepts({
+    sameOrg,
+    rank: theirs?.rank ?? "outer",
+    hasMaster: truth.has(MASTER_OF, speaker),
+    ...(trial && trial.org === mine.org ? { talent: trial.reading.quality } : {}),
+    stage: truth.get(CULTIVATION_STATE, speaker)?.stage ?? 0,
+    points: sameOrg && contribution?.org === mine.org ? contribution.points : 0,
+    regard: Math.max(-1, Math.min(1, warmth(feel))),
+    disciples,
+  });
+  return { org: mine.org, decision };
 }

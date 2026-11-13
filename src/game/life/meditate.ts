@@ -50,18 +50,24 @@ import {
   type CultivationLaw,
   type CultivationState,
   deleteComponent,
+  ENTITY,
   type EventDraft,
   gatherHours,
+  guardShare,
   HEAVEN_LAW,
   injure,
   isSectCave,
   type KnownTechnique,
   LOCATION,
   type LocalMap,
+  MASTER_OF,
   MAX_MERIDIAN_DAMAGE,
+  type MasterGuide,
+  masterGuide,
   meditationGain,
   methodCovers,
   mixedPurity,
+  NO_GUIDE,
   needsFrom,
   PILL_TAKEN_EVENT,
   type PillDef,
@@ -158,6 +164,8 @@ function resolveBreak(
   blind: boolean,
   /** Lo que templó una tribulación aguantada: suma a la calidad si rompe. */
   temper = 0,
+  /** La guía del maestro presente (novel2-master-guide): suma a la preparación. */
+  guide: MasterGuide = NO_GUIDE,
 ): { next: CultivationState; taken: QiTaken | undefined; event: EventDraft } | undefined {
   if (!before.sensed) return undefined;
   const stage = before.stage ?? 0;
@@ -175,7 +183,9 @@ function resolveBreak(
   });
   // La píldora de romper tragada antes (novel2-pills-take) empuja; se gasta en este intento.
   const aid = before.aid;
-  const prep = round4(Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0)));
+  const prep = round4(
+    Math.min(1, (blind ? ready * BLIND_PREP : ready) + (aid?.prep ?? 0) + guide.prep),
+  );
   const outcome = breakOutcome(prep, threshold.bottleneck, rng.float(), rng.float());
   const { aid: _spent, ...rest } = before;
   let next: CultivationState = rest;
@@ -223,11 +233,13 @@ function resolveBreak(
         ...(blind ? { blind } : {}),
         ...(aid ? { aid: aid.pill } : {}),
         ...(temper > 0 ? { temper } : {}),
+        ...(guide.prep > 0 ? { guided: guide.prep } : {}),
       },
       emissions: seen > 0 ? { sight: seen } : {},
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+        ...(guide.prep > 0 ? [{ kind: "state" as const, entity: who, key: MASTER_OF.name }] : []),
       ],
     },
   };
@@ -246,6 +258,24 @@ function methodOf(
 function blindAt(truth: ReadonlyWorldTruth, who: AgentId, stage: number): boolean {
   const { known, school } = methodOf(truth, who);
   return breaksBlind(school, known, stage);
+}
+
+/**
+ * La guía de su maestro (novel2-master-guide): vivo, en el mismo hex y más arriba en el camino.
+ * Sin maestro, nada.
+ */
+function guideOf(truth: ReadonlyWorldTruth, who: AgentId, stage: number): MasterGuide {
+  const bond = truth.get(MASTER_OF, who);
+  if (!bond) return NO_GUIDE;
+  const master = bond.master;
+  const alive = truth.has(ENTITY, master) && truth.get(ENTITY, master)?.endedAt === undefined;
+  const here = truth.get(LOCATION, who);
+  const there = truth.get(LOCATION, master);
+  return masterGuide({
+    present: alive && here !== undefined && there !== undefined && here.hex === there.hex,
+    masterStage: truth.get(CULTIVATION_STATE, master)?.stage ?? 0,
+    discipleStage: stage,
+  });
 }
 
 /** Lo que rinde el método al meditar en `stage`: nada fuera de su reino (o sin método). */
@@ -269,14 +299,24 @@ function strikeWaves(
   law: CultivationLaw,
   plans: ReadonlyMap<string, BodyPlanDef>,
   ctx: { readonly truth: ReadonlyWorldTruth; readonly now: number; readonly rng: Rng },
+  /** El maestro que se pone delante (novel2-master-guard): carga `share` de cada ola. */
+  guard?: { readonly who: AgentId; readonly share: number; readonly state: CultivationState },
 ): {
   state: CultivationState;
   body: Body | undefined;
   temper: number;
   dead: boolean;
   events: EventDraft[];
+  /** Cómo quedó el maestro que cargó parte (sin guardia, nada). */
+  guarded?: { readonly state: CultivationState; readonly body: Body | undefined };
 } {
   let body = ctx.truth.get(BODY_STATE, who);
+  // El maestro: su cuerpo y su recipiente aguantan su parte con lo suyo.
+  let gBody = guard ? ctx.truth.get(BODY_STATE, guard.who) : undefined;
+  const gPlan = gBody ? plans.get(gBody.plan) : undefined;
+  const gCapacity = guard ? vesselCapacity(law, guard.state.stage ?? 0) : 0;
+  let gMeridian = guard?.state.meridianDamage ?? 0;
+  let gHit = false;
   const plan = body ? plans.get(body.plan) : undefined;
   const capacity = vesselCapacity(law, state.stage ?? 0);
   const per = t.waves > 0 ? t.energy / t.waves : 0;
@@ -288,12 +328,43 @@ function strikeWaves(
   for (let i = 0; i < t.waves; i++) {
     if (!body || !plan || body.death) break;
     const rng = ctx.rng.fork("tribulation", who, t.attempt, i);
+    // El maestro se pone delante (novel2-master-guard): carga su parte con su cuerpo, mientras viva.
+    const share = guard && gBody && gPlan && !gBody.death ? guard.share : 0;
+    let shielded: Record<string, unknown> | undefined;
+    if (guard && gBody && gPlan && share > 0) {
+      const g = ctx.rng.fork("guard", who, t.attempt, i);
+      const gForce = waveForce(
+        per * share,
+        {
+          capacity: gCapacity,
+          qi: guard.state.qi ?? 0,
+          foundation: guard.state.foundation ?? 0,
+          health: 1 - Math.min(1, openOf(gBody) / 2),
+        },
+        g.float(),
+      );
+      const gInjury = injure(
+        gPlan,
+        gBody,
+        { kind: "blunt", force: gForce, dirt: 0, cause: e.id as EventId, at: ctx.now },
+        g.fork("injure"),
+      );
+      gBody = gInjury.body;
+      gHit = true;
+      gMeridian = round4(Math.min(MAX_MERIDIAN_DAMAGE, gMeridian + WAVE_MERIDIAN * gForce));
+      shielded = {
+        by: guard.who,
+        share,
+        force: gForce,
+        zone: gInjury.wound.zone,
+        severity: round4(gInjury.wound.severity),
+        ...(gInjury.died ? { died: gInjury.died } : {}),
+      };
+    }
     // Las heridas abiertas pesan a medias: dos graves dejan el cuerpo sin aguante.
-    const open = body.wounds
-      .filter((w) => w.stage !== "healed")
-      .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+    const open = openOf(body);
     const force = waveForce(
-      per,
+      per * (1 - share),
       {
         capacity,
         qi: state.qi ?? 0,
@@ -324,11 +395,13 @@ function strikeWaves(
         zone: injury.wound.zone,
         severity: round4(injury.wound.severity),
         ...(injury.died ? { died: injury.died } : {}),
+        ...(shielded ? { guard: shielded } : {}),
       },
       emissions: { sight: 1, sound: 1 },
       causes: [
         { kind: "event", event: e.id },
         { kind: "state", entity: who, key: CULTIVATION_STATE.name },
+        ...(shielded ? [{ kind: "state" as const, entity: who, key: MASTER_OF.name }] : []),
       ],
     });
     if (injury.died) {
@@ -343,7 +416,52 @@ function strikeWaves(
     temper,
     dead,
     events,
+    ...(guard && gHit
+      ? {
+          guarded: {
+            state:
+              gMeridian !== (guard.state.meridianDamage ?? 0)
+                ? { ...guard.state, meridianDamage: gMeridian }
+                : guard.state,
+            body: gBody,
+          },
+        }
+      : {}),
   };
+}
+
+/** Lo abierto de las heridas de un cuerpo (lo que todavía no cerró). */
+function openOf(body: Body): number {
+  return body.wounds
+    .filter((w) => w.stage !== "healed")
+    .reduce((sum, w) => sum + w.severity * (1 - w.repair), 0);
+}
+
+/**
+ * El maestro que se pone delante en la tribulación de `who` (novel2-master-guard): vivo, en el mismo
+ * hex y más arriba. Sin eso, nadie.
+ */
+function guardOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  stage: number,
+  stateOf: (id: AgentId) => CultivationState,
+): { who: AgentId; share: number; state: CultivationState } | undefined {
+  const bond = truth.get(MASTER_OF, who);
+  if (!bond) return undefined;
+  const master = bond.master;
+  if (!truth.has(ENTITY, master) || truth.get(ENTITY, master)?.endedAt !== undefined) {
+    return undefined;
+  }
+  const here = truth.get(LOCATION, who);
+  const there = truth.get(LOCATION, master);
+  const state = stateOf(master);
+  const share = guardShare({
+    present: here !== undefined && there !== undefined && here.hex === there.hex,
+    masterStage: state.stage ?? 0,
+    discipleStage: stage,
+  });
+  return share > 0 ? { who: master, share, state } : undefined;
 }
 
 /** La calma para meditar: el dolor la corta, el hambre y la sed la distraen. */
@@ -414,6 +532,8 @@ export function meditateProcess(o: {
       CULTIVATION_TECHNIQUE.name,
       SECT_SCHOOL.name,
       LOCATION.name,
+      MASTER_OF.name,
+      ENTITY.name,
       ...(pooled ? [PLACE.name] : []),
       ...(o.dayTicks !== undefined ? [HEAVEN_LAW.name, TRIBULATION.name] : []),
     ],
@@ -473,9 +593,15 @@ export function meditateProcess(o: {
           }
           const talent = ctx.truth.get(TALENT, struck);
           if (!talent) continue;
-          const waved = strikeWaves(e, struck, t, stateOf(struck), law, plans, ctx);
+          const struckState = stateOf(struck);
+          const guard = guardOf(ctx.truth, struck, struckState.stage ?? 0, stateOf);
+          const waved = strikeWaves(e, struck, t, struckState, law, plans, ctx, guard);
           events.push(...waved.events);
           if (waved.body) bodies.set(struck, waved.body);
+          if (guard && waved.guarded) {
+            rows.set(guard.who, waved.guarded.state);
+            if (waved.guarded.body) bodies.set(guard.who, waved.guarded.body);
+          }
           rows.set(struck, waved.state);
           // Murió bajo el rayo: no hay ruptura que resolver.
           if (waved.dead) continue;
@@ -494,6 +620,7 @@ export function meditateProcess(o: {
             ctx.rng,
             blindAt(ctx.truth, struck, before.stage ?? 0),
             waved.temper,
+            guideOf(ctx.truth, struck, before.stage ?? 0),
           );
           if (!r) continue;
           rows.set(struck, r.next);
@@ -577,6 +704,8 @@ export function meditateProcess(o: {
             pool.taken,
             ctx.rng,
             blindAt(ctx.truth, breaker, before.stage ?? 0),
+            0,
+            guideOf(ctx.truth, breaker, before.stage ?? 0),
           );
           if (!r) continue;
           rows.set(breaker, r.next);
@@ -647,7 +776,9 @@ export function meditateProcess(o: {
         const focus = isSectCave(ctx.truth.get(LOCATION, m.who)?.space) ? CAVE_FOCUS : 1;
         const factor = pool.factor * focus;
         const taken = pool.taken;
-        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0);
+        // La guía del maestro presente (novel2-master-guide) rinde como un método más.
+        const guide = guideOf(ctx.truth, m.who, before.stage ?? 0);
+        const method = methodFactor(ctx.truth, m.who, before.stage ?? 0) * guide.gain;
         const gain = meditationGain(apt, m.hours, calm, factor) * method;
         let next: CultivationState = {
           ...before,
@@ -685,11 +816,15 @@ export function meditateProcess(o: {
               purity,
               cell: place.cell,
               ...(focus > 1 ? { focus } : {}),
+              ...(guide.gain > 1 ? { guided: guide.gain } : {}),
             },
             emissions: {},
             causes: [
               { kind: "event", event: e.id },
               { kind: "state", entity: poolId, key: PLACE_QI.name },
+              ...(guide.gain > 1
+                ? [{ kind: "state" as const, entity: m.who, key: MASTER_OF.name }]
+                : []),
             ],
           });
         }

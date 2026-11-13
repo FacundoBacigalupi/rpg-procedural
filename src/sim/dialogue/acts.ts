@@ -18,6 +18,8 @@ type SpeechBody =
   | { readonly kind: "farewell" }
   /** Le pregunta el nombre o se presenta (novel-names-introduce): el oyente dice el suyo, o no. */
   | { readonly kind: "introduce" }
+  /** Pide que el oyente lo tome como discípulo (cultivation, novel2-master-ask). */
+  | { readonly kind: "apprentice" }
   /**
    * ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). `via` es
    * la maniobra con que se pregunta (dialogue §11): sin ella, de frente; si el otro guarda un secreto
@@ -187,6 +189,10 @@ export function greets(norm: string): boolean {
 /** Preguntar el nombre o presentarse (sin tildes: el texto llega normalizado). */
 const INTRODUCE =
   /\b(como te llamas|como se llama usted|como te dicen|como le dicen|cual es tu nombre|cual es su nombre|me llamo|mi nombre es|me presento|quien sos|quien eres|quien es usted)\b/;
+
+/** Pedir ser discípulo de quien escucha («tomame como discípulo», «quiero ser su discípula»). */
+const APPRENTICE =
+  /\b(tom\w*|acept\w*|ser|sea|recib\w*|hac\w*)\b(?: \w+){0,4} discipul[oa]\b|\b(?:sea|seas) mi maestr[oa]\b/;
 
 /** Si el texto pregunta el nombre o presenta a quien habla. */
 export function introduces(norm: string): boolean {
@@ -520,6 +526,7 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
           : ACCUSE_PLAIN_CERTAINTY,
     };
   }
+  if (APPRENTICE.test(norm)) return { kind: "apprentice" };
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
   const service = blur ? null : promisedService(norm);
   if (service) {
