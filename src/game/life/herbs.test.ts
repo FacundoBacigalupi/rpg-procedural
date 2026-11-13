@@ -22,6 +22,7 @@ import {
   LOCATION,
   PLACE,
   PLACE_QI,
+  QI_TAKEN,
   qiRatio,
   SECT,
   sectSpaceKey,
@@ -81,6 +82,17 @@ describe("hierbas espirituales (novel2-pills-herbs)", () => {
     expect(w.truth.get(HERB_STAND, seat)?.standing["spirit-grass"]).toBeGreaterThan(0);
     const grew = w.log.all().find((e) => e.kind === HERBS_GREW_EVENT);
     expect(grew?.causes[0]).toEqual({ kind: "state", entity: seat, key: PLACE_QI.name });
+    // novel2-alch-qi: lo que creció salió de la reserva de la sede, gramo a gramo.
+    const drawn = w.log
+      .all()
+      .filter(
+        (e) =>
+          e.kind === HERBS_GREW_EVENT &&
+          (e.place as { place?: unknown } | undefined)?.place === seat,
+      )
+      .reduce((s, e) => s + ((e.data as { qi?: number }).qi ?? 0), 0);
+    expect(drawn).toBeGreaterThan(0);
+    expect(w.truth.get(QI_TAKEN, seat)?.drawn ?? 0).toBeGreaterThanOrEqual(drawn - 1e-3);
 
     // Juntarlas: salen de la cuenta del lugar a la mano.
     w.truth.set(LOCATION, me, { hex, space: sectSpaceKey(seat, "hall") });

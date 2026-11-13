@@ -4,7 +4,7 @@
 // rompe (la base apoyada en una píldora queda más floja). De dónde salen (la secta, el alquimista)
 // es otro ítem; acá solo qué hace tragarlas. Los números de `content/pills/`, sin calibrar.
 
-import { contentId, defineContent, z } from "../../core/index.ts";
+import { contentId, defineContent, type Random, z } from "../../core/index.ts";
 import { mixedPurity } from "./absorb.ts";
 import type { BreakAid } from "./meditation.ts";
 
@@ -26,6 +26,8 @@ export const PillDef = z
     endowPerHead: z.number().min(0).optional(),
     /** Cuántos puntos de contribución pide la secta por una (novel2-pills-exchange); sin él, no la canjea. */
     points: z.number().positive().optional(),
+    /** Cómo se refina (novel2-alch-refine): de qué hierba (`HerbDef.id`) y cuántos gramos por píldora. */
+    recipe: z.strictObject({ herb: contentId, grams: z.number().positive() }).optional(),
   })
   .refine((p) => (p.effect === "gather" ? p.qi !== undefined : p.prep !== undefined), {
     message: "una de reunir lleva qi; una de romper, prep",
@@ -60,6 +62,39 @@ export function breakAidOf(pill: PillDef, prev: BreakAid | undefined): BreakAid 
 
 function round4(x: number): number {
   return Math.round(x * 10000) / 10000;
+}
+
+/** Lo que sale como mínimo y como máximo de cada intento según la mano (0-1) del alquimista. */
+/**
+ * El qi que vuelve a la celda de una tanda (novel2-alch-qi): el de las hierbas usadas menos el que
+ * se llevan las píldoras que salieron (las de romper no llevan qi: el de sus hierbas vuelve entero).
+ */
+export function refineReleasedQi(pill: PillDef, batch: RefineBatch, qiPerGram: number): number {
+  return Math.max(0, batch.used * qiPerGram - batch.made * (pill.qi ?? 0));
+}
+
+export const REFINE_ODDS = [0.2, 0.9] as const;
+
+/** Una tanda de refinado: cuántos intentos, cuántas píldoras salieron y los gramos que se usaron. */
+export interface RefineBatch {
+  readonly attempts: number;
+  readonly made: number;
+  readonly used: number;
+}
+
+/**
+ * Refinar `grams` de la hierba de la receta de `pill` (novel2-alch-refine, crafts §4): cada intento
+ * lleva `recipe.grams`; sale con una chance que crece con la mano (`hand`, 0-1) del alquimista; lo
+ * que falla se quema (los gramos se usan igual). Sin receta o sin gramos para un intento, nada.
+ */
+export function refineBatch(pill: PillDef, grams: number, hand: number, rng: Random): RefineBatch {
+  const per = pill.recipe?.grams;
+  if (per === undefined) return { attempts: 0, made: 0, used: 0 };
+  const attempts = Math.floor(Math.max(0, grams) / per);
+  if (attempts === 0) return { attempts: 0, made: 0, used: 0 };
+  const [lo, hi] = REFINE_ODDS;
+  const odds = lo + (hi - lo) * Math.min(1, Math.max(0, hand));
+  return { attempts, made: rng.binomial(attempts, odds), used: attempts * per };
 }
 
 /** Alguien tragó una píldora: qué hizo (qi tomado y escapado, o la ayuda que dejó). */

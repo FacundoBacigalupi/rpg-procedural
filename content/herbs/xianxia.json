@@ -4,6 +4,7 @@
     "good": "spirit-herb",
     "minRatio": 1.2,
     "gramsPerRatio": 2000,
-    "regrowth": 0.03
+    "regrowth": 0.03,
+    "qiPerGram": 1
   }
 ]

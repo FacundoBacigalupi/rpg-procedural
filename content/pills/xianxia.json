@@ -6,7 +6,8 @@
     "qi": 20,
     "purity": 0.7,
     "endowPerHead": 3,
-    "points": 10
+    "points": 10,
+    "recipe": { "herb": "spirit-grass", "grams": 20 }
   },
   {
     "id": "spirit-gathering",
@@ -15,7 +16,8 @@
     "qi": 120,
     "purity": 0.8,
     "endowPerHead": 0.5,
-    "points": 60
+    "points": 60,
+    "recipe": { "herb": "spirit-grass", "grams": 150 }
   },
   {
     "id": "foundation",
@@ -25,6 +27,7 @@
     "prep": 0.2,
     "cost": 0.15,
     "endowPerHead": 0.2,
-    "points": 240
+    "points": 240,
+    "recipe": { "herb": "spirit-grass", "grams": 400 }
   }
 ]

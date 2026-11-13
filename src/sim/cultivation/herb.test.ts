@@ -9,6 +9,7 @@ const grass: HerbDef = {
   good: "spirit-herb",
   minRatio: 1.2,
   gramsPerRatio: 1000,
+  qiPerGram: 1,
   regrowth: 0.05,
 };
 const at = (ratio: number): PlaceQi => ({

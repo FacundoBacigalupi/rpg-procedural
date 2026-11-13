@@ -197,7 +197,7 @@ import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
 import { BURNED_SINK, seedHearths } from "./hearth.ts";
-import { HERB_SOURCE } from "./herbs.ts";
+import { HERB_SOURCE, SECT_FURNACE } from "./herbs.ts";
 import { roughShareOf } from "./herd-land.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
@@ -1773,6 +1773,9 @@ export function ledgerConfigOf(
       // La comida de la sede de la secta (novel-sect-seat-hall-people-keep).
       ...(sectUpkeep ? { [SECT_UPKEEP]: [HARVEST_GOOD, COPPER, ...pillUnits] } : {}),
       ...(herbUnits.length > 0 ? { [HERB_SOURCE]: herbUnits } : {}),
+      ...(sectUpkeep && herbUnits.length > 0
+        ? { [SECT_FURNACE]: [...herbUnits, ...pillUnits] }
+        : {}),
     },
   };
 }
