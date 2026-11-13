@@ -1716,6 +1716,10 @@ export function lifeWorld(
           goods: parts.goods,
           clock: parts.clock,
           placeOf: placeOf(parts, village),
+          // Con hierbas, las pudre `cultivation.herbs` y devuelven su qi (novel2-alch-rot).
+          ...(parts.cultivation?.herbs && parts.cultivation.herbs.length > 0
+            ? { skip: parts.cultivation.herbs.map((h) => h.good) }
+            : {}),
         }),
         soilProcess({
           clock: parts.clock,
@@ -2522,6 +2526,7 @@ export function lifeWorld(
                       dayTicks: parts.clock.day,
                       yearTicks: parts.clock.year,
                       herbs: parts.cultivation.herbs,
+                      rot: { goods: parts.goods, placeOf: placeOf(parts, village) },
                       // La secta cosecha y refina en su sede (novel2-alch-sect).
                       ...(parts.cultivation.pills
                         ? {

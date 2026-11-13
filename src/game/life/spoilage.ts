@@ -29,6 +29,11 @@ export interface SpoilageOptions {
   readonly goods: readonly GoodDef[];
   readonly clock: PlanetClock;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Bienes que se pudren en otro proceso (novel2-alch-rot: las hierbas espirituales, que al pudrirse
+   * devuelven su qi y las pudre `cultivation.herbs`). Sin esto, todos los perecibles se pudren acá.
+   */
+  readonly skip?: readonly string[];
 }
 
 /** Los hogares con alguien vivo: de ahí salen los alcances del proceso. */
@@ -43,6 +48,7 @@ export function householdsOf(truth: ReadonlyWorldTruth): EntityRef[] {
 }
 
 export function spoilageProcess(o: SpoilageOptions): ProcessDef {
+  const goods = o.skip ? o.goods.filter((g) => !o.skip?.includes(g.id)) : o.goods;
   return {
     id: SPOILAGE_PROCESS,
     system: "life",
@@ -66,7 +72,7 @@ export function spoilageProcess(o: SpoilageOptions): ProcessDef {
       const transfers = holders.flatMap((h) =>
         spoilage(
           ctx.ledger?.holdings(holderAccount(h)) ?? [],
-          o.goods,
+          goods,
           days,
           ctx.rng.fork("rot", holderAccount(h)),
         ).map((r) => ({
