@@ -437,6 +437,7 @@ function outcome(
       if (e.fight) {
         const f = e.fight;
         const target = ref(e.target);
+        if (f.blur) say(`outcome.strike.fight.blur_${f.blur}`, { target });
         if (f.paused) say(`outcome.strike.fight.paused_${f.paused}`, { target });
         else if (f.mine === "standing" && f.theirs === "standing")
           say("outcome.strike.fight.parted");

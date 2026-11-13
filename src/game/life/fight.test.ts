@@ -6,6 +6,7 @@ import {
   type ActionPlan,
   atMercyOf,
   BODY_STATE,
+  CULTIVATION_STATE,
   checkInvariants,
   LOCATION,
   PERSON,
@@ -38,8 +39,11 @@ const strikePlan = (actor: AgentId, target: AgentId): ActionPlan => ({
 });
 
 /** Una pelea del personaje contra alguien de su casa, parados en el mismo lugar. */
-function brawl(seed: number) {
-  const life = Life.create(seed, content);
+function brawl(seed: number, stage?: number) {
+  const life =
+    stage === undefined
+      ? Life.create(seed, content)
+      : Life.create(seed, content, { cultivation: true });
   const w = life.world;
   const me = life.player;
   const house = w.truth.get(PERSON, me)?.household;
@@ -48,6 +52,11 @@ function brawl(seed: number) {
   ) as AgentId;
   const here = w.truth.get(LOCATION, me);
   if (here) w.truth.set(LOCATION, other, here);
+  if (stage !== undefined) {
+    const was = w.truth.get(CULTIVATION_STATE, me) ?? { sensitivity: 1, hours: 0 };
+    w.truth.set(CULTIVATION_STATE, me, { ...was, stage });
+    w.truth.deleteRaw(CULTIVATION_STATE.name, other);
+  }
   const report = life.turn(strikePlan(me, other), 1);
   return { life, w, me, other, report };
 }
@@ -178,4 +187,33 @@ describe("pausas de la pelea del personaje", () => {
     ).toBeUndefined();
     expect(livePause(run.w.truth, run.me, run.me, saved.snapshot.next)).toBeUndefined();
   }, 240_000);
+});
+
+describe("pelear con el cuerpo refinado (novel3-refined-wire)", () => {
+  it("con cultivo, el tramo del personaje entra a la pelea: el evento lo dice y el rival no lo sigue", () => {
+    const run = brawl(3, 3);
+    const fight = run.report.events.find((e) => e.kind === "combat.fight");
+    expect((fight?.data as { stages?: Record<string, number> } | undefined)?.stages).toEqual({
+      [run.me]: 3,
+      [run.other]: 0,
+    });
+    const step = run.report.steps.find((r) => r.verb === "strike");
+    const effect = step?.self.effect as { fight?: { blur?: string } } | undefined;
+    expect(effect?.fight?.blur).toBe("me");
+    expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
+      [],
+    );
+  }, 120_000);
+
+  it("contra mortales, un cultivador de varios tramos sale entero más seguido que uno de cero", () => {
+    let mortalHurt = 0;
+    let refinedHurt = 0;
+    for (const seed of [3, 4, 5]) {
+      const a = brawl(seed, 0);
+      const b = brawl(seed, 4);
+      mortalHurt += a.w.truth.get(BODY_STATE, a.me)?.wounds.length ?? 0;
+      refinedHurt += b.w.truth.get(BODY_STATE, b.me)?.wounds.length ?? 0;
+    }
+    expect(refinedHurt).toBeLessThanOrEqual(mortalHurt);
+  }, 300_000);
 });

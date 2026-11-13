@@ -13,9 +13,9 @@ Cerrada «Novela 2» (salvo las misiones que esperan una amenaza o un flujo con 
 eligió combate. Hoy `runFight` es la pelea mortal a puños de la Fase 1 y el cultivo no pesa: un
 cultivador pelea como un aldeano. La lista lleva la pelea a la novela ([combat.md](systems/combat.md)
 §8-§13, §15; [cultivation.md](systems/cultivation.md) §11). Cada ítem se parte antes de codear. Orden:
-- [ ] (novel3-refined) El cuerpo refinado en la pelea: cada umbral cruzado vuelve al cultivador más rápido, más duro y de mejor ojo dentro de `runFight`; mortal contra cultivador con brecha real (combat §8, §10). Partido:
+- [x] (novel3-refined) El cuerpo refinado en la pelea: cada umbral cruzado vuelve al cultivador más rápido, más duro y de mejor ojo dentro de `runFight`; mortal contra cultivador con brecha real (combat §8, §10). Partido:
   - [x] (novel3-refined-core) `refinementOf(stage)` puro (`sim/cultivation`) y `FighterInput.refined` opcional en `runFight`: velocidad (zancada, hueco, ver venir el golpe y que no lo vean), dureza (la fuerza del golpe que recibe) y aguante (el aire). Sin el campo, la pelea no cambia.
-  - [ ] (novel3-refined-wire) `game/life/fight.ts` lo arma desde `CULTIVATION_STATE`; las chances creídas caen al ver al rival moverse demasiado rápido (§11); el evento y la narración lo cuentan.
+  - [x] (novel3-refined-wire) `game/life/fight.ts` lo arma desde `CULTIVATION_STATE`; las chances creídas caen al ver al rival moverse demasiado rápido (§11); el evento y la narración lo cuentan.
 - [ ] (novel3-intent) Elegir la intención: «lo mato», «lo reduzco», «lo echo», «me voy» al empezar y al retomar una pausa; la opción «seguir peleando» y la pelea en curso en el panel (lo que falta de «Pausas», Fase 1).
 - [ ] (novel3-spar) Práctica en la sede: «entreno con X» como pelea `spar` (golpes frenados, daño menor), aprendizaje de la pelea y familiaridad con el estilo del otro; los discípulos practican entre ellos (combat §13, skills §3).
 - [ ] (novel3-technique) Una técnica de ataque de la escuela: cuesta qi del recipiente (lo gastado vuelve a la celda o al blanco: conservación), golpea a distancia, se ve, y mal hecha daña los meridianos de quien la usa (combat §9).

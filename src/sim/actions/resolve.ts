@@ -815,6 +815,11 @@ export interface FightGist {
   readonly woundsDealt: number;
   /** La pelea sigue: lo que notó que le pide decidir (combat §16). */
   readonly paused?: "wounded" | "foe_fleeing";
+  /**
+   * Uno se movía mucho más rápido que el otro (novel3-refined-wire): `foe` si no alcanzaba a
+   * seguir al rival, `me` si el rival era el lento.
+   */
+  readonly blur?: "foe" | "me";
 }
 
 /** Lo que el actor cree de su paso. */

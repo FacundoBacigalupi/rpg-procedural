@@ -666,7 +666,8 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   if (!rival) return { kind: "idle" };
 
   const rng = input.rng.fork("fight", t, s.id, "decide");
-  const quicker = rival.caps.locomotion >= s.caps.locomotion * 1.2;
+  const quicker =
+    rival.caps.locomotion * rival.refined.speed >= s.caps.locomotion * s.refined.speed * 1.2;
   const canRun = s.caps.locomotion > 0.4 && s.breath > 0.1;
   if (input.reading === true) {
     // Con lectura (§5, §11): cree lo que leyó del rival, no lo que es.
@@ -689,10 +690,13 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
       input.rng.fork("fight", t, s.id, "read"),
     );
     s.readOf = rival.id;
+    // Verlo moverse más rápido de lo que alcanza a seguir le baja las chances (§11).
+    const surprise = clamp01((rival.refined.speed / s.refined.speed - 1) * sight);
     const belief = believedOdds(s.read, {
       myPower: powerOf(s),
       landed: s.landed,
       taken: s.woundsTaken,
+      ...(surprise > 0 ? { surprise } : {}),
     });
     s.odds = belief.myOdds;
     const decision = resolveBreak(
