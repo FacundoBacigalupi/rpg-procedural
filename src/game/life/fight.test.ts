@@ -238,6 +238,40 @@ describe("pausas de la pelea del personaje", () => {
     );
   }, 240_000);
 
+  it.each([
+    ["yield", "target"],
+    ["speak", "to"],
+  ] as const)(
+    "con la pelea en pausa, %s la corta con su evento (novel3-intent-resolve-talk)",
+    (verb, role) => {
+      const run = pausedBrawl();
+      expect(run).not.toBeNull();
+      if (!run) return;
+      const saved = run.w.truth.get(FIGHT_STATE, run.me);
+      if (!saved) throw new Error("sin pausa");
+      const report = run.life.turn(
+        {
+          actor: run.me,
+          source: "player",
+          root: { kind: "do", verb, args: [{ role, entity: run.other }], manner: [] },
+          manner: [],
+          causes: [{ kind: "state", entity: run.me, key: "intent" }],
+        },
+        2,
+      );
+      const off = report.events.find((e) => e.kind === "combat.break_off");
+      expect(off?.data).toEqual({ how: verb === "yield" ? "yield" : "talk" });
+      expect(off?.actors).toEqual([run.me, run.other]);
+      expect(off?.causes).toContainEqual({ kind: "event", event: saved.event });
+      expect(run.w.truth.get(FIGHT_STATE, run.me)).toBeUndefined();
+      const given = run.w.truth.get(YIELDED, run.me);
+      if (verb === "yield") expect(given?.to).toBe(run.other);
+      else expect(given).toBeUndefined();
+      expect(report.events.some((e) => e.kind === "combat.fight")).toBe(false);
+    },
+    240_000,
+  );
+
   it("una pelea que ya enfrió no se retoma: pasa el tiempo y arranca otra", () => {
     const run = pausedBrawl();
     if (!run) return;

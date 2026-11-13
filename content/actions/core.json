@@ -1457,6 +1457,34 @@
     "evidence": 1
   },
   {
+    "id": "yield",
+    "name": "rendirse",
+    "domain": "social",
+    "args": [
+      {
+        "role": "target",
+        "kind": "person",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [],
+    "occupies": {},
+    "duration": {
+      "kind": "fixed",
+      "seconds": 3
+    },
+    "checkpoint": 3,
+    "emissions": {
+      "sight": 0.6,
+      "sound": 0.4
+    },
+    "resolver": "yield",
+    "ease": 3,
+    "failureModes": [],
+    "evidence": 1
+  },
+  {
     "id": "trade",
     "name": "comerciar",
     "domain": "social",

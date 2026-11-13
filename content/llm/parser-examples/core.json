@@ -555,6 +555,28 @@
     }
   },
   {
+    "id": "yield-bandit",
+    "text": "me rindo ante Tomás",
+    "scene": "Tomás te tiene contra la pared, con el cuchillo en alto. La pelea está en pausa.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "yield",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "Tomás",
+              "kind": "person",
+              "features": ["Tomás"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "take-basket",
     "text": "agarro la canasta",
     "scene": "Estás en la cocina. Hay una canasta vacía sobre la mesa.",

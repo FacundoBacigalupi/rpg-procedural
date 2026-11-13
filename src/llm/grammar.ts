@@ -835,6 +835,15 @@ const VERBS: readonly {
     },
   },
   {
+    // Rendirse (novel3-intent-resolve-talk): «me rindo», «me rindo ante Wu», «me entrego a Wu».
+    re: /^(?:me\s+)?(?:rindo|rendirme|entrego|entregarme|doy por vencid[oa])\b/i,
+    build: (rest) => {
+      const cleaned = rest.replace(MANNER_WORDS, " ").replace(/^\s*(?:ante|frente a)\s+/i, " a ");
+      const p = personAfterA(cleaned);
+      return { node: act("yield", p ? [{ role: "target", ref: p.ref }] : []) };
+    },
+  },
+  {
     re: /^(?:consumo|consumir)\b/i,
     build: (rest) => {
       const what = nounPhrase(rest.replace(MANNER_WORDS, " "));

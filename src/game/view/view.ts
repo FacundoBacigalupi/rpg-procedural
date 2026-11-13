@@ -488,6 +488,10 @@ export type EffectView =
       readonly target?: string;
     }
   | {
+      readonly kind: "yield";
+      readonly target?: string;
+    }
+  | {
       readonly kind: "trade";
       readonly with?: string;
       readonly deal: boolean;
@@ -1131,6 +1135,8 @@ function effectView(
       };
     case "spare":
       return { kind: "spare", ...target(e.target) };
+    case "yield":
+      return { kind: "yield", ...target(e.target) };
     case "trade": {
       const w = target(e.with).target;
       return {

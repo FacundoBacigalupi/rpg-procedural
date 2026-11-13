@@ -203,6 +203,7 @@ import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
+  anyLivePause,
   atMyMercy,
   canFight,
   type Exposure,
@@ -2047,6 +2048,32 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   let exposure: Exposure | undefined;
   let record: StepRecord["self"] = r.self;
   const merciful = targetId !== null && atMyMercy(truth, me, targetId, ctx.now);
+  // Rendirse, o hablarle al rival, con la pelea en pausa la corta (novel3-intent-resolve-talk): la
+  // pausa no queda esperando a enfriarse. Rendirse lo deja a merced del rival.
+  const paused = me === o.player ? anyLivePause(truth, me, ctx.now) : undefined;
+  const breakOff: "yield" | "talk" | null = !paused
+    ? null
+    : eff.kind === "yield" && (eff.target === null || eff.target === paused.foe)
+      ? "yield"
+      : eff.kind === "speak" && eff.delivered && eff.to === paused.foe
+        ? "talk"
+        : null;
+  if (paused && breakOff) {
+    changes.push(deleteComponent(FIGHT_STATE, me));
+    if (breakOff === "yield")
+      changes.push(setComponent(YIELDED, me, { to: paused.foe, at: ctx.now, event: paused.event }));
+    extraEvents.push({
+      kind: "combat.break_off",
+      actors: [me, paused.foe],
+      place: input.place,
+      data: { how: breakOff },
+      emissions: { sight: 0.6, sound: 0.4 },
+      causes: [
+        { kind: "event", event: paused.event },
+        { kind: "event", event: draftEvent(0) },
+      ],
+    });
+  }
   if (eff.kind === "spare" && targetId && merciful) {
     // Perdonar: lo deja ir. Queda en lo que los testigos vieron, no en un castigo.
     changes.push(deleteComponent(YIELDED, targetId));
