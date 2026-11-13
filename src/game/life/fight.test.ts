@@ -15,7 +15,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { offenseOf } from "./deeds.ts";
-import { FIGHT_STATE, livePause, PAUSE_WINDOW } from "./fight.ts";
+import { FIGHT_STATE, fleeFirst, livePause, PAUSE_WINDOW } from "./fight.ts";
 import { Life } from "./life.ts";
 import { DEFAULT_SUGGESTIONS, suggestions } from "./suggest.ts";
 import { fightForView } from "./view.ts";
@@ -196,6 +196,46 @@ describe("pausas de la pelea del personaje", () => {
       "drive_off",
       "escape",
     ]);
+  }, 240_000);
+
+  it("irse con la pelea en pausa es huir: primero la pelea con escape (novel3-intent-resolve-flee)", () => {
+    const run = pausedBrawl();
+    expect(run).not.toBeNull();
+    if (!run) return;
+    const saved = run.w.truth.get(FIGHT_STATE, run.me);
+    if (!saved) throw new Error("sin pausa");
+    const away: ActionPlan = {
+      actor: run.me,
+      source: "player",
+      root: { kind: "do", verb: "move", args: [{ role: "to", entity: run.other }], manner: [] },
+      manner: [],
+      causes: [{ kind: "state", entity: run.me, key: "intent" }],
+    };
+    const now = saved.snapshot.next;
+    const fled = fleeFirst(run.w.truth, run.me, now, away);
+    expect(fled.root).toEqual({
+      kind: "seq",
+      steps: [
+        {
+          kind: "do",
+          verb: "strike",
+          args: [{ role: "target", entity: run.other }],
+          manner: ["escape"],
+        },
+        away.root,
+      ],
+    });
+    // Ya fría, u otra cosa que no sea irse: el plan queda como estaba.
+    expect(fleeFirst(run.w.truth, run.me, now + PAUSE_WINDOW + 1, away)).toBe(away);
+    const hit = strikePlan(run.me, run.other);
+    expect(fleeFirst(run.w.truth, run.me, now, hit)).toBe(hit);
+    // En el turno: el primer paso es la pelea que retoma.
+    const report = run.life.turn(away, 2);
+    expect(report.steps[0]?.verb).toBe("strike");
+    expect(report.events.some((e) => e.kind === "combat.fight")).toBe(true);
+    expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
+      [],
+    );
   }, 240_000);
 
   it("una pelea que ya enfrió no se retoma: pasa el tiempo y arranca otra", () => {

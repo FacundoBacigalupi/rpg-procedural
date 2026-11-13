@@ -5,6 +5,7 @@
 
 import type { AgentId, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import {
+  type ActionPlan,
   atMercyOf,
   BODY_STATE,
   type Body,
@@ -26,6 +27,7 @@ import {
   opinionKey,
   type PauseReason,
   PERSON,
+  type PlanNode,
   type ReadonlyWorldTruth,
   refinementOf,
   rivalKey,
@@ -72,6 +74,38 @@ export function anyLivePause(
 ): PausedFight | undefined {
   const p = truth.get(FIGHT_STATE, me);
   return p ? livePause(truth, me, p.foe, now) : undefined;
+}
+
+/** El primer paso que haría el plan (por la primera rama de cada secuencia o repetición). */
+function firstStep(n: PlanNode): PlanNode | undefined {
+  if (n.kind === "seq") return n.steps[0] && firstStep(n.steps[0]);
+  if (n.kind === "until") return firstStep(n.body);
+  return n;
+}
+
+/**
+ * Irse en medio de una pelea es huir (novel3-intent-resolve-flee, combat §16): si el plan del
+ * personaje arranca moviéndose con una pausa viva y el rival puede seguir, antes va un golpe con
+ * `escape` que retoma la pelea. Si se zafa, el paso sigue; si queda en el suelo, el paso no sale.
+ * Lee solo la verdad del turno, así que el replay arma lo mismo.
+ */
+export function fleeFirst(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  now: Tick,
+  plan: ActionPlan,
+): ActionPlan {
+  const first = firstStep(plan.root);
+  if (first?.kind !== "do" || first.verb !== "move") return plan;
+  const paused = anyLivePause(truth, me, now);
+  if (!paused || !canFight(truth, paused.foe)) return plan;
+  const flee: PlanNode = {
+    kind: "do",
+    verb: "strike",
+    args: [{ role: "target", entity: paused.foe }],
+    manner: ["escape"],
+  };
+  return { ...plan, root: { kind: "seq", steps: [flee, plan.root] } };
 }
 
 /** Cuántos segundos le quedan a la pausa antes de enfriarse (0 si ya pasó). */

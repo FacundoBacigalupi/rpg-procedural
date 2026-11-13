@@ -40,6 +40,7 @@ import {
   resumeParts,
   withDeclaredExternals,
 } from "./create.ts";
+import { fleeFirst } from "./fight.ts";
 import {
   alarmingSigns,
   DEFAULT_ROUTINE_RULES,
@@ -653,7 +654,8 @@ export class Life {
     const w = this.#w;
     const state: PlanState = {
       seq,
-      plan,
+      // Moverse con la pelea en pausa es huir: primero la pelea con `escape` (novel3-intent-resolve-flee).
+      plan: fleeFirst(w.truth, this.player, w.scheduler.now + 1, plan),
       cursor: FRESH_CURSOR,
       lastBelieved: null,
       steps: [],
