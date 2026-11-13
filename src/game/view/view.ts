@@ -482,6 +482,7 @@ export type EffectView =
       readonly offBalance: boolean;
       readonly fight?: FightGist;
       readonly finished?: boolean;
+      readonly declined?: boolean;
     }
   | {
       readonly kind: "spare";
@@ -1132,6 +1133,7 @@ function effectView(
         offBalance: e.offBalance,
         ...(e.fight ? { fight: e.fight } : {}),
         ...(e.finished ? { finished: true } : {}),
+        ...(e.declined ? { declined: true } : {}),
       };
     case "spare":
       return { kind: "spare", ...target(e.target) };

@@ -210,6 +210,7 @@ import {
   exposeSkills,
   FIGHT_STATE,
   livePause,
+  sparWilling,
   strikeFight,
 } from "./fight.ts";
 import { FOOTWEAR, footSoreBlow, footwearWalkFactor, wearAfter } from "./footwear.ts";
@@ -2114,6 +2115,21 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     if (r.self.effect.kind === "strike") {
       record = { ...r.self, effect: { ...r.self.effect, finished: true } };
     }
+  } else if (
+    eff.kind === "strike" &&
+    eff.committed &&
+    targetId &&
+    fightIntentOf([...state.plan.manner, ...node.manner]) === "spar" &&
+    !livePause(truth, me, targetId, ctx.now) &&
+    !sparWilling(truth, me, targetId, ctx.now)
+  ) {
+    // Propuso practicar y el otro no quiso (novel3-spar-act): no hay golpe ni pelea.
+    if (r.self.effect.kind === "strike") {
+      record = {
+        ...r.self,
+        effect: { ...r.self.effect, hit: false, glancing: false, declined: true },
+      };
+    }
   } else if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
     // Si la pelea quedó pausada contra el mismo rival y sigue caliente, esto la retoma.
     const resumed = livePause(truth, me, targetId, ctx.now);
@@ -2745,7 +2761,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
 export { deleteComponent, FRESH_CURSOR };
 
 /** Los modos de `strike` que dicen para qué se pelea (novel3-intent-words), en orden de peso. */
-const INTENT_MANNERS: readonly FightIntent[] = ["kill", "escape", "subdue", "drive_off"];
+const INTENT_MANNERS: readonly FightIntent[] = ["kill", "escape", "subdue", "drive_off", "spar"];
 
 /**
  * La intención de la pelea desde los modos del golpe. Sin ninguno nombrado sigue la de la pelea que

@@ -609,6 +609,31 @@
     "lines": ["Tirás un golpe al aire."]
   },
   {
+    "id": "outcome.strike.spar.declined",
+    "lines": ["{target} no quiere practicar con vos.", "{target} niega con la cabeza: ahora no."]
+  },
+  {
+    "id": "outcome.strike.spar.won",
+    "lines": [
+      "{target} levanta la mano: te da la práctica.",
+      "{target} concede; la práctica es tuya."
+    ]
+  },
+  {
+    "id": "outcome.strike.spar.lost",
+    "lines": [
+      "Levantás la mano: {target} se lleva la práctica.",
+      "Concedés; {target} fue mejor esta vez."
+    ]
+  },
+  {
+    "id": "outcome.strike.spar.parted",
+    "lines": [
+      "Paran la práctica sin que nadie conceda.",
+      "Se separan y dan la práctica por terminada."
+    ]
+  },
+  {
     "id": "outcome.strike.fight.parted",
     "lines": ["Se separan jadeando, sin que ninguno gane.", "Nadie puede más y la pelea se corta."]
   },

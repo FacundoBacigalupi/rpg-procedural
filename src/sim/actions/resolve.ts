@@ -545,6 +545,8 @@ export type VerbEffect =
       readonly fight?: FightGist;
       /** Lo remató estando a su merced (la pone `game`: el resolver no sabe de rendiciones). */
       readonly finished?: boolean;
+      /** Le propuso practicar y el otro no quiso (la pone `game`, novel3-spar-act): no hubo golpe. */
+      readonly declined?: boolean;
     }
   | {
       /** Perdonar a quien se rindió: dejarlo ir. */
@@ -825,6 +827,8 @@ export interface FightGist {
    * seguir al rival, `me` si el rival era el lento.
    */
   readonly blur?: "foe" | "me";
+  /** Fue práctica (novel3-spar-act): golpes frenados y quien pierde concede. */
+  readonly spar?: boolean;
 }
 
 /** Lo que el actor cree de su paso. */
