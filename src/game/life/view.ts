@@ -58,6 +58,7 @@ import {
   SECT_LORE,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_RANK_REFUSED_EVENT,
   SECT_RETURNED_EVENT,
   SECT_SCHOOL,
   SECT_STIPEND_EVENT,
@@ -781,11 +782,22 @@ export function playerView(
       else cues.add("exchange_refused");
     } else cues.add(refused ? "exchange_refused" : "exchange_done");
   }
-  if (
-    options.heardSince !== undefined &&
-    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT)
-  )
-    cues.add("promoted");
+  const promoted =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT);
+  if (promoted) {
+    const to = (promoted.data as { to?: unknown } | null)?.to;
+    cues.add(to === "core" ? "promoted_core" : to === "elder" ? "promoted_elder" : "promoted");
+  }
+  const rankRefused =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_RANK_REFUSED_EVENT);
+  if (rankRefused) {
+    const why = (rankRefused.data as { refused?: unknown } | null)?.refused;
+    cues.add(why === "no_one" ? "rank_unheard" : "rank_refused");
+  }
   const leave =
     options.heardSince === undefined
       ? undefined
