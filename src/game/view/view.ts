@@ -132,6 +132,8 @@ export type SelfCue =
   | "mission_progress"
   | "mission_done"
   | "mission_lapsed"
+  /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
+  | "heard_prodigy"
   | "rank_unheard"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */
   | "leave_granted"

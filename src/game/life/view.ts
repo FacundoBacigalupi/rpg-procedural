@@ -830,6 +830,23 @@ export function playerView(
           : "mission_lapsed",
     );
   }
+  // Un prodigio que le contaron (novel2-trib-far-gossip): el `rumor.told` lo tiene de oyente.
+  if (options.heardSince !== undefined) {
+    const since = options.heardSince;
+    const events = w.log.all();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!e || e.tick < since) break;
+      if (
+        e.kind === "rumor.told" &&
+        e.actors[1] === w.player &&
+        (e.data as { prodigy?: unknown } | null)?.prodigy !== undefined
+      ) {
+        cues.add("heard_prodigy");
+        break;
+      }
+    }
+  }
   const leave =
     options.heardSince === undefined
       ? undefined

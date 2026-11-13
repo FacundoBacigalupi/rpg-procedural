@@ -23,6 +23,7 @@ export * from "./meaning-calibration.ts";
 export * from "./meaning-pressure.ts";
 export * from "./memory.ts";
 export * from "./mind.ts";
+export * from "./prodigy.ts";
 export * from "./seed.ts";
 export * from "./taste-demand.ts";
 export * from "./tastes.ts";

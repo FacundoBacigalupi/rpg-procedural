@@ -1332,6 +1332,13 @@
     "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
   },
   {
+    "id": "self.heard_prodigy",
+    "lines": [
+      "Te cuentan que se vio algo en el cielo, no muy lejos: nubes negras que se juntaban y rayos que caían.",
+      "Te cuentan, bajando la voz, que hace poco cayeron rayos del cielo por un lado del monte."
+    ]
+  },
+  {
     "id": "self.chore_unpaid",
     "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },

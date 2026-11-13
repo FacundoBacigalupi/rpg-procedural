@@ -6,7 +6,10 @@
 // `told` (`KNOWN_DEEDS`) si lo cree lo bastante, y como memoria `told` (`MEMORIES`). Cada contada es
 // un evento `rumor.told` con causa en el hecho real. Nadie lee la verdad: solo lo que sabe
 // (`KNOWN_DEEDS`, `RUMORS`), sus relaciones y su temperamento. El personaje del jugador queda
-// afuera (lo que cuenta lo decide él en el diálogo).
+// afuera (lo que cuenta lo decide él en el diálogo). Los prodigios (novel2-trib-far-gossip): lo que
+// alguien vio en el cielo (las nubes, los rayos de una tribulación, aunque sea de lejos) también se
+// cuenta, desde su memoria (`prodigyTales`), y deja en el oyente una memoria `told` del mismo evento;
+// se cuenta lo que tenga más ganas, el hecho o el prodigio.
 
 import type { AgentId, EventId } from "../../core/index.ts";
 import {
@@ -22,12 +25,14 @@ import {
   firstHand,
   formMemory,
   type HeardRumor,
+  heardProdigy,
   hearRumor,
   INNATE,
   KIND_WEIGHT,
   KNOWN_DEEDS,
   type KnownDeeds,
   keepRumor,
+  knowsOf,
   LOCATION,
   MEMORIES,
   type Memories,
@@ -35,6 +40,9 @@ import {
   markTold,
   PERSON,
   type ProcessDef,
+  type ProdigyTale,
+  prodigyDesire,
+  prodigyTales,
   RELATIONS,
   RUMORS,
   type Rumors,
@@ -45,6 +53,7 @@ import {
   sourceOf,
   spoken,
   standardize,
+  TRIBULATION_SEEN,
   tellDesire,
 } from "../../sim/index.ts";
 import { suspectOf, type TestifyOptions } from "./testify.ts";
@@ -149,8 +158,25 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
       }
       for (const { teller, here, toPlayer } of turns) {
         const mine = candidatesOf(teller, rumorsOf(teller), knownOf(teller));
-        if (mine.length === 0) continue;
+        const tales = prodigyTales(memoriesOf(teller), isProdigy);
+        if (mine.length === 0 && tales.length === 0) continue;
         const zt = z(teller);
+        const sociability = clamp01(0.5 + 0.25 * clampTemper(zt["sociability"] ?? 0));
+        let wonder: { tale: ProdigyTale; desire: number; listener: AgentId } | null = null;
+        for (const listener of here) {
+          if (listener === teller) continue;
+          for (const t of tales) {
+            if (t.toldBy === listener) continue;
+            const desire = prodigyDesire({
+              tale: t,
+              now,
+              sociability,
+              trustInListener: feeling(teller, listener).dims.trust,
+              listenerKnows: knowsOf(memoriesOf(listener), t.root),
+            });
+            if (desire > (wonder?.desire ?? 0)) wonder = { tale: t, desire, listener };
+          }
+        }
         let best: Candidate | null = null;
         for (const listener of here) {
           if (listener === teller) continue;
@@ -168,7 +194,7 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
               content: h.content,
               ageDays: Math.max(0, (now - h.heardAt) / DAY),
               relevance: clamp01(Math.max(toVictim.affection, toVictim.familiarity)),
-              sociability: clamp01(0.5 + 0.25 * clampTemper(zt["sociability"] ?? 0)),
+              sociability,
               protects: toDoer ? clamp01(Math.max(0, toDoer.affection)) : 0,
               fearOfDoer: toDoer ? clamp01(toDoer.fear) : 0,
               trustInListener: clamp01(lr.trust),
@@ -176,6 +202,34 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
             });
             if (desire > (best?.desire ?? 0)) best = { rumor: h, desire, listener };
           }
+        }
+        if (wonder && wonder.desire > (best?.desire ?? 0)) {
+          const { tale, listener } = wonder;
+          const rng = ctx.rng.fork("prodigy", teller, listener, tale.root);
+          if (!decidesToTell(wonder.desire, rng)) continue;
+          const memory = formMemory(
+            heardProdigy(tale, teller, feeling(listener, teller).dims.trust),
+          );
+          memories.set(listener, addMemory(memoriesOf(listener), memory, now));
+          dirty.add(listener);
+          events.push({
+            kind: RUMOR_TOLD_EVENT,
+            actors: [teller, listener],
+            place: o.placeOf(truth, teller),
+            data: {
+              prodigy: tale.kind,
+              root: tale.root,
+              seen: tale.seen,
+              credit: memory.confidence,
+              ...(toPlayer ? { hearsay: true } : {}),
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: tale.root },
+              { kind: "state", entity: teller, key: MEMORIES.name },
+            ],
+          });
+          continue;
         }
         if (!best) continue;
         const { rumor: h, listener } = best;
@@ -279,6 +333,9 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
     },
   };
 }
+
+/** Lo que se cuenta como prodigio: lo que se ve de una tribulación. */
+const isProdigy = (kind: string): boolean => TRIBULATION_SEEN.has(kind);
 
 function groupKey(truth: Parameters<ProcessDef["run"]>[0]["truth"], id: AgentId): string {
   const at = truth.get(LOCATION, id);
