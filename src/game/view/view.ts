@@ -644,6 +644,17 @@ export interface FixtureInput {
   readonly size?: "small" | "medium" | "large";
 }
 
+/**
+ * La pelea pausada que sigue viva (novel3-intent-panel, combat §16): con quién (nombre o relación,
+ * o «alguien»), por qué se paró según lo que notó y cuántos segundos aguanta antes de enfriarse.
+ */
+export interface FightView {
+  readonly who: string;
+  /** `wounded`: lo hirieron; `foe_fleeing`: el otro se va; `paused`: se paró sin motivo guardado. */
+  readonly reason: "wounded" | "foe_fleeing" | "paused";
+  readonly seconds: number;
+}
+
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
 export interface PlayerView {
   readonly [viewBrand]: "PlayerView";
@@ -677,6 +688,8 @@ export interface PlayerView {
   readonly lexicon: readonly string[];
   /** Opt-in: cómo le dicen al personaje en la aldea, con lugar («el Ladrón de Valle Alto»), solo si ya lo sabe. */
   readonly nickname?: string;
+  /** La pelea pausada que sigue viva; casi siempre ausente. */
+  readonly fight?: FightView;
 }
 
 /** Lo que el personaje cree de alguien que conoce (information; la Fase 2 lo saca de creencias). */
@@ -714,6 +727,7 @@ export interface ViewInput {
   /** El reino y la técnica del turno, si los hay (`SelfView`). */
   readonly selfRealm?: SelfView["realm"];
   readonly selfTechnique?: string;
+  readonly fight?: FightView;
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
@@ -943,6 +957,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     heardTrades: (input.heardTrades ?? []).map((t) => ({ ...t })),
     heardClaims: (input.heardClaims ?? []).map((c) => ({ ...c })),
     readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
+    ...(input.fight ? { fight: { ...input.fight } } : {}),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined
       ? {

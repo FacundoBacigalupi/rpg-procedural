@@ -24,6 +24,7 @@ import {
   levelOf,
   OPINIONS,
   opinionKey,
+  type PauseReason,
   PERSON,
   type ReadonlyWorldTruth,
   refinementOf,
@@ -52,12 +53,30 @@ export interface PausedFight {
   readonly snapshot: FightSnapshot;
   /** El evento de la pelea que arrancó, causa de las heridas que siguen. */
   readonly event: EventId;
+  /** Por qué se pausó, como lo notó el personaje (novel3-intent-panel). */
+  readonly reason?: PauseReason;
+  /** Para qué peleaba: retomar sin decir otra cosa sigue con esto. */
+  readonly intent?: FightIntent;
 }
 
 export const FIGHT_STATE = table<PausedFight>("combat.fight_state");
 
 /** Cuánto aguanta la pausa: pasado esto la pelea se enfrió y se separaron (calibración abierta). */
 export const PAUSE_WINDOW = 30;
+
+/** La pelea pausada del personaje que sigue viva, contra quien sea (novel3-intent-panel). */
+export function anyLivePause(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  now: Tick,
+): PausedFight | undefined {
+  const p = truth.get(FIGHT_STATE, me);
+  return p ? livePause(truth, me, p.foe, now) : undefined;
+}
+
+/** Cuántos segundos le quedan a la pausa antes de enfriarse (0 si ya pasó). */
+export const pauseLeft = (p: PausedFight, now: Tick): number =>
+  Math.max(0, PAUSE_WINDOW - (now - p.snapshot.next));
 
 /** La pelea pausada que sigue viva contra `foe`, si la hay. */
 export function livePause(
@@ -395,6 +414,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
               foe: i.target,
               snapshot: result.paused.snapshot,
               event: i.resume?.event ?? i.cause,
+              reason: result.paused.reason,
+              intent: i.intent,
             }),
           ]
         : i.truth.get(FIGHT_STATE, i.me)

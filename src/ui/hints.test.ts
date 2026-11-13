@@ -41,6 +41,7 @@ const VERB: Record<Suggestion["kind"], string> = {
   look: "look",
   wait: "wait",
   goal: "work",
+  fight: "strike",
 };
 
 function suggestion(kind: Suggestion["kind"], extra: Partial<Suggestion> = {}): Suggestion {
@@ -82,6 +83,23 @@ describe("la pista de frases (play-hint-verbs)", () => {
     for (const k of KINDS) {
       const phrase = suggestionPhrase(suggestion(k, k === "talk" ? { with: "madre" } : {}));
       expect(verbOf(phrase), phrase).toBe(VERB[k]);
+    }
+  });
+
+  it("las de una pelea pausada se leen como golpe con su modo (novel3-intent-panel)", () => {
+    for (const manner of [undefined, "kill", "drive_off", "escape"] as const) {
+      const phrase = suggestionPhrase(
+        suggestion("fight", { fight: { who: "Wu", ...(manner ? { manner } : {}) } }),
+      );
+      const d = parseCommand(phrase, catalog, words);
+      const n = d?.plan;
+      expect(n?.kind, phrase).toBe("do");
+      if (n?.kind !== "do") continue;
+      expect(n.verb, phrase).toBe("strike");
+      const said = (n.manner ?? []).filter((m) =>
+        ["kill", "subdue", "drive_off", "escape"].includes(m),
+      );
+      expect(said, phrase).toEqual(manner ? [manner] : []);
     }
   });
 

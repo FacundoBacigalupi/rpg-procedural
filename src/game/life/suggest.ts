@@ -30,6 +30,7 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import type { GoalSketch } from "../view/index.ts";
+import { anyLivePause } from "./fight.ts";
 import { activePlayerGoals, type PlayerGoal } from "./goals.ts";
 import { knownEntities } from "./known.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
@@ -46,7 +47,8 @@ export type SuggestionKind =
   | "talk"
   | "look"
   | "wait"
-  | "goal";
+  | "goal"
+  | "fight";
 
 export interface Suggestion {
   /** Estable entre turnos mientras la opción siga siendo la misma ("talk:madre"). */
@@ -63,7 +65,12 @@ export interface Suggestion {
   readonly confirm: boolean;
   /** Para `goal`: qué meta la propone y cómo se lee la opción («observar a Langdang…»). */
   readonly goal?: { readonly id: number; readonly text: string; readonly say: string };
+  /** Para `fight`: con quién sigue la pelea pausada y para qué (sin modo, como venía). */
+  readonly fight?: { readonly who: string; readonly manner?: FightManner };
 }
+
+/** Los modos de `strike` que se ofrecen al retomar una pelea pausada (novel3-intent-panel). */
+export type FightManner = "kill" | "drive_off" | "escape";
 
 /** Las metas del personaje y su catálogo, para las opciones que proponen (novel-goals-hooks). */
 export interface SuggestionGoals {
@@ -83,6 +90,7 @@ const BASE_TONE: Readonly<Record<SuggestionKind, SuggestionTone>> = {
   look: "routine",
   wait: "routine",
   goal: "routine",
+  fight: "violent",
 };
 
 function verbsOf(node: PlanNode): string[] {
@@ -192,7 +200,47 @@ function candidates(w: LifeWorld, now: Tick, goals?: SuggestionGoals): Suggestio
   add("look", 0.15, act("look"));
   add("wait", 0.05, act("wait", [{ role: "for", duration: hours(1) }]));
   for (const s of goalCandidates(w, goals)) out.push(s);
+  for (const s of fightCandidates(w, now)) out.push(s);
   return out;
+}
+
+/** Arriba de todo lo demás: con la pelea en pausa no hay otra cosa más urgente. */
+const FIGHT_OPTIONS: readonly { readonly manner?: FightManner; readonly salience: number }[] = [
+  { salience: 0.999 },
+  { manner: "kill", salience: 0.998 },
+  { manner: "drive_off", salience: 0.997 },
+  { manner: "escape", salience: 0.996 },
+];
+
+/**
+ * Con una pelea pausada que sigue viva (novel3-intent-panel): seguir peleando, matarlo, echarlo o
+ * escaparse, contra el rival como lo nombra el personaje. Si no lo tiene delante con un nombre para
+ * señalarlo, no hay opción (escribir sigue andando).
+ */
+function fightCandidates(w: LifeWorld, now: Tick): Suggestion[] {
+  const paused = anyLivePause(w.truth, w.player, now);
+  if (!paused) return [];
+  const foe = knownEntities(w).find((k) => k.ref === paused.foe && k.present);
+  const who = foe?.names[0];
+  if (who === undefined) return [];
+  const ref = { text: who, kind: "person" as const, features: [] };
+  return FIGHT_OPTIONS.map((o) => ({
+    id: `fight:${o.manner ?? "on"}`,
+    kind: "fight" as const,
+    salience: o.salience,
+    draft: {
+      kind: "act" as const,
+      plan: {
+        kind: "do" as const,
+        verb: "strike",
+        args: [{ role: "target" as const, ref }],
+        ...(o.manner ? { manner: [o.manner] } : {}),
+      },
+    },
+    tone: BASE_TONE.fight,
+    confirm: false,
+    fight: { who, ...(o.manner ? { manner: o.manner } : {}) },
+  }));
 }
 
 /**

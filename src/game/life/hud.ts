@@ -56,6 +56,7 @@ import {
   vesselCapacity,
   weatherAt,
 } from "../../sim/index.ts";
+import type { FightView } from "../view/index.ts";
 import {
   ANIMAL_SIGHT_M,
   animalRows,
@@ -66,7 +67,7 @@ import {
 import { knownEntities } from "./known.ts";
 import { type Outfit, outfitOf } from "./outfit.ts";
 import type { BurdenLevel, CharacterPanel } from "./panels.ts";
-import { MAX_CLEAR_PERCEPTS } from "./view.ts";
+import { fightForView, MAX_CLEAR_PERCEPTS } from "./view.ts";
 import { type AirFeel, playerSkyOf, type SeasonName, weatherPanel } from "./weather-panel.ts";
 import type { LifeWorld } from "./world.ts";
 
@@ -173,6 +174,8 @@ export interface Hud {
    * retrocesos (`MERIDIAN_HURT`).
    */
   readonly cultivation?: HudCultivation;
+  /** La pelea pausada que sigue viva (novel3-intent-panel): la misma `FightView` de la vista. */
+  readonly fight?: FightView;
 }
 
 export interface HudCultivation {
@@ -627,6 +630,7 @@ export function hudPanel(
   const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(skyMap), 0, now) : null;
   const outfit = outfitOf(w);
   const cultivation = cultivationOf(w);
+  const fight = fightForView(w);
   return {
     hour,
     phase,
@@ -658,6 +662,7 @@ export function hudPanel(
     load: loadOf(w),
     ...(outfit ? { clothing: outfit } : {}),
     ...(cultivation ? { cultivation } : {}),
+    ...(fight ? { fight } : {}),
   };
 }
 

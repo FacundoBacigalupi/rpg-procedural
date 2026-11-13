@@ -2098,7 +2098,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       plans: e.plans,
       skills: o.skills,
       traits: o.traits,
-      intent: fightIntentOf([...state.plan.manner, ...node.manner]),
+      intent: fightIntentOf([...state.plan.manner, ...node.manner], resumed?.intent),
       light: e.light,
       ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,
@@ -2720,9 +2720,13 @@ export { deleteComponent, FRESH_CURSOR };
 /** Los modos de `strike` que dicen para qué se pelea (novel3-intent-words), en orden de peso. */
 const INTENT_MANNERS: readonly FightIntent[] = ["kill", "escape", "subdue", "drive_off"];
 
-/** La intención de la pelea desde los modos del golpe; sin ninguno, `fast` echa y lo demás reduce. */
-export function fightIntentOf(manner: readonly string[]): FightIntent {
+/**
+ * La intención de la pelea desde los modos del golpe. Sin ninguno nombrado sigue la de la pelea que
+ * se retoma (`kept`, «sigo peleando»); si no, `fast` echa y lo demás reduce.
+ */
+export function fightIntentOf(manner: readonly string[], kept?: FightIntent): FightIntent {
   const named = INTENT_MANNERS.find((m) => manner.includes(m));
   if (named) return named;
+  if (kept !== undefined) return kept;
   return manner.includes("fast") ? "drive_off" : "subdue";
 }

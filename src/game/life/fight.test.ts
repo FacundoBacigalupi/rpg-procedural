@@ -17,6 +17,8 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { offenseOf } from "./deeds.ts";
 import { FIGHT_STATE, livePause, PAUSE_WINDOW } from "./fight.ts";
 import { Life } from "./life.ts";
+import { DEFAULT_SUGGESTIONS, suggestions } from "./suggest.ts";
+import { fightForView } from "./view.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -173,6 +175,27 @@ describe("pausas de la pelea del personaje", () => {
     expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
       [],
     );
+  }, 240_000);
+
+  it("la pausa guarda por qué y para qué; la vista y las opciones la muestran (novel3-intent-panel)", () => {
+    const run = pausedBrawl();
+    expect(run).not.toBeNull();
+    if (!run) return;
+    const saved = run.w.truth.get(FIGHT_STATE, run.me);
+    expect(["wounded", "foe_fleeing"]).toContain(saved?.reason);
+    expect(saved?.intent).toBe("subdue");
+    const view = fightForView(run.w);
+    expect(view?.reason).toBe(saved?.reason);
+    expect(view?.seconds).toBeGreaterThan(0);
+    expect(view?.seconds).toBeLessThanOrEqual(PAUSE_WINDOW);
+    expect(view?.who).not.toBe("alguien");
+    const options = suggestions(run.w, DEFAULT_SUGGESTIONS).filter((s) => s.kind === "fight");
+    expect(options.map((s) => s.fight?.manner ?? "on")).toEqual([
+      "on",
+      "kill",
+      "drive_off",
+      "escape",
+    ]);
   }, 240_000);
 
   it("una pelea que ya enfrió no se retoma: pasa el tiempo y arranca otra", () => {
