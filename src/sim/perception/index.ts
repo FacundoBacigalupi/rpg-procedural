@@ -3,5 +3,6 @@
 
 export * from "./habituation.ts";
 export * from "./percept.ts";
+export * from "./sky.ts";
 export * from "./stimuli.ts";
 export * from "./witnesses.ts";

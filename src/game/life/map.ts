@@ -55,6 +55,7 @@ export function localMapOf(
     cell: planet.grid.cellId(patch.cell),
     lonDeg: ((planet.grid.lon[patch.cell] as number) * 180) / Math.PI,
     neighbors: patch.neighbors,
+    kmPerHex: km,
     crossSeconds,
     forest: patch.hexes.map((_, h) => tr.forest[h] === 1),
     elevationM: patch.hexes.map((_, h) => tr.elevation[h] as number),

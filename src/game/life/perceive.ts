@@ -9,6 +9,7 @@ import {
   ATTENTION,
   actionStimulus,
   attireLook,
+  hexesAround,
   LOCATION,
   type LocalMap,
   localHour,
@@ -21,6 +22,8 @@ import {
   STATUS,
   type StatusDef,
   skyLight,
+  skyPercepts,
+  skyRadius,
   TRIBULATION_SEEN,
   type TraitDef,
   table,
@@ -59,7 +62,8 @@ export interface PerceiveOptions {
  * Los pasos de otros que el personaje percibe: lo que hacen, que alguien muera y que nazca un niño
  * cerca (el llanto; `family.birth` solo existe con `births`). Los eventos internos de la sim
  * (`npc.*`, `family.conception`…) no emiten nada: no llegan a la narración. Una tribulación ajena
- * sí: las nubes, la caída y cada rayo (novel2-trib-seen).
+ * sí: las nubes, la caída y cada rayo (novel2-trib-seen), y de lejos también: desde otros hexes
+ * llega que hay algo en el cielo y qué es, sin quién (novel2-trib-far-sight, `skyPercepts`).
  */
 function perceivable(kind: string): boolean {
   return (
@@ -78,6 +82,8 @@ export function perceiveProcess(o: PerceiveOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
+    // Las nubes y las olas las emite `meditate` en esta misma fase: llegan en la segunda ronda.
+    perceiveCascade: { kinds: [...TRIBULATION_SEEN] },
     reads: [
       PERCEPTS.name,
       PERSON.name,
@@ -155,6 +161,21 @@ export function perceiveEvents(
     const at = truth.get(LOCATION, who);
     const p = truth.get(PERSON, who);
     if (!at || !p) continue;
+    const mine = truth.get(LOCATION, o.player);
+    if (TRIBULATION_SEEN.has(e.kind) && mine && mine.hex !== at.hex) {
+      const km = o.map.kmPerHex ?? 0;
+      const hexes = hexesAround(o.map.neighbors, at.hex, skyRadius(km)).get(mine.hex);
+      if (hexes !== undefined)
+        out.push(
+          ...skyPercepts(
+            { event: e.id, tick: e.tick, verb: e.kind },
+            [{ observer: playerObserver({ ...o, truth }, ATTENTION.relaxed, e.tick), hexes }],
+            km,
+            rng.fork(e.id),
+          ),
+        );
+      continue;
+    }
     const em = (e.emissions ?? {}) as { sight?: number; sound?: number };
     const data = e.data as { effect?: { text?: string | null } } | null;
     const words = e.kind === "action.speak" ? (data?.effect?.text ?? null) : undefined;

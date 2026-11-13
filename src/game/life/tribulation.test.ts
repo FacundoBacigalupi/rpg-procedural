@@ -35,6 +35,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { playerView } from "./view.ts";
+import { NPC_PERCEPTS } from "./witnessing.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -269,6 +270,49 @@ describe("la tribulación se junta y cae en olas (novel2-trib-gather, novel2-tri
     expect(mem).toBeDefined();
     expect(mem?.source).toBe("witnessed");
     expect(mem?.valence).toBeLessThan(0);
+  }, 600_000);
+
+  it("las nubes se ven desde otro hex, vago y sin quién (novel2-trib-far-sight)", () => {
+    const life = Life.create(3, content, { cultivation: true });
+    const w = life.world;
+    const me = life.player;
+    expect(w.map.kmPerHex).toBeGreaterThan(0);
+    const plane = w.truth.ids(CULTIVATION_LAW)[0];
+    const law = plane ? w.truth.get(CULTIVATION_LAW, plane) : undefined;
+    const ts = law?.paths[0]?.thresholds ?? [];
+    const last = ts[ts.length - 1];
+    if (!plane || !last) throw new Error("sin ley");
+    w.truth.set(CULTIVATION_STATE, me, {
+      sensitivity: 2,
+      hours: 500,
+      sensed: { at: life.now, event: w.log.all()[0]?.id as EventId },
+      stage: ts.length - 1,
+      qi: last.capacity,
+      purity: 1,
+      foundation: 1,
+    });
+    // El personaje sale a un hex vecino: los de la aldea quedan a un hex.
+    const here = w.truth.get(LOCATION, me);
+    if (!here) throw new Error("sin lugar");
+    const next = (w.map.neighbors[here.hex] ?? [])[0];
+    if (next === undefined) throw new Error("sin vecino de hex");
+    w.truth.set(LOCATION, me, { hex: next });
+    freshTurn(life, doFor(me, "breakthrough", 1), 1);
+    const gathers = w.log.all().find((e) => e.kind === TRIBULATION_GATHERS_EVENT);
+    if (!gathers) throw new Error("no se juntaron nubes");
+    const far = [...w.truth.ids(NPC_PERCEPTS)].flatMap((id) =>
+      w.truth.get(LOCATION, id as AgentId)?.hex === next
+        ? []
+        : (w.truth.get(NPC_PERCEPTS, id)?.recent ?? []).filter(
+            (p) => p.sourceEventId === gathers.id,
+          ),
+    );
+    expect(far.length).toBeGreaterThan(0);
+    for (const seen of far) {
+      expect(seen.detail).toBe("vague");
+      expect(seen.fields.action?.value).toBe(TRIBULATION_GATHERS_EVENT);
+      expect(seen.fields.identity).toBeUndefined();
+    }
   }, 600_000);
 
   it("el primer umbral no llama tribulación: la ruptura se resuelve en el acto", () => {
