@@ -9,7 +9,17 @@ import {
   Rng,
   type Tick,
 } from "../../core/index.ts";
-import { KNOWN_DEEDS, LOCATION, RELATION_BONDS, RELATION_DIMS, TRAITS } from "../../sim/index.ts";
+import {
+  addMemory,
+  formMemory,
+  KNOWN_DEEDS,
+  LOCATION,
+  MEMORIES,
+  RELATION_BONDS,
+  RELATION_DIMS,
+  TRAITS,
+  TRIBULATION_STRIKES_EVENT,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { GOSSIP_PROCESS, gossipProcess, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { Life } from "./life.ts";
@@ -120,4 +130,80 @@ describe("la vida con life.gossip activo", () => {
     };
     expect(run()).toEqual(run());
   }, 240_000);
+
+  it("un prodigio visto se cuenta: memoria told del mismo evento, con menos confianza y causa en lo visto (novel2-trib-far-gossip)", () => {
+    const life = Life.create(7, content);
+    const w = life.world;
+    const [teller, listener] = living(w.truth) as AgentId[] as [AgentId, AgentId];
+    const root = "event:prodigio" as EventId;
+    const here = w.truth.get(LOCATION, teller);
+    if (!here) throw new Error("sin lugar");
+    w.truth.set(LOCATION, listener, here);
+    w.truth.set(KNOWN_DEEDS, teller, { deeds: [] });
+    w.truth.set(
+      MEMORIES,
+      teller,
+      addMemory(
+        undefined,
+        formMemory({
+          eventId: root,
+          kind: TRIBULATION_STRIKES_EVENT,
+          with: [],
+          place: { kind: "cell", cell: 0 } as never,
+          at: life.now,
+          intensity: 0.5,
+          valence: -0.2,
+          clarity: 0.6,
+        }),
+        life.now,
+      ),
+    );
+    const proc = gossipProcess({
+      dims: content.all(RELATION_DIMS),
+      bonds: content.all(RELATION_BONDS),
+      traits: content.all(TRAITS),
+      placeOf: () => ({ hex: 0 }) as never,
+      player: "agent:none" as AgentId,
+    });
+    let told:
+      | { kind: string; actors: string[]; data: Record<string, unknown>; causes: unknown[] }
+      | undefined;
+    let changes: { table?: string; id?: string; value?: unknown }[] = [];
+    for (let seed = 0; seed < 60 && !told; seed++) {
+      const out = proc.run({
+        truth: w.truth,
+        now: life.now,
+        rng: Rng.root(seed),
+        recent: [],
+      } as never) as unknown as {
+        changes?: { table?: string; id?: string; value?: unknown }[];
+        events?: {
+          kind: string;
+          actors: string[];
+          data: Record<string, unknown>;
+          causes: unknown[];
+        }[];
+      };
+      told = out.events?.find((e) => e.data["prodigy"] !== undefined);
+      changes = out.changes ?? [];
+    }
+    if (!told) throw new Error("nadie contó el prodigio");
+    expect(told.kind).toBe(RUMOR_TOLD_EVENT);
+    expect(told.data["prodigy"]).toBe(TRIBULATION_STRIKES_EVENT);
+    expect(told.data["seen"]).toBe(true);
+    expect(told.causes).toContainEqual({ kind: "event", event: root });
+    const heardBy = told.actors[1] as AgentId;
+    const set = changes.find((c) => c.table === MEMORIES.name && c.id === heardBy) as
+      | {
+          value: {
+            items: { eventId: string; source: string; toldBy?: string; confidence: number }[];
+          };
+        }
+      | undefined;
+    const m = set?.value.items.find((x) => x.eventId === root);
+    expect(m?.source).toBe("told");
+    expect(m?.toldBy).toBe(teller);
+    const seenConf = w.truth.get(MEMORIES, teller)?.items[0]?.confidence ?? 0;
+    expect(m?.confidence ?? 1).toBeLessThan(seenConf);
+  }, 60_000);
 });

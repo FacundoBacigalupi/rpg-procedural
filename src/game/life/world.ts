@@ -1598,6 +1598,9 @@ export function lifeWorld(
           day: parts.clock.day,
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
+          ...(parts.cultivation?.pills && parts.cultivation.herbs
+            ? { missions: { pills: parts.cultivation.pills, herbs: parts.cultivation.herbs } }
+            : {}),
         }),
         ...(economicBatch ? [converseProjectionProcess()] : []),
         ...(economicBatch
@@ -1713,6 +1716,10 @@ export function lifeWorld(
           goods: parts.goods,
           clock: parts.clock,
           placeOf: placeOf(parts, village),
+          // Con hierbas, las pudre `cultivation.herbs` y devuelven su qi (novel2-alch-rot).
+          ...(parts.cultivation?.herbs && parts.cultivation.herbs.length > 0
+            ? { skip: parts.cultivation.herbs.map((h) => h.good) }
+            : {}),
         }),
         soilProcess({
           clock: parts.clock,
@@ -2519,6 +2526,7 @@ export function lifeWorld(
                       dayTicks: parts.clock.day,
                       yearTicks: parts.clock.year,
                       herbs: parts.cultivation.herbs,
+                      rot: { goods: parts.goods, placeOf: placeOf(parts, village) },
                       // La secta cosecha y refina en su sede (novel2-alch-sect).
                       ...(parts.cultivation.pills
                         ? {
@@ -2537,6 +2545,8 @@ export function lifeWorld(
               sectVisitProcess({ clock: parts.clock, lonDeg: parts.map.lonDeg, village, player }),
               sectDutyProcess({
                 dayTicks: parts.clock.day,
+                relations: { dims: parts.relationDims, bonds: parts.relationBonds },
+                ...(parts.cultivation.herbs ? { herbs: parts.cultivation.herbs } : {}),
                 // El tesoro canjea píldoras por puntos (novel2-pills-exchange).
                 ...(parts.cultivation.pills
                   ? {

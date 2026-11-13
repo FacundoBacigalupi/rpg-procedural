@@ -500,6 +500,127 @@
     "warm": ["No es que no me caigas bien; es que todavía no estás. Seguí y volvé."]
   },
   {
+    "id": "promotion.no",
+    "lines": [
+      "¿Ascensos? Eso no lo decido yo; hablá con un anciano.",
+      "No soy quién para subirte de rango."
+    ],
+    "formal": ["No está en mí plantear ascensos."],
+    "dry": ["No me toca."]
+  },
+  {
+    "id": "promotion.raise",
+    "lines": [
+      "Cumplís con lo que pide la secta. Lo voy a plantear; lo que se decida, se decide arriba.",
+      "Está bien: llevo tu nombre. No te prometo nada."
+    ],
+    "formal": ["Reúne lo que se exige. Elevaré su caso; la decisión no es solo mía."],
+    "warm": ["Te lo ganaste. Voy a hablar por vos."],
+    "dry": ["Lo planteo. Esperá."]
+  },
+  {
+    "id": "promotion.refuse.not_member",
+    "lines": ["No sos de esta secta. ¿Ascender a qué?"],
+    "formal": ["Usted no pertenece a esta secta."]
+  },
+  {
+    "id": "promotion.refuse.outer",
+    "lines": [
+      "Los externos suben con trabajo, no pidiendo. Cumplí tus horas de tarea.",
+      "Primero llegá a interno con tus tareas; eso no se plantea."
+    ],
+    "formal": ["El paso a discípulo interno se gana con las tareas, no se solicita."]
+  },
+  {
+    "id": "promotion.refuse.top",
+    "lines": ["Más arriba de donde estás no se sube pidiendo."],
+    "formal": ["Ese rango no se alcanza por solicitud."]
+  },
+  {
+    "id": "promotion.refuse.too_soon",
+    "lines": [
+      "Hace nada que tenés ese rango. Esperá; la secta quiere ver constancia.",
+      "Todavía es pronto. Volvé dentro de unos meses."
+    ],
+    "formal": ["Es prematuro. Aún no lleva el tiempo suficiente en su rango."]
+  },
+  {
+    "id": "promotion.refuse.too_low",
+    "lines": [
+      "Con tu cultivo no alcanza. Rompé el próximo umbral y hablamos.",
+      "Te falta avanzar. La secta no sube a quien no cruzó el tramo."
+    ],
+    "formal": ["Su cultivo no alcanza lo que exige ese rango."]
+  },
+  {
+    "id": "promotion.refuse.few_points",
+    "lines": [
+      "¿Y qué hiciste por la secta? Te faltan méritos.",
+      "Aportaste poco. Trabajá más para la secta y después pedí."
+    ],
+    "formal": ["Sus aportes a la secta aún no bastan."]
+  },
+  {
+    "id": "promotion.refuse.grudge",
+    "lines": [
+      "¿Que yo hable por vos? Ni lo sueñes.",
+      "Después de lo que hiciste, no cuentes conmigo."
+    ],
+    "dry": ["No."]
+  },
+  {
+    "id": "promotion.refuse.waiting",
+    "lines": [
+      "La secta ya trató lo tuyo hace poco. Esperá un tiempo antes de volver a pedir.",
+      "Ya se decidió hace nada. Volvé dentro de un mes."
+    ],
+    "formal": ["Su caso se resolvió hace poco; no corresponde volver a plantearlo todavía."]
+  },
+  {
+    "id": "mission.no",
+    "lines": ["¿Misiones? Las da un anciano, no yo.", "Eso pedíselo a los ancianos."]
+  },
+  {
+    "id": "mission.give.herbs",
+    "lines": [
+      "Al alquimista le faltan hierbas espirituales. Andá al monte, juntá lo que puedas y traéselas a un anciano antes de dos semanas.",
+      "Hay que juntar hierbas para las píldoras. Tenés dos semanas; entregáselas a un anciano."
+    ],
+    "formal": [
+      "El alquimista necesita hierbas espirituales. Recójalas en el monte y entréguelas a un anciano en el plazo de dos semanas."
+    ]
+  },
+  {
+    "id": "mission.give.watch",
+    "lines": [
+      "Anda una banda cerca de la sede. Vigilá el camino donde la vieron y volvé a contar; tenés una semana.",
+      "Hay bandidos cerca. Hacé guardia donde andan y volvé antes de una semana."
+    ],
+    "formal": [
+      "Hay una banda cerca de la sede. Vigile el camino donde se la vio y regrese a informar en una semana."
+    ]
+  },
+  {
+    "id": "mission.refuse.not_member",
+    "lines": ["No sos de esta secta. Las misiones son para los nuestros."],
+    "formal": ["Usted no pertenece a esta secta."]
+  },
+  {
+    "id": "mission.refuse.elder",
+    "lines": ["Un anciano no sale a misiones; las da."]
+  },
+  {
+    "id": "mission.refuse.busy",
+    "lines": ["Ya tenés una misión. Terminala primero.", "Primero cumplí la que tenés."]
+  },
+  {
+    "id": "mission.refuse.none",
+    "lines": [
+      "Ahora no hace falta nada que puedas hacer. Volvé en unos días.",
+      "No hay misiones para vos por ahora."
+    ]
+  },
+  {
     "id": "introduce.wary",
     "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
     "formal": ["Prefiero no decirlo, si no le molesta."],

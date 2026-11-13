@@ -11,26 +11,37 @@
 // `endowPerHead` píldoras por cabeza; lo que se quema pasa al horno (`sect.furnace`) y de ahí salen
 // las píldoras con el qi de sus hierbas; el resto del qi (lo fallido, lo que no se lleva una de romper)
 // vuelve a la celda de la sede. Lo que se tragó y no cupo ya vuelve en `meditate.ts`.
+//
+// Lo que se pudre (novel2-alch-rot): con `rot`, las hierbas juntadas que lleva cada uno o guarda su
+// casa se pudren acá con la vida media de su bien (no en `life.spoilage`) y su qi vuelve a la reserva
+// del lugar donde se pudren: la propia si el que las lleva está en un lugar con reserva (la sede), si
+// no la del plano. Lo podrido va al sumidero `rotted` como cualquier comida. El tesoro de la secta
+// todavía no se pudre (tampoco lo pudre `life.spoilage`).
 
 import {
   type AgentId,
   type EntityRef,
   externalAccount,
+  type HolderRef,
   holderAccount,
   type LedgerAccount,
   type LedgerUnit,
   ledgerUnit,
   type PlaceId,
+  type PlaceRef,
   Rng,
 } from "../../core/index.ts";
 import {
   CULTIVATION_LAW,
   draftEvent,
   ENTITY,
+  type GoodDef,
   HERB_STAND,
   type HerbDef,
   type HerbStand,
   herbCapacity,
+  LOCATION,
+  PERSON,
   type PillDef,
   PLACE,
   PLACE_QI,
@@ -40,6 +51,7 @@ import {
   QI_TAKEN,
   type QiTaken,
   type ReadonlyWorldTruth,
+  ROTTED,
   refineBatch,
   refineReleasedQi,
   regrowHerb,
@@ -50,13 +62,17 @@ import {
   type SkillDef,
   setComponent,
   skillLevel,
+  spoilage,
 } from "../../sim/index.ts";
 import { SECT_HALL, type SectHall, treasuryAccount } from "./sect-hall.ts";
+import { householdsOf } from "./spoilage.ts";
 
 export const HERBS_PROCESS = "cultivation.herbs";
 /** Fuente del ledger de las hierbas espirituales (lo que crece del qi del lugar). */
 export const HERB_SOURCE = "herb";
 export const HERBS_GREW_EVENT = "cultivation.herbs_grew";
+/** Hierbas juntadas que se pudrieron y devolvieron su qi (novel2-alch-rot). */
+export const HERBS_ROTTED_EVENT = "cultivation.herbs_rotted";
 /** Fuente externa del horno de la secta: entran hierbas, salen píldoras (novel2-alch-sect). */
 export const SECT_FURNACE = "sect.furnace";
 export const SECT_ALCHEMY_EVENT = "cultivation.sect_alchemy";
@@ -80,6 +96,14 @@ export interface SectAlchemy {
   readonly skill?: SkillDef;
 }
 
+/** Lo que necesitan las hierbas juntadas para pudrirse (novel2-alch-rot). */
+export interface HerbRot {
+  /** El catálogo de bienes, de donde sale la vida media. */
+  readonly goods: readonly GoodDef[];
+  /** Dónde poner el evento de cada uno. */
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+}
+
 export function herbsProcess(o: {
   readonly dayTicks: number;
   /** Ticks por año, para la regeneración de la celda (novel2-alch-qi). */
@@ -87,6 +111,8 @@ export function herbsProcess(o: {
   readonly herbs: readonly HerbDef[];
   /** La secta cosecha y refina en su sede (novel2-alch-sect). */
   readonly alchemy?: SectAlchemy;
+  /** Las hierbas juntadas se pudren acá y devuelven su qi (novel2-alch-rot). */
+  readonly rot?: HerbRot;
 }): ProcessDef {
   return {
     id: HERBS_PROCESS,
@@ -104,6 +130,7 @@ export function herbsProcess(o: {
       ...(o.alchemy
         ? [SECT.name, SECT_HALL.name, SECT_MEMBER.name, ENTITY.name, SKILL_STATE.name]
         : []),
+      ...(o.rot ? [PERSON.name, LOCATION.name, ...(o.alchemy ? [] : [ENTITY.name])] : []),
     ],
     writes: [HERB_STAND.name, QI_TAKEN.name],
     run(ctx) {
@@ -233,6 +260,18 @@ export function herbsProcess(o: {
         settle(poolOf(seat, qi), 0, next.back);
         stands.set(seat, { ...next.stand, brewed: ctx.now });
       }
+      if (o.rot) {
+        const planeQi = ctx.truth.get(PLACE_QI, plane);
+        const rows = planeQi
+          ? rotHerbs(ctx.truth, ledger, o.herbs, o.rot, days, ctx.rng, plane as EntityRef, planeQi)
+          : [];
+        for (const r of rows) {
+          settle(poolOf(r.pool, r.qi), 0, r.back);
+          const i = events.length;
+          events.push(r.event);
+          postings.push({ event: draftEvent(i), transfers: r.transfers });
+        }
+      }
       for (const [p, stand] of stands) changes.push(setComponent(HERB_STAND, p, stand));
       for (const [id, pool] of pools)
         if (pool.dirty) changes.push(setComponent(QI_TAKEN, id, pool.row));
@@ -357,4 +396,94 @@ function brew(
 
 function round4(x: number): number {
   return Math.round(x * 1e4) / 1e4;
+}
+
+/** Lo que se pudrió de uno: a qué reserva vuelve su qi, cuánto, el evento y las transferencias. */
+interface Rotted {
+  readonly pool: EntityRef;
+  readonly qi: PlaceQi;
+  readonly back: number;
+  readonly event: Draft;
+  readonly transfers: Transfer[];
+}
+
+/**
+ * Lo que se pudre de las hierbas juntadas (novel2-alch-rot): de cada casa con alguien vivo y de cada
+ * vivo, con la vida media de su bien (`spoilage`, RNG por cuenta), y a qué reserva vuelve su qi: la
+ * de un lugar con reserva propia donde está el que las lleva, si no la del plano (la casa está en la
+ * aldea). Uno por quien tiene algo podrido.
+ */
+function rotHerbs(
+  truth: ReadonlyWorldTruth,
+  ledger: NonNullable<Parameters<ProcessDef["run"]>[0]["ledger"]>,
+  herbs: readonly HerbDef[],
+  rot: HerbRot,
+  days: number,
+  rng: Rng,
+  plane: EntityRef,
+  planeQi: PlaceQi,
+): Rotted[] {
+  const goods = rot.goods.filter((g) => herbs.some((h) => h.good === g.id));
+  if (goods.length === 0) return [];
+  const qiPer = new Map<string, number>(herbs.map((h) => [`good:${h.good}`, h.qiPerGram]));
+  /** Los lugares con reserva propia y sus hexes. */
+  const own = truth.ids(PLACE).flatMap((p) => {
+    const qi = truth.get(PLACE_QI, p);
+    const hexes = truth.get(PLACE, p)?.hexes ?? [];
+    return qi && p !== plane ? [{ id: p as EntityRef, qi, hexes }] : [];
+  });
+  const poolAt = (hex: number | undefined): { id: EntityRef; qi: PlaceQi } =>
+    (hex === undefined ? undefined : own.find((x) => x.hexes.includes(hex))) ?? {
+      id: plane,
+      qi: planeQi,
+    };
+  const alive = (truth.ids(PERSON) as unknown as AgentId[])
+    .filter((id) => truth.get(ENTITY, id as unknown as EntityRef)?.endedAt === undefined)
+    .sort();
+  const holders: { holder: HolderRef; hex: number | undefined; at: AgentId }[] = [];
+  for (const home of householdsOf(truth)) {
+    const first = alive.find(
+      (id) => truth.get(PERSON, id as unknown as EntityRef)?.household === (home as string),
+    );
+    if (first) holders.push({ holder: home as unknown as HolderRef, hex: undefined, at: first });
+  }
+  for (const id of alive)
+    holders.push({
+      holder: id as unknown as HolderRef,
+      hex: truth.get(LOCATION, id as unknown as EntityRef)?.hex,
+      at: id,
+    });
+  const out: Rotted[] = [];
+  for (const { holder, hex, at } of holders) {
+    const account = holderAccount(holder);
+    const rows = spoilage(ledger.holdings(account), goods, days, rng.fork("herb-rot", account));
+    if (rows.length === 0) continue;
+    const pool = poolAt(hex);
+    const back = round4(rows.reduce((s, r) => s + r.amount * (qiPer.get(r.unit) ?? 0), 0));
+    const grams: Record<string, number> = {};
+    for (const r of rows) grams[r.unit] = r.amount;
+    out.push({
+      pool: pool.id,
+      qi: pool.qi,
+      back,
+      transfers: rows.map((r) => ({
+        unit: r.unit,
+        from: account,
+        to: externalAccount(ROTTED),
+        amount: r.amount,
+      })),
+      event: {
+        kind: HERBS_ROTTED_EVENT,
+        actors: [],
+        place: rot.placeOf(truth, at),
+        data: { holder, grams, ...(back > 0 ? { back } : {}) },
+        emissions: {},
+        causes: [
+          { kind: "state", entity: holder as unknown as EntityRef, key: "spoilage" },
+          { kind: "state", entity: pool.id, key: PLACE_QI.name },
+        ],
+      },
+    });
+  }
+  return out;
 }

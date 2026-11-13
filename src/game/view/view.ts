@@ -122,6 +122,19 @@ export type SelfCue =
   | "pill_aid"
   /** La secta lo subió de externo a interno (`cultivation.sect_promoted`, novel-sect-duty-rank). */
   | "promoted"
+  /** La secta lo subió al núcleo o a anciano (novel2-rank-review). */
+  | "promoted_core"
+  | "promoted_elder"
+  /** La secta trató su ascenso y dijo que no, o no había nadie en la sede para decidirlo. */
+  | "rank_refused"
+  | "mission_herbs"
+  | "mission_watch"
+  | "mission_progress"
+  | "mission_done"
+  | "mission_lapsed"
+  /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
+  | "heard_prodigy"
+  | "rank_unheard"
   /** Pidió permiso para bajar y se lo dieron (`cultivation.sect_leave`, novel-sect-seat-return-leave). */
   | "leave_granted"
   /** Pidió permiso y no se lo dieron: no es de esa secta. */

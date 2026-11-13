@@ -151,6 +151,18 @@ export interface ReplyInput {
     | { readonly accepted: true }
     | { readonly accepted: false; readonly refused: string };
   /**
+   * Si el oyente plantea el ascenso que le piden (novel2-rank-ask): lo decide quien lo cablea con
+   * los pisos del paso; `refused` es el motivo. Sin esto el oyente no es quien plantea ascensos.
+   */
+  readonly promotion?:
+    | { readonly raised: true }
+    | { readonly raised: false; readonly refused: string };
+  /**
+   * La misión que da el oyente a quien la pide (novel2-missions-ask): de qué clase, o por qué no.
+   * Sin esto el oyente no es quien da misiones.
+   */
+  readonly mission?: { readonly given: string } | { readonly refused: string };
+  /**
    * Cómo pesó el oyente el rumor que le pasan (information §3, `hearRumor`): ya hecho por quien
    * lo cablea porque necesita el estado y el sorteo. Sin esto el rumor no tiene respaldo (nada
    * que el oyente pueda ubicar en un hecho real) y lo toma como charla.
@@ -379,6 +391,14 @@ function decideBody(i: ReplyInput, at: number): Reply {
         return say("introduce.wary");
       }
       return say("introduce", { name: i.nameOf(i.listener) });
+    case "mission":
+      if (!i.mission) return say("mission.no");
+      if ("given" in i.mission) return say(`mission.give.${i.mission.given}`);
+      return say(`mission.refuse.${i.mission.refused}`);
+    case "promotion":
+      if (!i.promotion) return say("promotion.no");
+      if (i.promotion.raised) return say("promotion.raise");
+      return say(`promotion.refuse.${i.promotion.refused}`);
     case "apprentice":
       if (!i.apprentice) return say("apprentice.no");
       if (i.apprentice.accepted) return { ...say("apprentice.accept"), disciple: true };

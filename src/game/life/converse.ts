@@ -12,7 +12,9 @@ import {
   type EventId,
   type HolderRef,
   holderAccount,
+  type LedgerAccount,
   type LedgerUnit,
+  ledgerUnit,
   type PlaceRef,
   type Rng,
   type Tick,
@@ -49,6 +51,7 @@ import {
   type Deed,
   type DetectionInput,
   type DimensionDef,
+  daysInRank,
   decideReply,
   deedsBy,
   deleteComponent,
@@ -70,12 +73,15 @@ import {
   HEARD,
   type HeardProphecy,
   type HeardRumor,
+  type HerbDef,
   hear,
   hearRumor,
+  herbNeeds,
   holdsGrudge,
   honestyShift,
   INNATE,
   isFormal,
+  judgeRankUp,
   KNOWN_DEEDS,
   type KnownDeeds,
   keepRumor,
@@ -90,19 +96,26 @@ import {
   type MasterDecision,
   MEMORIES,
   MIND,
+  MISSION_ASSIGNED_EVENT,
+  type MissionOffer,
   masterAccepts,
   memoriesAbout,
+  missionDue,
+  missionLapsed,
   normalize,
   type Offense,
   OWN_DEEDS,
   PERSON,
   PERSON_NAME,
+  type PillDef,
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
   type PromiseTerms,
   type Proposal,
+  pickMission,
+  RANK_PETITION_EVENT,
   RELATIONS,
   RELIGIOUS_IDENTITY,
   RESERVE_GRAMS_PER_MEMBER,
@@ -111,6 +124,7 @@ import {
   type RegisterDef,
   RUMORS,
   rankOf,
+  rankWaits,
   recipientBetween,
   recollect,
   relationship,
@@ -118,9 +132,13 @@ import {
   rumorAsKnown,
   type ScheduleRequest,
   SECRETS,
+  SECT,
   SECT_CONTRIBUTION,
   SECT_MEMBER,
+  SECT_MISSION,
+  SECT_RANK_RULING,
   SECT_TRIAL,
+  type SectMission,
   type SpaceGraph,
   type SpeakAct,
   type SpeechAct,
@@ -166,6 +184,7 @@ import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { PLAYER } from "./player.ts";
 import { rentsOf } from "./rents.ts";
+import { SECT_HALL, treasuryAccount } from "./sect-hall.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
@@ -334,6 +353,11 @@ export interface ConverseOptions {
   readonly year?: Duration;
   /** La lengua y la etiqueta de habla de la aldea; sin esto el acto va sin forma (solo contenido). */
   readonly form?: ConverseForm;
+  /**
+   * Las misiones de la secta (novel2-missions-ask): con qué píldoras y hierbas mide el anciano lo que
+   * le falta al alquimista. Sin esto, nadie da misiones.
+   */
+  readonly missions?: { readonly pills: readonly PillDef[]; readonly herbs: readonly HerbDef[] };
 }
 
 /**
@@ -1265,6 +1289,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       SECT_CONTRIBUTION.name,
       CULTIVATION_STATE.name,
       MASTER_OF.name,
+      ...(o.missions ? [SECT_MISSION.name, SECT_HALL.name] : []),
     ],
     writes: [
       MASTER_OF.name,
@@ -1410,6 +1435,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         : undefined;
       const source = act.kind === "source" ? sourceKnown(truth, me, act.about) : undefined;
       const apprentice = act.kind === "apprentice" ? apprenticeOf(truth, me, speaker, feel) : null;
+      const promotion =
+        act.kind === "promotion" ? petitionOf(truth, me, speaker, feel, ctx.now, o.day) : null;
+      const mission =
+        act.kind === "mission" && o.missions && ctx.ledger
+          ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now)
+          : null;
       const reply = decideReply(
         {
           act,
@@ -1425,6 +1456,20 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   apprentice.decision.kind === "accepted"
                     ? { accepted: true as const }
                     : { accepted: false as const, refused: apprentice.decision.refused },
+              }
+            : {}),
+          ...(mission
+            ? {
+                mission: mission.offer
+                  ? { given: mission.offer.kind }
+                  : { refused: mission.refused ?? "none" },
+              }
+            : {}),
+          ...(promotion
+            ? {
+                promotion: promotion.refused
+                  ? { raised: false as const, refused: promotion.refused }
+                  : { raised: true as const },
               }
             : {}),
           ...(act.kind === "tell"
@@ -1627,6 +1672,44 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ],
         };
       }
+      // Pidió el ascenso (novel2-rank-ask): el que oye lo plantea o dice por qué no.
+      const petitionEvent: EventDraft | undefined = promotion
+        ? {
+            kind: RANK_PETITION_EVENT,
+            actors: [speaker, me],
+            place: o.placeOf(truth, me),
+            data: {
+              org: promotion.org,
+              from: promotion.from,
+              ...(promotion.to ? { to: promotion.to } : {}),
+              ...(promotion.refused ? { refused: promotion.refused } : {}),
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: draftEvent(0) },
+              { kind: "state", entity: speaker as unknown as EntityRef, key: SECT_MEMBER.name },
+            ],
+          }
+        : undefined;
+      // Pidió una misión (novel2-missions-ask): el anciano la da; la anota `sect-duty`.
+      const missionEvent: EventDraft | undefined = mission?.offer
+        ? {
+            kind: MISSION_ASSIGNED_EVENT,
+            actors: [speaker, me],
+            place: o.placeOf(truth, me),
+            data: {
+              ...mission.offer,
+              by: me,
+              due: missionDue(mission.offer.kind, ctx.now, o.day),
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: draftEvent(0) },
+              { kind: "state", entity: speaker as unknown as EntityRef, key: SECT_MEMBER.name },
+              { kind: "state", entity: mission.offer.org, key: SECT.name },
+            ],
+          }
+        : undefined;
       let rumorEvent: EventDraft | undefined;
       if (rumor) {
         const { heard, told } = rumor;
@@ -1906,6 +1989,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(falseAccusationEvent ? [falseAccusationEvent] : []),
           ...(rumorEvent ? [rumorEvent] : []),
           ...(masterEvent ? [masterEvent] : []),
+          ...(petitionEvent ? [petitionEvent] : []),
+          ...(missionEvent ? [missionEvent] : []),
         ],
         postings:
           swaps.length > 0
@@ -1954,6 +2039,99 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       return result;
     },
   };
+}
+
+/**
+ * Lo que mira el anciano o el maestro al que le piden el ascenso (novel2-rank-ask): si es de su
+ * secta, si hay un paso que se decide, y los pisos (tiempo en el rango, tramo, aporte) y su trato
+ * con `judgeRankUp` y la tirada en cero (pasados los pisos, lo plantea; decidir es de la secta).
+ * Quien no es anciano no plantea nada (null).
+ */
+function petitionOf(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  speaker: AgentId,
+  feel: Parameters<typeof warmth>[0],
+  now: Tick,
+  dayTicks: number,
+): {
+  readonly org: EntityRef;
+  readonly from: string;
+  readonly to?: string;
+  readonly refused?: string;
+} | null {
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
+  const theirs = truth.get(SECT_MEMBER, speaker);
+  if (theirs?.org !== mine.org) return { org: mine.org, from: "none", refused: "not_member" };
+  // La secta lo rechazó hace poco en este rango: el anciano no lo vuelve a plantear todavía.
+  if (rankWaits(truth.get(SECT_RANK_RULING, speaker), theirs, now, dayTicks)) {
+    return { org: mine.org, from: theirs.rank, refused: "waiting" };
+  }
+  const contribution = truth.get(SECT_CONTRIBUTION, speaker);
+  const trial = truth.get(SECT_TRIAL, speaker);
+  const ruling = judgeRankUp(
+    {
+      rank: theirs.rank,
+      stage: truth.get(CULTIVATION_STATE, speaker)?.stage ?? 0,
+      points: contribution?.org === mine.org ? contribution.points : 0,
+      days: daysInRank(theirs, now, dayTicks),
+      ...(trial && trial.org === mine.org ? { talent: trial.reading.quality } : {}),
+      regard: Math.max(-1, Math.min(1, warmth(feel))),
+      voices: [],
+    },
+    0,
+  );
+  if (ruling.kind === "promoted") return { org: mine.org, from: theirs.rank, to: ruling.to };
+  // De externo a interno no se plantea: lo dan las horas de tarea.
+  const refused = theirs.rank === "outer" ? "outer" : ruling.refused;
+  return { org: mine.org, from: theirs.rank, refused };
+}
+
+/**
+ * La misión que da un anciano o el maestro de la secta a quien se la pide (novel2-missions-ask): mira
+ * lo que le falta al alquimista (las píldoras por cabeza de los que viven en la sede contra lo que hay
+ * en el tesoro) y las misiones ya dadas, y le da la más urgente que su rango puede tomar. Una a la
+ * vez: quien tiene una sin vencer, no recibe otra. Quien no es anciano no da misiones (null).
+ */
+function missionOf(
+  truth: ReadonlyWorldTruth,
+  ledger: { balance(account: LedgerAccount, unit: LedgerUnit): number },
+  me: AgentId,
+  speaker: AgentId,
+  defs: NonNullable<ConverseOptions["missions"]>,
+  now: Tick,
+): { readonly org: EntityRef; readonly offer?: MissionOffer; readonly refused?: string } | null {
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
+  const theirs = truth.get(SECT_MEMBER, speaker);
+  if (theirs?.org !== mine.org) return { org: mine.org, refused: "not_member" };
+  if (theirs.rank === "elder" || theirs.rank === "master")
+    return { org: mine.org, refused: "elder" };
+  const held = truth.get(SECT_MISSION, speaker);
+  if (held && !missionLapsed(held, now)) return { org: mine.org, refused: "busy" };
+  const hall = truth.get(SECT_HALL, mine.org);
+  const alive = (hall?.people ?? []).filter(
+    (x) => truth.get(ENTITY, x.person as unknown as EntityRef)?.endedAt === undefined,
+  ).length;
+  const treasury = treasuryAccount(mine.org);
+  const pills: Record<string, number> = {};
+  for (const p of defs.pills)
+    pills[p.good] = ledger.balance(treasury, ledgerUnit(`good:${p.good}`));
+  const herbs: Record<string, number> = {};
+  for (const h of defs.herbs) herbs[h.id] = ledger.balance(treasury, ledgerUnit(`good:${h.good}`));
+  const assigned: SectMission[] = [];
+  for (const id of truth.ids(SECT_MISSION)) {
+    const m = truth.get(SECT_MISSION, id);
+    if (m && id !== (speaker as unknown as EntityRef) && !missionLapsed(m, now)) assigned.push(m);
+  }
+  const offer = pickMission(
+    mine.org,
+    theirs.rank,
+    herbNeeds(defs.pills, { alive, pills, herbs }),
+    assigned,
+  );
+  return offer ? { org: mine.org, offer } : { org: mine.org, refused: "none" };
 }
 
 /**

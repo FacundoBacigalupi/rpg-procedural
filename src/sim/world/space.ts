@@ -67,6 +67,8 @@ export interface LocalMap {
   readonly lonDeg: number;
   /** Vecinos de cada hex, en orden. */
   readonly neighbors: readonly (readonly number[])[];
+  /** Cuántos km mide un hex (el parche fino). Opcional: sin esto no se ve nada de un hex a otro. */
+  readonly kmPerHex?: number;
   /** Segundos que se tarda en cruzar cada hex caminando (terreno, pendiente, bosque). */
   readonly crossSeconds: readonly number[];
   readonly forest: readonly boolean[];

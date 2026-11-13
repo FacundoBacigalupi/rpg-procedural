@@ -37,6 +37,10 @@ import {
   type Location,
   localHour,
   MEMORIES,
+  MISSION_ASSIGNED_EVENT,
+  MISSION_DONE_EVENT,
+  MISSION_LAPSED_EVENT,
+  MISSION_PROGRESS_EVENT,
   mentionableTastes,
   PERSON,
   type Percept,
@@ -58,6 +62,7 @@ import {
   SECT_LORE,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_RANK_REFUSED_EVENT,
   SECT_RETURNED_EVENT,
   SECT_SCHOOL,
   SECT_STIPEND_EVENT,
@@ -781,11 +786,67 @@ export function playerView(
       else cues.add("exchange_refused");
     } else cues.add(refused ? "exchange_refused" : "exchange_done");
   }
-  if (
-    options.heardSince !== undefined &&
-    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT)
-  )
-    cues.add("promoted");
+  const promoted =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_PROMOTED_EVENT);
+  if (promoted) {
+    const to = (promoted.data as { to?: unknown } | null)?.to;
+    cues.add(to === "core" ? "promoted_core" : to === "elder" ? "promoted_elder" : "promoted");
+  }
+  const rankRefused =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_RANK_REFUSED_EVENT);
+  if (rankRefused) {
+    const why = (rankRefused.data as { refused?: unknown } | null)?.refused;
+    cues.add(why === "no_one" ? "rank_unheard" : "rank_refused");
+  }
+  const mission =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
+  if (mission) {
+    const kind = (mission.data as { kind?: unknown } | null)?.kind;
+    cues.add(kind === "watch" ? "mission_watch" : "mission_herbs");
+  }
+  const missionEnd =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(
+          w,
+          options.heardSince,
+          (e) =>
+            e.kind === MISSION_DONE_EVENT ||
+            e.kind === MISSION_PROGRESS_EVENT ||
+            e.kind === MISSION_LAPSED_EVENT,
+        );
+  if (missionEnd) {
+    cues.add(
+      missionEnd.kind === MISSION_DONE_EVENT
+        ? "mission_done"
+        : missionEnd.kind === MISSION_PROGRESS_EVENT
+          ? "mission_progress"
+          : "mission_lapsed",
+    );
+  }
+  // Un prodigio que le contaron (novel2-trib-far-gossip): el `rumor.told` lo tiene de oyente.
+  if (options.heardSince !== undefined) {
+    const since = options.heardSince;
+    const events = w.log.all();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!e || e.tick < since) break;
+      if (
+        e.kind === "rumor.told" &&
+        e.actors[1] === w.player &&
+        (e.data as { prodigy?: unknown } | null)?.prodigy !== undefined
+      ) {
+        cues.add("heard_prodigy");
+        break;
+      }
+    }
+  }
   const leave =
     options.heardSince === undefined
       ? undefined

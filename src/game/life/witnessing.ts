@@ -11,6 +11,7 @@ import {
   attireLook,
   BODY_STATE,
   ENTITY,
+  hexesAround,
   LOCATION,
   type LocalMap,
   MENTAL,
@@ -25,6 +26,8 @@ import {
   sensorAcuity,
   setComponent,
   skyLight,
+  skyPercepts,
+  skyRadius,
   TRIBULATION_SEEN,
   table,
   vigilantAttention,
@@ -98,6 +101,8 @@ export function witnessingProcess(o: WitnessingOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
+    // Las nubes y las olas las emite `meditate` en esta misma fase: llegan en la segunda ronda.
+    perceiveCascade: { kinds: [...TRIBULATION_SEEN] },
     reads: [
       NPC_PERCEPTS.name,
       PERSON.name,
@@ -167,7 +172,23 @@ export function npcPerceive(
       emissions: { sight: em.sight ?? 0, sound: em.sound ?? 0 },
       ...(words === undefined ? {} : { words }),
     });
-    const candidates = neighbours(o, truth, at.hex, who, e.tick, tierOf);
+    const candidates = neighbours(o, truth, (h) => h === at.hex, who, e.tick, tierOf);
+    // Una tribulación se ve de lejos (novel2-trib-far-sight): los de otros hexes cerca, vago.
+    if (TRIBULATION_SEEN.has(e.kind)) {
+      const km = o.map.kmPerHex ?? 0;
+      const around = hexesAround(o.map.neighbors, at.hex, skyRadius(km));
+      const far = neighbours(o, truth, (h) => around.has(h), who, e.tick, tierOf);
+      for (const pc of skyPercepts(
+        { event: e.id, tick: e.tick, verb: e.kind },
+        far.map((c) => ({ observer: c.observer, hexes: around.get(c.observer.at.hex) ?? 0 })),
+        km,
+        rng.fork("npc-sky", e.id),
+      )) {
+        const list = out.get(pc.observer) ?? [];
+        list.push(pc);
+        out.set(pc.observer, list);
+      }
+    }
     const percepts = witnessStimulus(
       stimulus,
       candidates,
@@ -187,11 +208,11 @@ export function npcPerceive(
   return out;
 }
 
-/** Los vecinos vivos del hex (menos el que actúa y el personaje) como posibles testigos. */
+/** Los vivos en los hexes que pasan `inHex` (menos el que actúa y el personaje) como posibles testigos. */
 function neighbours(
   o: WitnessingOptions,
   truth: ReadonlyWorldTruth,
-  hex: number,
+  inHex: (hex: number) => boolean,
   actor: AgentId,
   now: number,
   tierOf: (id: AgentId) => WitnessCandidate["tier"],
@@ -202,7 +223,7 @@ function neighbours(
     if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const there = truth.get(LOCATION, id);
     const p = truth.get(PERSON, id);
-    if (!there || !p || there.hex !== hex) continue;
+    if (!there || !p || !inHex(there.hex)) continue;
     const activity = truth.get(BODY_STATE, id)?.activity;
     const base =
       activity === "sleep"

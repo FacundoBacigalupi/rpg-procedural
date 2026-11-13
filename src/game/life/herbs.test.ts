@@ -8,10 +8,12 @@ import {
   type AgentId,
   type ContentSource,
   type EntityRef,
+  externalAccount,
   type HolderRef,
   holderAccount,
   ledgerUnit,
   loadContent,
+  makeId,
   type PlaceId,
 } from "../../core/index.ts";
 import {
@@ -24,11 +26,12 @@ import {
   PLACE_QI,
   QI_TAKEN,
   qiRatio,
+  ROTTED,
   SECT,
   sectSpaceKey,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { HERBS_GREW_EVENT } from "./herbs.ts";
+import { HERB_SOURCE, HERBS_GREW_EVENT, HERBS_ROTTED_EVENT } from "./herbs.ts";
 import { Life } from "./life.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -103,6 +106,49 @@ describe("hierbas espirituales (novel2-pills-herbs)", () => {
     expect(got).toBeGreaterThan(0);
     expect(w.ledger.balance(there, unit)).toBe(grown - got);
     expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 600_000);
+});
+
+describe("hierbas que se pudren (novel2-alch-rot)", () => {
+  it("lo que se lleva encima se pudre y su qi vuelve a la reserva del lugar", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, { cultivation: true, sectSeatRegion: true });
+    const w = life.world;
+    const me = life.player;
+    const org = w.truth.ids(SECT)[0] as EntityRef;
+    const seat = w.truth.get(SECT, org)?.seatPlace as EntityRef;
+    const hex = w.truth.get(PLACE, seat)?.hexes[0] as number;
+    w.truth.set(LOCATION, me, { hex, space: sectSpaceKey(seat, "hall") });
+    const unit = ledgerUnit("good:spirit-herb");
+    const mine = holderAccount(me as unknown as HolderRef);
+    w.ledger.post({
+      tick: life.now,
+      eventId: makeId("event", 999_999),
+      transfers: [{ unit, from: externalAccount(HERB_SOURCE), to: mine, amount: 1000 }],
+    });
+    const rottedBefore = w.ledger.balance(externalAccount(ROTTED), unit);
+
+    life.advanceTo(life.now + 10 * w.clock.day);
+    const left = w.ledger.balance(mine, unit);
+    expect(left).toBeLessThan(1000);
+    const events = w.log.all().filter((e) => e.kind === HERBS_ROTTED_EVENT);
+    const minePieces = events.filter((e) => (e.data as { holder?: unknown }).holder === me);
+    expect(minePieces.length).toBeGreaterThan(0);
+    // Lo podrido fue al sumidero, gramo a gramo (las hierbas ya no las pudre `life.spoilage`).
+    const grams = events.reduce(
+      (s, e) => s + ((e.data as { grams: Record<string, number> }).grams["good:spirit-herb"] ?? 0),
+      0,
+    );
+    expect(w.ledger.balance(externalAccount(ROTTED), unit) - rottedBefore).toBe(grams);
+    expect(1000 - left).toBeLessThanOrEqual(grams);
+    // Su qi volvió a la reserva de la sede, donde se pudrió.
+    expect(minePieces[0]?.causes).toContainEqual({
+      kind: "state",
+      entity: seat,
+      key: PLACE_QI.name,
+    });
+    expect((minePieces[0]?.data as { back?: number } | undefined)?.back).toBeGreaterThan(0);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   }, 600_000);
 });

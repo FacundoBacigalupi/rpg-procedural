@@ -13,14 +13,19 @@ export const SECT_JOINED_EVENT = "cultivation.sect_joined";
 /** Cuántos días le dan al aceptado para presentarse en la sede. */
 export const SECT_REPORT_DAYS = 30;
 
-/** Externo (el aceptado en la aldea), interno (discípulo de la sede), anciano y maestro. */
-export type MemberRank = "outer" | "inner" | "elder" | "master";
+/**
+ * Externo (el aceptado en la aldea), interno (discípulo de la sede), del núcleo (el discípulo que la
+ * secta eligió, novel2-rank-core), anciano y maestro.
+ */
+export type MemberRank = "outer" | "inner" | "core" | "elder" | "master";
 
 /** Que alguien es de una secta: desde cuándo, con qué rango y hasta cuándo tiene para subir. */
 export interface SectMember {
   readonly org: EntityRef;
   readonly rank: MemberRank;
   readonly since: Tick;
+  /** Desde cuándo tiene el rango de ahora (sin esto, desde `since`; novel2-rank-ask). */
+  readonly rankSince?: Tick;
   /** El año de la prueba que lo aceptó (los de la sede no pasaron por la de la aldea). */
   readonly trialYear?: number;
   /** Hasta cuándo tiene para presentarse en la sede (lo sabe: se lo dijeron). */
@@ -189,7 +194,7 @@ export function absencePenalty(points: number, late: number): number {
 }
 
 /** Los rangos que entran a la cueva sin pase. */
-export const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "elder", "master"]);
+export const CAVE_RANKS: ReadonlySet<MemberRank> = new Set(["inner", "core", "elder", "master"]);
 
 /**
  * Si la secta no deja a `who` entrar a `space`: es la cueva de su sede y no tiene rango interno o
@@ -220,6 +225,7 @@ export const STIPEND_EVERY_DAYS = 30;
 export const STIPEND_BY_RANK: Readonly<Record<MemberRank, number>> = {
   outer: 30,
   inner: 60,
+  core: 100,
   elder: 150,
   master: 300,
 };

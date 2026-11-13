@@ -1739,7 +1739,12 @@ export function ledgerConfigOf(
       [COOKED]: units,
       [EATEN]: [...units, ...pillUnits],
       [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: [...rottedBase, ...tanUnits.filter((u) => !rottedBase.includes(u))],
+      [ROTTED]: [
+        ...rottedBase,
+        ...tanUnits.filter((u) => !rottedBase.includes(u)),
+        // Las hierbas juntadas se pudren (novel2-alch-rot).
+        ...herbUnits.filter((u) => !rottedBase.includes(u) && !tanUnits.includes(u)),
+      ],
       seed: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),

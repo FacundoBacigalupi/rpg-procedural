@@ -20,6 +20,10 @@ type SpeechBody =
   | { readonly kind: "introduce" }
   /** Pide que el oyente lo tome como discípulo (cultivation, novel2-master-ask). */
   | { readonly kind: "apprentice" }
+  /** Pide subir de rango en su secta (novel2-rank-ask). */
+  | { readonly kind: "promotion" }
+  /** Pide una misión de la secta (novel2-missions-ask). */
+  | { readonly kind: "mission" }
   /**
    * ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). `via` es
    * la maniobra con que se pregunta (dialogue §11): sin ella, de frente; si el otro guarda un secreto
@@ -193,6 +197,13 @@ const INTRODUCE =
 /** Pedir ser discípulo de quien escucha («tomame como discípulo», «quiero ser su discípula»). */
 const APPRENTICE =
   /\b(tom\w*|acept\w*|ser|sea|recib\w*|hac\w*)\b(?: \w+){0,4} discipul[oa]\b|\b(?:sea|seas) mi maestr[oa]\b/;
+
+/** Pedir el ascenso («pido el ascenso», «quiero subir al núcleo», «quiero ser anciano»). */
+const PROMOTION =
+  /\b(?:ascen[sd]\w*|(?:subir|pasar|entrar) (?:de rango|(?:a|al) (?:discipul[oa]s? del )?nucleo)|discipul[oa] del nucleo|ser ancian[oa])\b/;
+
+/** Pedir una misión («¿hay alguna misión?», «dame un encargo para la secta»). */
+const MISSION = /\b(?:misi(?:on|ones)|encargos?)\b/;
 
 /** Si el texto pregunta el nombre o presenta a quien habla. */
 export function introduces(norm: string): boolean {
@@ -526,6 +537,8 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
           : ACCUSE_PLAIN_CERTAINTY,
     };
   }
+  if (MISSION.test(norm)) return { kind: "mission" };
+  if (PROMOTION.test(norm)) return { kind: "promotion" };
   if (APPRENTICE.test(norm)) return { kind: "apprentice" };
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
   const service = blur ? null : promisedService(norm);

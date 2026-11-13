@@ -1283,6 +1283,62 @@
     ]
   },
   {
+    "id": "self.promoted_core",
+    "lines": [
+      "Te llaman al salón: los ancianos hablaron y el maestro de la secta decidió. Desde hoy sos discípulo del núcleo.",
+      "La secta te pasa al núcleo: más sueldo, más métodos sin pagar, y más ojos encima."
+    ]
+  },
+  {
+    "id": "self.promoted_elder",
+    "lines": [
+      "Te llaman ante el maestro de la secta: desde hoy sos anciano. Otros te van a pedir a vos.",
+      "La secta te nombra anciano. El salón te recibe con una reverencia que antes hacías vos."
+    ]
+  },
+  {
+    "id": "self.rank_refused",
+    "lines": [
+      "Te llega la respuesta de arriba: esta vez no. La secta no te sube de rango.",
+      "Lo trataron y dijeron que no. Habrá que esperar y volver a intentarlo."
+    ]
+  },
+  {
+    "id": "self.rank_unheard",
+    "lines": ["No hay en la sede nadie que pueda decidir tu ascenso; el pedido queda en el aire."]
+  },
+  {
+    "id": "self.mission_herbs",
+    "lines": ["Te tocó una misión: juntar hierbas espirituales para el alquimista."]
+  },
+  {
+    "id": "self.mission_watch",
+    "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
+  },
+  {
+    "id": "self.mission_progress",
+    "lines": [
+      "El anciano recibe las hierbas y las anota a tu nombre; todavía falta para cumplir la misión."
+    ]
+  },
+  {
+    "id": "self.mission_done",
+    "lines": [
+      "El anciano recibe las hierbas y da la misión por cumplida; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
+    "id": "self.mission_lapsed",
+    "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
+  },
+  {
+    "id": "self.heard_prodigy",
+    "lines": [
+      "Te cuentan que se vio algo en el cielo, no muy lejos: nubes negras que se juntaban y rayos que caían.",
+      "Te cuentan, bajando la voz, que hace poco cayeron rayos del cielo por un lado del monte."
+    ]
+  },
+  {
     "id": "self.chore_unpaid",
     "lines": ["Nadie anota lo que hiciste: no sos de la secta, trabajaste de balde."]
   },
