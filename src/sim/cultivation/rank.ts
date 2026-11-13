@@ -7,8 +7,8 @@
 //
 // Puro: el que decide no lee la verdad; recibe lo que sabe del candidato y lo que le dicen.
 
-import type { Tick } from "../../core/index.ts";
-import { exp } from "../../core/index.ts";
+import { type EntityRef, exp, type Tick } from "../../core/index.ts";
+import { table } from "../world/index.ts";
 import type { MemberRank, SectMember } from "./member.ts";
 
 /** Lo que pide la secta para pasar de un rango al siguiente (sin calibrar). */
@@ -147,4 +147,41 @@ export const RANK_PETITION_EVENT = "cultivation.rank_petition";
 /** Días enteros que lleva `member` en su rango a `now`. */
 export function daysInRank(member: SectMember, now: Tick, dayTicks: number): number {
   return Math.max(0, Math.floor((now - (member.rankSince ?? member.since)) / dayTicks));
+}
+
+/** La secta decidió (novel2-rank-review): el ascenso sale como `SECT_PROMOTED_EVENT`; el rechazo, así. */
+export const SECT_RANK_REFUSED_EVENT = "cultivation.sect_rank_refused";
+
+/** Cuántos días espera la secta antes de volver a tratar a quien rechazó en el mismo rango. */
+export const RANK_RETRY_DAYS = 30;
+
+/** La última decisión de la secta sobre el ascenso de alguien: en qué rango estaba y qué salió. */
+export interface SectRankRuling {
+  readonly org: EntityRef;
+  /** El rango que tenía cuando se lo trató. */
+  readonly rank: MemberRank;
+  readonly at: Tick;
+  readonly outcome: "promoted" | "refused";
+  readonly refused?: RankRefusal;
+}
+
+export const SECT_RANK_RULING = table<SectRankRuling>("cultivation.sect_rank_ruling");
+
+/**
+ * Si la secta todavía no vuelve a tratar a `member`: lo rechazó en este mismo rango y secta hace menos
+ * de `RANK_RETRY_DAYS`. Un ascenso no hace esperar (el rango ya es otro).
+ */
+export function rankWaits(
+  ruling: SectRankRuling | undefined,
+  member: SectMember,
+  now: Tick,
+  dayTicks: number,
+): boolean {
+  return (
+    ruling !== undefined &&
+    ruling.outcome === "refused" &&
+    ruling.org === member.org &&
+    ruling.rank === member.rank &&
+    now - ruling.at < RANK_RETRY_DAYS * dayTicks
+  );
 }

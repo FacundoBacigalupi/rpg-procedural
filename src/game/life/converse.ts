@@ -114,6 +114,7 @@ import {
   type RegisterDef,
   RUMORS,
   rankOf,
+  rankWaits,
   recipientBetween,
   recollect,
   relationship,
@@ -123,6 +124,7 @@ import {
   SECRETS,
   SECT_CONTRIBUTION,
   SECT_MEMBER,
+  SECT_RANK_RULING,
   SECT_TRIAL,
   type SpaceGraph,
   type SpeakAct,
@@ -2011,6 +2013,10 @@ function petitionOf(
   if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
   const theirs = truth.get(SECT_MEMBER, speaker);
   if (theirs?.org !== mine.org) return { org: mine.org, from: "none", refused: "not_member" };
+  // La secta lo rechazó hace poco en este rango: el anciano no lo vuelve a plantear todavía.
+  if (rankWaits(truth.get(SECT_RANK_RULING, speaker), theirs, now, dayTicks)) {
+    return { org: mine.org, from: theirs.rank, refused: "waiting" };
+  }
   const contribution = truth.get(SECT_CONTRIBUTION, speaker);
   const trial = truth.get(SECT_TRIAL, speaker);
   const ruling = judgeRankUp(

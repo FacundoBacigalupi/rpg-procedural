@@ -569,6 +569,14 @@
     "dry": ["No."]
   },
   {
+    "id": "promotion.refuse.waiting",
+    "lines": [
+      "La secta ya trató lo tuyo hace poco. Esperá un tiempo antes de volver a pedir.",
+      "Ya se decidió hace nada. Volvé dentro de un mes."
+    ],
+    "formal": ["Su caso se resolvió hace poco; no corresponde volver a plantearlo todavía."]
+  },
+  {
     "id": "introduce.wary",
     "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
     "formal": ["Prefiero no decirlo, si no le molesta."],

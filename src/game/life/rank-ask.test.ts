@@ -138,19 +138,20 @@ describe("pedir el ascenso (novel2-rank-ask)", () => {
     expect(no.line).toBe("promotion.no");
     expect(no.petition).toBeUndefined();
 
-    // El anciano lo plantea: cumple con todo.
-    const raised = replyOf(elder, "Anciano, quiero subir al núcleo");
-    expect(raised.line).toBe("promotion.raise");
-    expect(raised.petition).toMatchObject({ to: "core" });
-    expect(raised.petition?.refused).toBeUndefined();
-    expect(raised.actors).toEqual([me, elder]);
-
     // Con poco aporte, dice qué falta y no lo plantea.
     w.truth.set(SECT_CONTRIBUTION, me, { org, points: 10, hours: 300, last: life.now });
     const short = replyOf(elder, "Pido el ascenso");
     expect(short.line).toBe("promotion.refuse.few_points");
     expect(short.petition?.refused).toBe("few_points");
     expect(w.truth.get(SECT_MEMBER, me)?.rank).toBe("inner");
+
+    // Con el aporte, el anciano lo plantea (decidir es de la secta: novel2-rank-review).
+    w.truth.set(SECT_CONTRIBUTION, me, { org, points: 200, hours: 300, last: life.now });
+    const raised = replyOf(elder, "Anciano, quiero subir al núcleo");
+    expect(raised.line).toBe("promotion.raise");
+    expect(raised.petition).toMatchObject({ to: "core" });
+    expect(raised.petition?.refused).toBeUndefined();
+    expect(raised.actors).toEqual([me, elder]);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   }, 600_000);
 });

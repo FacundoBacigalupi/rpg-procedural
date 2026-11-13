@@ -28,6 +28,7 @@ import {
   CULTIVATION_TECHNIQUE,
   choreOf,
   chorePoints,
+  type DecayContext,
   deleteComponent,
   draftEvent,
   type EventDraft,
@@ -37,6 +38,7 @@ import {
   type KnownTechnique,
   LOCATION,
   leaveDays,
+  MASTER_OF,
   methodExchange,
   type PillDef,
   PLACE,
@@ -46,6 +48,7 @@ import {
   type ProcessDef,
   pillExchange,
   promotionDue,
+  RANK_PETITION_EVENT,
   type ReadonlyWorldTruth,
   SECT,
   SECT_CAVE_PASS,
@@ -57,6 +60,7 @@ import {
   SECT_LEAVE_EVENT,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_RANK_RULING,
   SECT_SCHOOL,
   type SectCavePass,
   type SectContribution,
@@ -65,6 +69,7 @@ import {
   TECHNIQUE_TAUGHT_EVENT,
 } from "../../sim/index.ts";
 import { meditation } from "./meditate.ts";
+import { RANK_REVIEW_READS, type RankIssue, reviewRank } from "./rank-review.ts";
 import { treasuryAccount } from "./sect-hall.ts";
 
 export const SECT_DUTY_PROCESS = "life.sect_duty";
@@ -127,6 +132,8 @@ export function sectDutyProcess(
     readonly dayTicks?: number;
     /** Las píldoras que canjea el tesoro, con el nombre de su bien (novel2-pills-exchange). */
     readonly pills?: readonly { readonly def: PillDef; readonly name: string }[];
+    /** Las relaciones con las que los ancianos sienten al candidato (novel2-rank-review). */
+    readonly relations?: Pick<DecayContext, "dims" | "bonds">;
   } = {},
 ): ProcessDef {
   const day = o.dayTicks ?? 86_400;
@@ -147,8 +154,10 @@ export function sectDutyProcess(
       CULTIVATION_STATE.name,
       CULTIVATION_TECHNIQUE.name,
       SECT_SCHOOL.name,
+      ...RANK_REVIEW_READS,
     ],
     writes: [
+      SECT_RANK_RULING.name,
       SECT_CONTRIBUTION.name,
       SECT_CAVE_PASS.name,
       SECT_MEMBER.name,
@@ -174,7 +183,23 @@ export function sectDutyProcess(
       const sold = new Map<string, number>();
       // Quién pudo haber llegado al ascenso en esta corrida, y por qué evento.
       const maybe = new Map<AgentId, Event>();
+      // Los asuntos de ascenso que alguien planteó en este paso (novel2-rank-review).
+      const issues: RankIssue[] = [];
       for (const e of ctx.recent) {
+        if (e.kind === RANK_PETITION_EVENT) {
+          const d = e.data as { org?: EntityRef; refused?: unknown } | null;
+          const [who, raisedBy] = e.actors as AgentId[];
+          if (who && raisedBy && d?.org !== undefined && d.refused === undefined) {
+            issues.push({
+              who,
+              org: d.org,
+              raisedBy,
+              cause: e.id,
+              place: e.place,
+            });
+          }
+          continue;
+        }
         if (e.kind === BREAKTHROUGH_EVENT && e.actors[0]) maybe.set(e.actors[0] as AgentId, e);
         // El permiso para bajar (novel-sect-seat-return-leave): lo da la secta al que es de ella.
         if (e.kind === "action.furlough" && e.outcome !== "failure") {
@@ -449,6 +474,38 @@ export function sectDutyProcess(
             { kind: "state", entity: who, key: CULTIVATION_STATE.name },
           ],
         });
+      }
+      // El maestro plantea el ascenso del discípulo que rompió, si cree que ya llega.
+      for (const [who, e] of maybe) {
+        if (e.kind !== BREAKTHROUGH_EVENT) continue;
+        const bond = ctx.truth.get(MASTER_OF, who as unknown as EntityRef);
+        if (!bond) continue;
+        issues.push({
+          who,
+          org: bond.org,
+          raisedBy: bond.master,
+          cause: e.id,
+          onlyIfDue: true,
+          place: e.place,
+        });
+      }
+      // La secta decide cada asunto una vez por paso (el primero que lo planteó).
+      const reviewed = new Set<AgentId>();
+      for (const issue of issues) {
+        if (reviewed.has(issue.who)) continue;
+        const out = reviewRank(
+          {
+            truth: ctx.truth,
+            now: ctx.now,
+            rng: ctx.rng,
+            dayTicks: day,
+            ...(o.relations ? { relations: o.relations } : {}),
+          },
+          issue,
+        );
+        if (out.events.length > 0) reviewed.add(issue.who);
+        changes.push(...out.changes);
+        events.push(...out.events);
       }
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));
       for (const [who, k] of taught) changes.push(setComponent(CULTIVATION_TECHNIQUE, who, k));
