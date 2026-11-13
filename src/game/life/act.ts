@@ -63,6 +63,7 @@ import {
   type EventDraft,
   endEntity,
   FINISH_FORCE,
+  type FightIntent,
   type FoodDef,
   FRESH_CURSOR,
   FROSTBITE,
@@ -2097,7 +2098,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       plans: e.plans,
       skills: o.skills,
       traits: o.traits,
-      intent: [...state.plan.manner, ...node.manner].includes("fast") ? "drive_off" : "subdue",
+      intent: fightIntentOf([...state.plan.manner, ...node.manner]),
       light: e.light,
       ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,
@@ -2715,3 +2716,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
 }
 
 export { deleteComponent, FRESH_CURSOR };
+
+/** Los modos de `strike` que dicen para qué se pelea (novel3-intent-words), en orden de peso. */
+const INTENT_MANNERS: readonly FightIntent[] = ["kill", "escape", "subdue", "drive_off"];
+
+/** La intención de la pelea desde los modos del golpe; sin ninguno, `fast` echa y lo demás reduce. */
+export function fightIntentOf(manner: readonly string[]): FightIntent {
+  const named = INTENT_MANNERS.find((m) => manner.includes(m));
+  if (named) return named;
+  return manner.includes("fast") ? "drive_off" : "subdue";
+}

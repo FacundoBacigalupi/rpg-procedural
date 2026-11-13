@@ -1294,6 +1294,26 @@
         "id": "hold_back",
         "duration": 1.2,
         "ease": 0.1
+      },
+      {
+        "id": "kill",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "subdue",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "drive_off",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "escape",
+        "duration": 1,
+        "ease": 0
       }
     ],
     "requires": [

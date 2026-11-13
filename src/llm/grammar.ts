@@ -135,7 +135,20 @@ export const HOLD_STANCE_ON =
 export const HOLD_STANCE_OFF =
   /^(?:dejo de contenerme|ya no me contengo|no me contengo(?: m[aá]s)?|voy a pelear en serio|(?:desde ahora|de ahora en m[aá]s) pelea(?:r[eé]|o) en serio)$/iu;
 
+/** Para qué se pelea (novel3-intent-words): los modos de `strike` que fijan la intención. */
+const KILL_SOURCE =
+  "para matar(?:lo|la)?|a matar|hasta matar(?:lo|la)?|a muerte|para liquidar(?:lo|la)?|para acabar con (?:[eé]l|ella)";
+const SUBDUE_SOURCE =
+  "para reducir(?:lo|la)?|para inmovilizar(?:lo|la)?|para dominar(?:lo|la)?|sin matar(?:lo|la)?|para atrapar(?:lo|la)?|para tumbar(?:lo|la)?";
+const DRIVE_OFF_SOURCE =
+  "para echar(?:lo|la)?|para espantar(?:lo|la)?|para que se vaya|para sac[aá]rmel[oa] de encima|para alejar(?:lo|la)?";
+const ESCAPE_SOURCE = "para (?:escaparme|zafarme|soltarme|irme|huir|poder irme|poder huir)";
+
 const MANNERS: readonly { re: RegExp; manner: string }[] = [
+  { re: new RegExp(`\\b(?:${KILL_SOURCE})\\b`, "i"), manner: "kill" },
+  { re: new RegExp(`\\b(?:${SUBDUE_SOURCE})\\b`, "i"), manner: "subdue" },
+  { re: new RegExp(`\\b(?:${DRIVE_OFF_SOURCE})\\b`, "i"), manner: "drive_off" },
+  { re: new RegExp(`\\b(?:${ESCAPE_SOURCE})\\b`, "i"), manner: "escape" },
   {
     re: /\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio)\b/i,
     manner: "covert",
@@ -149,7 +162,7 @@ const MANNERS: readonly { re: RegExp; manner: string }[] = [
   { re: /\b(?:en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo)\b/i, manner: "pawn" },
 ];
 const MANNER_WORDS = new RegExp(
-  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo|bien|${HOLD_BACK_SOURCE})\\b`,
+  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo|bien|${HOLD_BACK_SOURCE}|${KILL_SOURCE}|${SUBDUE_SOURCE}|${DRIVE_OFF_SOURCE}|${ESCAPE_SOURCE})\\b`,
   "gi",
 );
 
@@ -687,6 +700,17 @@ const VERBS: readonly {
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));
       return { node: act("strike", p ? [{ role: "target", ref: p.ref }] : []) };
+    },
+  },
+  {
+    // «Mato a X», «lo reduzco»: pegar con la intención en el verbo (novel3-intent-words).
+    re: /^(?:le|la|lo)?\s*(?:mato|matar|matarlo|matarla|asesino|asesinar|reduzco|reducir|reducirlo|reducirla|inmovilizo|inmovilizar|inmovilizarlo|inmovilizarla)\b/i,
+    build: (rest, _ctx, all) => {
+      const p = personAfterA(rest.replace(MANNER_WORDS, " "));
+      const kill = /\b(?:mat|asesin)/i.test(all);
+      return {
+        node: act("strike", p ? [{ role: "target", ref: p.ref }] : [], [kill ? "kill" : "subdue"]),
+      };
     },
   },
   {
