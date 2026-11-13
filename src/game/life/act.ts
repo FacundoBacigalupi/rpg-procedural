@@ -48,6 +48,7 @@ import {
   COPPER,
   type ContestClaim,
   CREDIT,
+  CULTIVATION_STATE,
   capabilitiesOf,
   caveBarred,
   climateMapAt,
@@ -469,6 +470,11 @@ export interface ActOptions {
    */
   readonly pillGoods?: readonly string[];
   /**
+   * Opt-in (novel3-refined-wire): en las peleas, el cuerpo de cada uno sale de los umbrales que
+   * cruzó (`strikeFight.refined`). Apagado, el cultivo no cambia cómo se pelea.
+   */
+  readonly refinedBodies?: boolean;
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -719,6 +725,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
       ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
       ...(o.hearthTend ? [HEARTH.name] : []),
+      ...(o.refinedBodies ? [CULTIVATION_STATE.name] : []),
     ],
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
@@ -2096,6 +2103,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       start: ctx.now,
       rng: input.rng.fork("fight"),
       ...(o.coreEffects ? { coreEffects: true } : {}),
+      ...(o.refinedBodies ? { refined: true } : {}),
       ...(o.legacyNoFleeShed === true ? {} : { shed: true }),
       day: o.clock.day,
       cause: draftEvent(0),

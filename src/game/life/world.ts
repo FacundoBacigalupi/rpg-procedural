@@ -1294,6 +1294,8 @@ export function lifeWorld(
           ...(parts.cultivation?.pills
             ? { pillGoods: parts.cultivation.pills.map((p) => p.good) }
             : {}),
+          // Con cultivo, se pelea con el cuerpo que dejó cada umbral (novel3-refined-wire).
+          ...(parts.cultivation ? { refinedBodies: true } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
@@ -1571,6 +1573,15 @@ export function lifeWorld(
                   }),
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
+                // Con cultivo, el golpe de una intriga también pelea con el cuerpo refinado.
+                ...(parts.cultivation && parts.schemes.acts?.strike
+                  ? {
+                      acts: {
+                        ...parts.schemes.acts,
+                        strike: { ...parts.schemes.acts.strike, refined: true },
+                      },
+                    }
+                  : {}),
               }),
             ]
           : []),

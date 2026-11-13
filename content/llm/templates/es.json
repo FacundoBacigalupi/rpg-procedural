@@ -635,6 +635,20 @@
     "lines": ["{target} levanta las manos: se rinde.", "{target} se rinde y deja de defenderse."]
   },
   {
+    "id": "outcome.strike.fight.blur_foe",
+    "lines": [
+      "{target} se mueve más rápido de lo que alcanzás a seguir: los golpes llegan antes de verlos.",
+      "No ves venir a {target}: está acá y ya está en otro lado."
+    ]
+  },
+  {
+    "id": "outcome.strike.fight.blur_me",
+    "lines": [
+      "{target} se mueve como dentro del agua: su golpe tarda una eternidad.",
+      "Ves cada gesto de {target} con tiempo de sobra."
+    ]
+  },
+  {
     "id": "outcome.strike.fight.mine_down",
     "lines": ["Los golpes te tumban y todo se va apagando."]
   },

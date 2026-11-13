@@ -9,6 +9,7 @@ import {
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  CULTIVATION_STATE,
   deleteComponent,
   ENTITY,
   type EventDraft,
@@ -25,6 +26,7 @@ import {
   opinionKey,
   PERSON,
   type ReadonlyWorldTruth,
+  refinementOf,
   rivalKey,
   runFight,
   SKILL_STATE,
@@ -102,7 +104,15 @@ export interface StrikeFightInput {
    * play-refs-objects-source-flee); apagado solo en el replay de motores anteriores a `life-45`.
    */
   readonly shed?: boolean;
+  /**
+   * Opt-in (novel3-refined-wire): el cuerpo de cada uno sale de los umbrales que cruzó
+   * (`CULTIVATION_STATE.stage`, `refinementOf`). Apagado, todos pelean como mortales.
+   */
+  readonly refined?: boolean;
 }
+
+/** Cuánto más rápido tiene que ser uno para que el otro no alcance a seguirlo. */
+export const BLUR_RATIO = 1.4;
 
 /** Los finales en que a alguien se le cae lo que lleva: corrió o quedó en el suelo. */
 const SHEDS: ReadonlySet<FighterOutcome> = new Set(["fled", "down", "dead"]);
@@ -233,6 +243,12 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     const t = i.coreEffects ? i.truth.get(THERMAL, id) : undefined;
     return t ? { coreC: t.coreC } : {};
   };
+  const stageOf = (id: AgentId) =>
+    i.refined ? (i.truth.get(CULTIVATION_STATE, id)?.stage ?? 0) : 0;
+  const refinedOf = (id: AgentId) => {
+    const stage = stageOf(id);
+    return stage > 0 ? { refined: refinementOf(stage) } : {};
+  };
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -265,6 +281,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         intent: i.intent,
         at: { x: 0, y: 0 },
         ...coreOf(i.me),
+        ...refinedOf(i.me),
       },
       {
         id: i.target,
@@ -288,6 +305,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         intent: "drive_off",
         at: { x: 0.7, y: 0 },
         ...coreOf(i.target),
+        ...refinedOf(i.target),
         unaware: theirBody.activity === "sleep",
       },
     ],
@@ -304,6 +322,15 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   const theirs = result.fighters.find((f) => f.id === i.target);
   if (!mine || !theirs) throw new Error("la pelea perdió un participante");
   const hits = (by: AgentId) => result.log.filter((l) => l.kind === "hit" && l.actor === by).length;
+  const myStage = stageOf(i.me);
+  const theirStage = stageOf(i.target);
+  const speed = (stage: number) => refinementOf(stage).speed;
+  const blur =
+    speed(theirStage) >= speed(myStage) * BLUR_RATIO
+      ? "foe"
+      : speed(myStage) >= speed(theirStage) * BLUR_RATIO
+        ? "me"
+        : undefined;
   const event: EventDraft = {
     kind: "combat.fight",
     actors: [i.me, i.target],
@@ -316,6 +343,10 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       hits: result.log
         .filter((l) => l.kind === "hit")
         .map((l) => ({ t: l.t, by: l.actor, to: l.target, zone: l.zone, severity: l.severity })),
+      // Los umbrales cruzados de cada uno, si alguno pelea con el cuerpo refinado.
+      ...(myStage > 0 || theirStage > 0
+        ? { stages: { [i.me]: myStage, [i.target]: theirStage } }
+        : {}),
     },
     emissions: { sight: 1, sound: 0.8 },
     causes: [{ kind: "event", event: i.cause }],
@@ -393,6 +424,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       woundsTaken: mine.woundsTaken,
       woundsDealt: hits(i.me),
       ...(result.paused ? { paused: result.paused.reason } : {}),
+      ...(blur ? { blur } : {}),
     },
   };
 }

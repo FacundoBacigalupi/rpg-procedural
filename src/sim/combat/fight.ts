@@ -47,7 +47,29 @@ export interface FighterInput {
   readonly unaware?: boolean;
   /** Opt-in: temperatura del núcleo (°C); el frío entumece y el calor marea (`applyCore`), y fuera de rango no pelea. */
   readonly coreC?: number;
+  /**
+   * Opt-in (novel3-refined-core): el cuerpo templado por el cultivo (`refinementOf` en
+   * `sim/cultivation`). Sin esto, un cuerpo mortal: la pelea no cambia.
+   */
+  readonly refined?: FighterRefinement;
 }
+
+/**
+ * Lo que el cultivo le hace al cuerpo en una pelea (novel3-refined-core). Multiplicadores sobre el
+ * cuerpo mortal; `hardness` es la parte de la fuerza de un golpe que la carne no deja pasar.
+ */
+export interface FighterRefinement {
+  /** ≥1: zancada, hueco más corto, se le ve menos venir el golpe y ve mejor los ajenos. */
+  readonly speed: number;
+  /** 0-1: cuánto de la fuerza de un golpe recibido no llega a herir. */
+  readonly hardness: number;
+  /** ≥1: cuánto rinde el aire (gasta menos, recupera más). */
+  readonly endurance: number;
+  /** ≥1: cuánto más pega. */
+  readonly might: number;
+}
+
+const MORTAL: FighterRefinement = { speed: 1, hardness: 0, endurance: 1, might: 1 };
 
 export interface FightInput {
   readonly fighters: readonly FighterInput[];
@@ -182,6 +204,7 @@ interface State {
   body: Body;
   caps: BodyCapabilities;
   readonly coreC: number | undefined;
+  readonly refined: FighterRefinement;
   readonly z: Readonly<Record<string, number>>;
   readonly skill: number;
   readonly eye: number;
@@ -224,6 +247,23 @@ function active(s: State): boolean {
 
 /** La mano: cuánto rinde el cuerpo y el aire en un golpe. */
 const edgeOf = (s: State) => Math.sqrt(s.caps.manipulation) * (0.5 + 0.5 * s.breath);
+
+/** Cuánto rinde el aire: el cuerpo y lo que lo templó el cultivo. */
+const wind = (s: State) => Math.max(0.3, s.caps.endurance) * s.refined.endurance;
+
+/** Cuánto avanza en un pulso. */
+const strideOf = (s: State) => STRIDE * s.caps.locomotion * s.refined.speed;
+
+/** Un hueco de `pulses` pulsos, más corto cuanto más rápido (nunca menos de uno). */
+const hollow = (s: State, pulses: number) =>
+  s.refined.speed === 1 ? pulses : Math.max(1, Math.round(pulses / s.refined.speed));
+
+/**
+ * Ver venir un golpe según quién es más rápido (novel3-refined-core): el rápido ve mejor al lento y
+ * al rápido se lo ve menos. Entre iguales, 1.
+ */
+const quickness = (d: State, a: State) =>
+  d.refined.speed === a.refined.speed ? 1 : Math.min(1.6, d.refined.speed / a.refined.speed);
 
 /** Cuánto se nota la preparación del golpe (baja con el nivel de quien pega). */
 const telegraphOf = (s: State) => 0.75 - 0.4 * s.skill;
@@ -279,6 +319,7 @@ export function runFight(input: FightInput): FightResult {
       body,
       caps: coreCaps(capabilitiesOf(f.plan, body), f.coreC),
       coreC: f.coreC,
+      refined: f.refined ?? MORTAL,
       z: f.z,
       skill: clamp01(f.skill),
       eye: clamp01(f.eye ?? f.skill),
@@ -376,7 +417,8 @@ export function runFight(input: FightInput): FightResult {
             d.caps.sight *
               (0.3 + 0.7 * input.light) *
               (0.35 + 0.65 * telegraphOf(a)) *
-              (0.55 + 0.45 * d.skill),
+              (0.55 + 0.45 * d.skill) *
+              quickness(d, a),
           ),
         );
       // Solo se defiende quien está libre y mira para ese lado (no huyendo, ni en su hueco).
@@ -387,9 +429,9 @@ export function runFight(input: FightInput): FightResult {
       a.opening = 0;
       const defended = inReach && seen && free && rng.normal(def - atk, 0.2) > 0;
       const hit = inReach && !defended && rng.chance(clamp01(0.45 + 0.5 * atk * edgeOf(a)));
-      a.breath = clamp01(a.breath - 0.1 / Math.max(0.3, a.caps.endurance));
+      a.breath = clamp01(a.breath - 0.1 / wind(a));
       a.phase = "recover";
-      a.until = t + 2 + (a.breath < 0.25 ? 1 : 0) + (hit || defended ? 0 : 1);
+      a.until = t + hollow(a, 2 + (a.breath < 0.25 ? 1 : 0) + (hit || defended ? 0 : 1));
       a.target = null;
       if (hit) blows.push({ from: a, to: d, seen, hit });
       else {
@@ -412,9 +454,15 @@ export function runFight(input: FightInput): FightResult {
       const zones = AIM[b.from.intent];
       const zone = aimed ? Object.keys(zones)[rng.weighted(Object.values(zones))] : undefined;
       const power = 0.34 + 0.08 * Math.max(-2, Math.min(2, b.from.z["constitution"] ?? 0));
-      const force = clamp01(
-        power * b.from.caps.strength * (0.7 + 0.3 * b.from.breath) * (0.8 + 0.4 * rng.float()),
-      );
+      const force =
+        clamp01(
+          power *
+            b.from.caps.strength *
+            b.from.refined.might *
+            (0.7 + 0.3 * b.from.breath) *
+            (0.8 + 0.4 * rng.float()),
+        ) *
+        (1 - clamp01(b.to.refined.hardness));
       const injury = injure(
         b.to.plan,
         b.to.body,
@@ -450,13 +498,13 @@ export function runFight(input: FightInput): FightResult {
       const rival = a.kind === "idle" || a.kind === "yield" ? undefined : states.get(rivalOf(a));
       switch (a.kind) {
         case "idle":
-          s.breath = clamp01(s.breath + 0.06 * s.caps.endurance);
+          s.breath = clamp01(s.breath + 0.06 * s.caps.endurance * s.refined.endurance);
           s.balance = clamp01(s.balance + 0.2);
           break;
         case "close":
           if (rival) {
-            s.at = stepToward(s.at, rival.at, STRIDE * s.caps.locomotion, FIST_REACH * 0.9);
-            s.breath = clamp01(s.breath - 0.04 / Math.max(0.3, s.caps.endurance));
+            s.at = stepToward(s.at, rival.at, strideOf(s), FIST_REACH * 0.9);
+            s.breath = clamp01(s.breath - 0.04 / wind(s));
             log.push({ t, kind: "close", actor: s.id, target: rival.id });
           }
           break;
@@ -481,7 +529,7 @@ export function runFight(input: FightInput): FightResult {
               input.rng.fork("fight", base + pulse, s.id, "feint"),
             );
             s.phase = "recover";
-            s.until = t + res.cost;
+            s.until = t + hollow(s, res.cost);
             if (res.outcome === "bought") {
               rival.balance = clamp01(rival.balance - res.balanceLost);
               s.opening = res.opening;
@@ -498,8 +546,8 @@ export function runFight(input: FightInput): FightResult {
         case "flee":
           if (rival) {
             s.phase = "fleeing";
-            s.at = stepAway(s.at, rival.at, STRIDE * s.caps.locomotion);
-            s.breath = clamp01(s.breath - 0.05 / Math.max(0.3, s.caps.endurance));
+            s.at = stepAway(s.at, rival.at, strideOf(s));
+            s.breath = clamp01(s.breath - 0.05 / wind(s));
             if (s.outcome === "standing" && !logged(log, s.id, "flee")) {
               log.push({ t, kind: "flee", actor: s.id, target: rival.id });
             }
@@ -618,7 +666,8 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   if (!rival) return { kind: "idle" };
 
   const rng = input.rng.fork("fight", t, s.id, "decide");
-  const quicker = rival.caps.locomotion >= s.caps.locomotion * 1.2;
+  const quicker =
+    rival.caps.locomotion * rival.refined.speed >= s.caps.locomotion * s.refined.speed * 1.2;
   const canRun = s.caps.locomotion > 0.4 && s.breath > 0.1;
   if (input.reading === true) {
     // Con lectura (§5, §11): cree lo que leyó del rival, no lo que es.
@@ -641,10 +690,13 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
       input.rng.fork("fight", t, s.id, "read"),
     );
     s.readOf = rival.id;
+    // Verlo moverse más rápido de lo que alcanza a seguir le baja las chances (§11).
+    const surprise = clamp01((rival.refined.speed / s.refined.speed - 1) * sight);
     const belief = believedOdds(s.read, {
       myPower: powerOf(s),
       landed: s.landed,
       taken: s.woundsTaken,
+      ...(surprise > 0 ? { surprise } : {}),
     });
     s.odds = belief.myOdds;
     const decision = resolveBreak(

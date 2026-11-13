@@ -3,6 +3,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, loadContent, makeId, Rng } from "../../core/index.ts";
 import { BODY_PLANS, type BodyPlanDef, newBody } from "../body/index.ts";
+import { refinementOf } from "../cultivation/index.ts";
 import { type FighterInput, type FightIntent, PAUSE_MIN_PULSES, runFight } from "./index.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
@@ -241,5 +242,44 @@ describe("pelea con lectura", () => {
       const r = fight([fighter(A, "a", 0, { skill: 1 }), fighter(B, "b", 0.7)], seed);
       expect(r.log.some((l) => l.kind === "feint")).toBe(false);
     }
+  });
+});
+
+describe("cuerpo templado (novel3-refined-core)", () => {
+  const wins = (refined?: FighterInput["refined"]) => {
+    let won = 0;
+    let wounds = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const r = fight([fighter(A, "a", 0, refined ? { refined } : {}), fighter(B, "b", 0.7)], seed);
+      const a = r.fighters.find((f) => f.id === A);
+      const b = r.fighters.find((f) => f.id === B);
+      if (a?.outcome === "standing" && b?.outcome !== "standing") won++;
+      wounds += a?.woundsTaken ?? 0;
+    }
+    return { won, wounds };
+  };
+
+  it("sin cultivo, la pelea es la misma con o sin el campo", () => {
+    const fs = [fighter(A, "a", 0), fighter(B, "b", 0.7)];
+    const mortal = [fighter(A, "a", 0, { refined: refinementOf(0) }), fs[1] as FighterInput];
+    for (const seed of [1, 2, 3, 9]) expect(fight(mortal, seed)).toEqual(fight(fs, seed));
+  });
+
+  it("el tramo vuelve el cuerpo más rápido, duro, con aire y fuerza, con tope en la dureza", () => {
+    expect(refinementOf(0)).toEqual({ speed: 1, hardness: 0, endurance: 1, might: 1 });
+    const two = refinementOf(2);
+    expect(two.speed).toBeGreaterThan(1);
+    expect(two.hardness).toBeGreaterThan(0);
+    expect(refinementOf(50).hardness).toBeLessThanOrEqual(0.8);
+  });
+
+  it("un cultivador le gana a un mortal igual de hábil más seguido y recibe menos, determinista", () => {
+    const mortal = wins();
+    const refined = wins(refinementOf(2));
+    expect(refined.won).toBeGreaterThan(mortal.won);
+    expect(refined.won).toBeGreaterThan(40);
+    expect(refined.wounds).toBeLessThan(mortal.wounds);
+    const fs = [fighter(A, "a", 0, { refined: refinementOf(3) }), fighter(B, "b", 0.7)];
+    expect(fight([...fs].reverse(), 4)).toEqual(fight(fs, 4));
   });
 });

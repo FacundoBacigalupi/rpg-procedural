@@ -20,6 +20,7 @@ import {
 import {
   BODY_STATE,
   type BodyPlanDef,
+  CULTIVATION_STATE,
   decideScheme,
   draftEvent,
   ENTITY,
@@ -106,6 +107,8 @@ export interface SchemeActs {
     readonly skills: SkillCatalog;
     readonly traits: readonly Trait[];
     readonly light: number;
+    /** Opt-in (novel3-refined-wire): cada uno pelea con el cuerpo que le dejó el cultivo. */
+    readonly refined?: boolean;
   };
 }
 
@@ -160,6 +163,7 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
       ENTITY.name,
       PERSON.name,
       ...(acts ? [LOCATION.name, BODY_STATE.name, SKILL_STATE.name] : []),
+      ...(acts?.strike?.refined ? [CULTIVATION_STATE.name] : []),
     ],
     writes: [
       SCHEMES.name,
@@ -250,6 +254,7 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
                     traits: acts.strike.traits,
                     intent: "kill",
                     light: acts.strike.light,
+                    ...(acts.strike.refined ? { refined: true } : {}),
                     start: ctx.now,
                     rng: ctx.rng.fork("scheme_strike", id, String(scheme.done)),
                     day: o.day,
