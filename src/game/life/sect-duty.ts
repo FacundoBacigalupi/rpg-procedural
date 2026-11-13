@@ -427,7 +427,9 @@ export function sectDutyProcess(
         const contribution = pointsOf(who);
         if (!member || seatOrgOf(ctx.truth, who) !== member.org) continue;
         if (!promotionDue(member, contribution, stage)) continue;
-        changes.push(setComponent(SECT_MEMBER, who, { ...member, rank: "inner" }));
+        changes.push(
+          setComponent(SECT_MEMBER, who, { ...member, rank: "inner", rankSince: ctx.now }),
+        );
         events.push({
           kind: SECT_PROMOTED_EVENT,
           actors: [who],

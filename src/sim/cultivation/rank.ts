@@ -7,8 +7,9 @@
 //
 // Puro: el que decide no lee la verdad; recibe lo que sabe del candidato y lo que le dicen.
 
+import type { Tick } from "../../core/index.ts";
 import { exp } from "../../core/index.ts";
-import type { MemberRank } from "./member.ts";
+import type { MemberRank, SectMember } from "./member.ts";
 
 /** Lo que pide la secta para pasar de un rango al siguiente (sin calibrar). */
 export interface RankStep {
@@ -135,4 +136,15 @@ export function judgeRankUp(c: RankCase, draw: number): RankRuling {
   return draw < p
     ? { kind: "promoted", to: step.to, score, p }
     : { kind: "refused", refused: "voted_down", score, p };
+}
+
+/**
+ * Alguien de la secta plantea el ascenso de un miembro (novel2-rank-ask): el anciano o el maestro al
+ * que se lo pidieron, si cree que cumple. Con `refused`, no lo planteó y dice por qué.
+ */
+export const RANK_PETITION_EVENT = "cultivation.rank_petition";
+
+/** Días enteros que lleva `member` en su rango a `now`. */
+export function daysInRank(member: SectMember, now: Tick, dayTicks: number): number {
+  return Math.max(0, Math.floor((now - (member.rankSince ?? member.since)) / dayTicks));
 }

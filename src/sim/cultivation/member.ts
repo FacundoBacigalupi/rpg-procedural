@@ -24,6 +24,8 @@ export interface SectMember {
   readonly org: EntityRef;
   readonly rank: MemberRank;
   readonly since: Tick;
+  /** Desde cuándo tiene el rango de ahora (sin esto, desde `since`; novel2-rank-ask). */
+  readonly rankSince?: Tick;
   /** El año de la prueba que lo aceptó (los de la sede no pasaron por la de la aldea). */
   readonly trialYear?: number;
   /** Hasta cuándo tiene para presentarse en la sede (lo sabe: se lo dijeron). */

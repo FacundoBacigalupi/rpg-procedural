@@ -500,6 +500,75 @@
     "warm": ["No es que no me caigas bien; es que todavía no estás. Seguí y volvé."]
   },
   {
+    "id": "promotion.no",
+    "lines": [
+      "¿Ascensos? Eso no lo decido yo; hablá con un anciano.",
+      "No soy quién para subirte de rango."
+    ],
+    "formal": ["No está en mí plantear ascensos."],
+    "dry": ["No me toca."]
+  },
+  {
+    "id": "promotion.raise",
+    "lines": [
+      "Cumplís con lo que pide la secta. Lo voy a plantear; lo que se decida, se decide arriba.",
+      "Está bien: llevo tu nombre. No te prometo nada."
+    ],
+    "formal": ["Reúne lo que se exige. Elevaré su caso; la decisión no es solo mía."],
+    "warm": ["Te lo ganaste. Voy a hablar por vos."],
+    "dry": ["Lo planteo. Esperá."]
+  },
+  {
+    "id": "promotion.refuse.not_member",
+    "lines": ["No sos de esta secta. ¿Ascender a qué?"],
+    "formal": ["Usted no pertenece a esta secta."]
+  },
+  {
+    "id": "promotion.refuse.outer",
+    "lines": [
+      "Los externos suben con trabajo, no pidiendo. Cumplí tus horas de tarea.",
+      "Primero llegá a interno con tus tareas; eso no se plantea."
+    ],
+    "formal": ["El paso a discípulo interno se gana con las tareas, no se solicita."]
+  },
+  {
+    "id": "promotion.refuse.top",
+    "lines": ["Más arriba de donde estás no se sube pidiendo."],
+    "formal": ["Ese rango no se alcanza por solicitud."]
+  },
+  {
+    "id": "promotion.refuse.too_soon",
+    "lines": [
+      "Hace nada que tenés ese rango. Esperá; la secta quiere ver constancia.",
+      "Todavía es pronto. Volvé dentro de unos meses."
+    ],
+    "formal": ["Es prematuro. Aún no lleva el tiempo suficiente en su rango."]
+  },
+  {
+    "id": "promotion.refuse.too_low",
+    "lines": [
+      "Con tu cultivo no alcanza. Rompé el próximo umbral y hablamos.",
+      "Te falta avanzar. La secta no sube a quien no cruzó el tramo."
+    ],
+    "formal": ["Su cultivo no alcanza lo que exige ese rango."]
+  },
+  {
+    "id": "promotion.refuse.few_points",
+    "lines": [
+      "¿Y qué hiciste por la secta? Te faltan méritos.",
+      "Aportaste poco. Trabajá más para la secta y después pedí."
+    ],
+    "formal": ["Sus aportes a la secta aún no bastan."]
+  },
+  {
+    "id": "promotion.refuse.grudge",
+    "lines": [
+      "¿Que yo hable por vos? Ni lo sueñes.",
+      "Después de lo que hiciste, no cuentes conmigo."
+    ],
+    "dry": ["No."]
+  },
+  {
     "id": "introduce.wary",
     "lines": ["¿Y para qué querés saberlo?", "Eso no te importa."],
     "formal": ["Prefiero no decirlo, si no le molesta."],
