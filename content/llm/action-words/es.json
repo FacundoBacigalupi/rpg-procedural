@@ -116,6 +116,13 @@
     "weak": ["dej", "mano"]
   },
   {
+    "id": "yield",
+    "kind": "action",
+    "stems": ["rind", "rend", "entreg", "vencid"],
+    "forms": [],
+    "weak": ["mano", "baj"]
+  },
+  {
     "id": "trade",
     "kind": "action",
     "stems": ["negoci", "regate", "comerci", "truec", "trueq", "intercamb"],

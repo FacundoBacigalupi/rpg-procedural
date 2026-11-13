@@ -414,6 +414,11 @@ function outcome(
         target: ref(e.target),
       });
       break;
+    case "yield":
+      say(e.target === undefined ? "outcome.yield.anyone" : "outcome.yield.done", {
+        target: ref(e.target),
+      });
+      break;
     case "strike": {
       if (e.finished) {
         say("outcome.strike.finished", { target: ref(e.target) });

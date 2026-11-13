@@ -552,6 +552,11 @@ export type VerbEffect =
       readonly target: EntityRef | null;
     }
   | {
+      /** Rendirse (novel3-intent-resolve-talk): bajar las manos, ante alguien o ante nadie. */
+      readonly kind: "yield";
+      readonly target: EntityRef | null;
+    }
+  | {
       readonly kind: "trade";
       readonly with: EntityRef | null;
       /** Si se llegó a un trato. */
@@ -1492,6 +1497,11 @@ const strike: Resolver = (c) => {
 
 const spare: Resolver = (c) => ({
   effect: { kind: "spare", target: argEntity(c, "target") },
+  seconds: c.nominal,
+});
+
+const giveUp: Resolver = (c) => ({
+  effect: { kind: "yield", target: argEntity(c, "target") },
   seconds: c.nominal,
 });
 
@@ -2959,6 +2969,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   speak,
   strike,
   spare,
+  yield: giveUp,
   trade,
   give,
   take,

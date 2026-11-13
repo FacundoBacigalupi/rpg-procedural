@@ -1294,6 +1294,26 @@
         "id": "hold_back",
         "duration": 1.2,
         "ease": 0.1
+      },
+      {
+        "id": "kill",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "subdue",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "drive_off",
+        "duration": 1,
+        "ease": 0
+      },
+      {
+        "id": "escape",
+        "duration": 1,
+        "ease": 0
       }
     ],
     "requires": [
@@ -1434,6 +1454,34 @@
         "factor": "position"
       }
     ],
+    "evidence": 1
+  },
+  {
+    "id": "yield",
+    "name": "rendirse",
+    "domain": "social",
+    "args": [
+      {
+        "role": "target",
+        "kind": "person",
+        "required": false
+      }
+    ],
+    "manners": [],
+    "requires": [],
+    "occupies": {},
+    "duration": {
+      "kind": "fixed",
+      "seconds": 3
+    },
+    "checkpoint": 3,
+    "emissions": {
+      "sight": 0.6,
+      "sound": 0.4
+    },
+    "resolver": "yield",
+    "ease": 3,
+    "failureModes": [],
     "evidence": 1
   },
   {

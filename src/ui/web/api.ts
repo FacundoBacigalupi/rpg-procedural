@@ -111,6 +111,12 @@ export interface Hud {
     readonly realm?: { readonly name: string; readonly layer?: number; readonly word?: string };
     readonly hurt: boolean;
   };
+  /** La pelea pausada que sigue viva: con quién, por qué se paró y cuántos segundos aguanta. */
+  readonly fight?: {
+    readonly who: string;
+    readonly reason: "wounded" | "foe_fleeing" | "paused";
+    readonly seconds: number;
+  };
 }
 
 export interface Panels {

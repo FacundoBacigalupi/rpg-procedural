@@ -88,6 +88,7 @@ import {
 import {
   buildPlayerView,
   type DueView,
+  type FightView,
   type OffenseView,
   type PlayerView,
   type ReadingView,
@@ -100,6 +101,7 @@ import type { StepRecord } from "./act.ts";
 import { animalsInSight } from "./animals.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
+import { anyLivePause, pauseLeft } from "./fight.ts";
 import { fixturesInSight } from "./fixtures.ts";
 import { heardClaimsForView } from "./heardclaims.ts";
 import { heardTradesForView } from "./heardtrades.ts";
@@ -439,6 +441,22 @@ export function offensesForView(
     });
   }
   return out;
+}
+
+/**
+ * La pelea pausada que sigue viva (novel3-intent-panel): a quién tiene enfrente como lo conoce, por
+ * qué se paró (lo que notó, guardado al pausar) y cuánto aguanta. Sin pausa viva, nada.
+ */
+export function fightForView(w: LifeWorld): FightView | undefined {
+  const now = w.scheduler.now;
+  const p = anyLivePause(w.truth, w.player, now);
+  if (!p) return undefined;
+  const a = acquaintances(w).get(p.foe);
+  return {
+    who: a?.name ?? a?.relation ?? "alguien",
+    reason: p.reason ?? "paused",
+    seconds: pauseLeft(p, now),
+  };
 }
 
 export function duesForView(w: LifeWorld, rng: Rng): readonly DueView[] {
@@ -908,6 +926,7 @@ export function playerView(
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === TECHNIQUE_TAUGHT_EVENT);
   const technique = taught ? w.truth.get(CULTIVATION_TECHNIQUE, w.player)?.name : undefined;
+  const fight = fightForView(w);
   // El de entrada se lo enseñan al aceptarlo; los de arriba, el pabellón (novel2-method-pavilion).
   const viaPavilion = (taught?.data as { via?: unknown } | null)?.via === "pavilion";
   if (technique !== undefined) cues.add(viaPavilion ? "method_given" : "technique_taught");
@@ -1015,6 +1034,7 @@ export function playerView(
       ? { selfRealm: { ...realm, ...(realm.layer !== undefined ? { word: school.layer } : {}) } }
       : {}),
     ...(technique !== undefined ? { selfTechnique: technique } : {}),
+    ...(fight ? { fight } : {}),
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
     ...(options.heardTrades

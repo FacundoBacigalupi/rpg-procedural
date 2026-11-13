@@ -15,8 +15,10 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { offenseOf } from "./deeds.ts";
-import { FIGHT_STATE, livePause, PAUSE_WINDOW } from "./fight.ts";
+import { FIGHT_STATE, fleeFirst, livePause, PAUSE_WINDOW } from "./fight.ts";
 import { Life } from "./life.ts";
+import { DEFAULT_SUGGESTIONS, suggestions } from "./suggest.ts";
+import { fightForView } from "./view.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -174,6 +176,101 @@ describe("pausas de la pelea del personaje", () => {
       [],
     );
   }, 240_000);
+
+  it("la pausa guarda por qué y para qué; la vista y las opciones la muestran (novel3-intent-panel)", () => {
+    const run = pausedBrawl();
+    expect(run).not.toBeNull();
+    if (!run) return;
+    const saved = run.w.truth.get(FIGHT_STATE, run.me);
+    expect(["wounded", "foe_fleeing"]).toContain(saved?.reason);
+    expect(saved?.intent).toBe("subdue");
+    const view = fightForView(run.w);
+    expect(view?.reason).toBe(saved?.reason);
+    expect(view?.seconds).toBeGreaterThan(0);
+    expect(view?.seconds).toBeLessThanOrEqual(PAUSE_WINDOW);
+    expect(view?.who).not.toBe("alguien");
+    const options = suggestions(run.w, DEFAULT_SUGGESTIONS).filter((s) => s.kind === "fight");
+    expect(options.map((s) => s.fight?.manner ?? "on")).toEqual([
+      "on",
+      "kill",
+      "drive_off",
+      "escape",
+    ]);
+  }, 240_000);
+
+  it("irse con la pelea en pausa es huir: primero la pelea con escape (novel3-intent-resolve-flee)", () => {
+    const run = pausedBrawl();
+    expect(run).not.toBeNull();
+    if (!run) return;
+    const saved = run.w.truth.get(FIGHT_STATE, run.me);
+    if (!saved) throw new Error("sin pausa");
+    const away: ActionPlan = {
+      actor: run.me,
+      source: "player",
+      root: { kind: "do", verb: "move", args: [{ role: "to", entity: run.other }], manner: [] },
+      manner: [],
+      causes: [{ kind: "state", entity: run.me, key: "intent" }],
+    };
+    const now = saved.snapshot.next;
+    const fled = fleeFirst(run.w.truth, run.me, now, away);
+    expect(fled.root).toEqual({
+      kind: "seq",
+      steps: [
+        {
+          kind: "do",
+          verb: "strike",
+          args: [{ role: "target", entity: run.other }],
+          manner: ["escape"],
+        },
+        away.root,
+      ],
+    });
+    // Ya fría, u otra cosa que no sea irse: el plan queda como estaba.
+    expect(fleeFirst(run.w.truth, run.me, now + PAUSE_WINDOW + 1, away)).toBe(away);
+    const hit = strikePlan(run.me, run.other);
+    expect(fleeFirst(run.w.truth, run.me, now, hit)).toBe(hit);
+    // En el turno: el primer paso es la pelea que retoma.
+    const report = run.life.turn(away, 2);
+    expect(report.steps[0]?.verb).toBe("strike");
+    expect(report.events.some((e) => e.kind === "combat.fight")).toBe(true);
+    expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
+      [],
+    );
+  }, 240_000);
+
+  it.each([
+    ["yield", "target"],
+    ["speak", "to"],
+  ] as const)(
+    "con la pelea en pausa, %s la corta con su evento (novel3-intent-resolve-talk)",
+    (verb, role) => {
+      const run = pausedBrawl();
+      expect(run).not.toBeNull();
+      if (!run) return;
+      const saved = run.w.truth.get(FIGHT_STATE, run.me);
+      if (!saved) throw new Error("sin pausa");
+      const report = run.life.turn(
+        {
+          actor: run.me,
+          source: "player",
+          root: { kind: "do", verb, args: [{ role, entity: run.other }], manner: [] },
+          manner: [],
+          causes: [{ kind: "state", entity: run.me, key: "intent" }],
+        },
+        2,
+      );
+      const off = report.events.find((e) => e.kind === "combat.break_off");
+      expect(off?.data).toEqual({ how: verb === "yield" ? "yield" : "talk" });
+      expect(off?.actors).toEqual([run.me, run.other]);
+      expect(off?.causes).toContainEqual({ kind: "event", event: saved.event });
+      expect(run.w.truth.get(FIGHT_STATE, run.me)).toBeUndefined();
+      const given = run.w.truth.get(YIELDED, run.me);
+      if (verb === "yield") expect(given?.to).toBe(run.other);
+      else expect(given).toBeUndefined();
+      expect(report.events.some((e) => e.kind === "combat.fight")).toBe(false);
+    },
+    240_000,
+  );
 
   it("una pelea que ya enfrió no se retoma: pasa el tiempo y arranca otra", () => {
     const run = pausedBrawl();

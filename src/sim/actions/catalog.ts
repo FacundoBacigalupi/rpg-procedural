@@ -73,6 +73,7 @@ export const RESOLVERS = [
   "speak",
   "strike",
   "spare",
+  "yield",
   "trade",
   "give",
   "take",

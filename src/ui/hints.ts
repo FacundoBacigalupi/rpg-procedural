@@ -37,6 +37,16 @@ const PHRASES: Readonly<Record<Suggestion["kind"], string>> = {
   look: "miro alrededor",
   wait: "espero una hora",
   goal: "trabajo de más",
+  fight: "le pego a",
+};
+
+/** Cómo se dice para qué se sigue la pelea (los modos que la gramática reconoce). */
+const FIGHT_PURPOSE: Readonly<
+  Record<NonNullable<NonNullable<Suggestion["fight"]>["manner"]>, string>
+> = {
+  kill: "para matarlo",
+  drive_off: "para echarlo",
+  escape: "para zafarme",
 };
 
 /** Las de una meta (novel-goals-hooks), por el verbo del borrador: «miro a Langdang». */
@@ -55,6 +65,10 @@ export function suggestionPhrase(s: Suggestion): string {
     const who = ref !== undefined && "ref" in ref ? ref.ref.text : undefined;
     const phrase = GOAL_PHRASES[verb] ?? PHRASES.goal;
     return who === undefined ? phrase : `${phrase} ${who}`;
+  }
+  if (s.fight !== undefined) {
+    const base = `${PHRASES.fight} ${s.fight.who}`;
+    return s.fight.manner === undefined ? base : `${base} ${FIGHT_PURPOSE[s.fight.manner]}`;
   }
   const phrase = PHRASES[s.kind];
   return s.with === undefined ? phrase : `${phrase} mi ${s.with}`;

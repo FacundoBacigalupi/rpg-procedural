@@ -196,6 +196,10 @@
     "lines": ["{who} baja la mano y deja ir a alguien.", "Ves a {who} perdonar a otro."]
   },
   {
+    "id": "percept.action.yield",
+    "lines": ["{who} baja las manos y se rinde.", "Ves a {who} darse por vencido."]
+  },
+  {
     "id": "percept.action.trade",
     "lines": ["{who} está negociando.", "Ves a {who} regateando."]
   },
@@ -678,6 +682,14 @@
   {
     "id": "outcome.spare.anyone",
     "lines": ["No hay a quién perdonar."]
+  },
+  {
+    "id": "outcome.yield.done",
+    "lines": ["Bajás las manos ante {target}: te rendís.", "Te rendís ante {target}."]
+  },
+  {
+    "id": "outcome.yield.anyone",
+    "lines": ["Bajás las manos.", "Te das por vencido."]
   },
   {
     "id": "outcome.strike.off_balance",

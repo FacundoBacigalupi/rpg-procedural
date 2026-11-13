@@ -197,6 +197,25 @@ function cultivationChips(c: Hud["cultivation"]): Chip[] {
   return out;
 }
 
+const FIGHT_REASON: Readonly<Record<NonNullable<Hud["fight"]>["reason"], string>> = {
+  wounded: "te hirieron",
+  foe_fleeing: "se quiere ir",
+  paused: "se frenó",
+};
+
+/** La pelea pausada (novel3-intent-panel): con quién y por qué se paró; se enfría si no seguís. */
+function fightChips(f: Hud["fight"]): Chip[] {
+  if (f === undefined) return [];
+  return [
+    {
+      icon: "⚔️",
+      text: `peleando con ${f.who} · ${FIGHT_REASON[f.reason]}`,
+      title: `La pelea está en pausa: si no hacés nada se enfría en ${f.seconds} s`,
+      alert: 3,
+    },
+  ];
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -249,6 +268,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
       </div>
       <div className="chips body">
         {[
+          ...fightChips(hud.fight),
           ...dangerChips(hud.danger),
           ...bodyChips(hud.body),
           ...loadChips(hud.load),

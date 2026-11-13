@@ -729,6 +729,15 @@ const SUGGESTION_LABELS: Readonly<Record<Suggestion["kind"], string>> = {
   look: "Mirar alrededor",
   wait: "Esperar una hora",
   goal: "Por lo que querés",
+  fight: "Seguir peleando con",
+};
+
+const FIGHT_LABELS: Readonly<
+  Record<NonNullable<NonNullable<Suggestion["fight"]>["manner"]>, string>
+> = {
+  kill: "Matar a",
+  drive_off: "Echar a",
+  escape: "Zafarte de",
 };
 
 export function renderSuggestion(s: Suggestion): string {
@@ -736,6 +745,10 @@ export function renderSuggestion(s: Suggestion): string {
   if (s.goal !== undefined) {
     const say = s.goal.say;
     return `${say.charAt(0).toUpperCase()}${say.slice(1)} (por «${s.goal.text}»)`;
+  }
+  if (s.fight !== undefined) {
+    const verb = s.fight.manner === undefined ? label : FIGHT_LABELS[s.fight.manner];
+    return `${verb} ${s.fight.who}`;
   }
   return s.with === undefined ? label : `${label} tu ${s.with}`;
 }

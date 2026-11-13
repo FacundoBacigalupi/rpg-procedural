@@ -662,6 +662,18 @@
     ]
   },
   {
+    "id": "yield",
+    "example": "me rindo ante el bandido",
+    "tail": "ante el bandido",
+    "forms": ["me rindo", "rendirme"],
+    "synonyms": [
+      {
+        "as": "me rindo",
+        "words": ["me entrego", "entregarme", "me doy por vencido", "me doy por vencida"]
+      }
+    ]
+  },
+  {
     "id": "trade",
     "example": "le compro pan al panadero",
     "tail": "pan al panadero",
