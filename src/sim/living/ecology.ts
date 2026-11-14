@@ -64,6 +64,13 @@ export interface EcologyState {
 
 export const ECOLOGY = table<EcologyState>("living.ecology");
 
+/**
+ * El monte de un lugar fuera de la aldea (novel3-beasts-wilds): las poblaciones que su celda
+ * sostiene por su clima, en la entidad del lugar (hoy la sede de la secta). Sin red trófica
+ * todavía: cambia solo por los individuos que bajan y vuelven (o mueren).
+ */
+export const WILDS = table<CellEcology>("living.wilds");
+
 /** Área de un hex local (~2 km de lado a lado), m². */
 export const HEX_AREA_M2 = 3.46e6;
 /** Fracción de la producción primaria que llega a la cadena (el resto es leña, tronco, raíz). */
