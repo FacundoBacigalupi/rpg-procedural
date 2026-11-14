@@ -188,6 +188,7 @@ import {
   type WaterQuality,
   type WaterTreatment,
   WELL_DRAWN,
+  type WeaponDef,
   WORK,
   WORKSHOP_WASTE,
   walkingFactor,
@@ -488,6 +489,11 @@ export interface ActOptions {
    */
   readonly attackArts?: boolean;
   /**
+   * Opt-in (novel3-weapons-wire): en las peleas cada uno usa el arma que tiene en la mano
+   * (`strikeFight.weapons`) y la gasta en `ITEM_WEAR`. Apagado, se pelea a mano limpia.
+   */
+  readonly fightWeapons?: readonly WeaponDef[];
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -740,6 +746,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.hearthTend ? [HEARTH.name] : []),
       ...(o.refinedBodies || o.attackArts ? [CULTIVATION_STATE.name] : []),
       ...(o.attackArts ? [ART_KNOWN.name, SECT_SCHOOL.name, ASLEEP.name] : []),
+      ...(o.fightWeapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
     ],
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
@@ -763,6 +770,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoDrawWater === true ? [] : [CONTENTS.name, WELL_DRAWN.name, WORK.name]),
       // La herramienta que se usó de instrumento se gasta (use-tools-wear).
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
+      // El arma de una pelea se gasta (novel3-weapons-wire).
+      ...(o.fightWeapons ? [ITEM_WEAR.name] : []),
       // El herrero gana oficio con cada arreglo (use-tools-mend-smith).
       ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
       // La herramienta nueva que forja el herrero (use-tools-mend-trade-buy).
@@ -2192,6 +2201,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       rng: input.rng.fork("fight"),
       ...(o.coreEffects ? { coreEffects: true } : {}),
       ...(o.refinedBodies ? { refined: true } : {}),
+      ...(o.fightWeapons ? { weapons: o.fightWeapons } : {}),
       ...(o.legacyNoFleeShed === true ? {} : { shed: true }),
       day: o.clock.day,
       cause: draftEvent(0),

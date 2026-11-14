@@ -720,6 +720,18 @@
     ]
   },
   {
+    "id": "outcome.strike.fight.weapon_mine",
+    "lines": ["Peleás con {weapon} en la mano.", "Tenés {weapon} en la mano y con eso peleás."]
+  },
+  {
+    "id": "outcome.strike.fight.weapon_theirs",
+    "lines": ["{target} pelea con {weapon}.", "{target} tiene {weapon} en la mano."]
+  },
+  {
+    "id": "outcome.strike.fight.weapon_spent",
+    "lines": ["Tu arma quedó gastada del todo: ya no sirve para pelear."]
+  },
+  {
     "id": "outcome.strike.fight.mine_down",
     "lines": ["Los golpes te tumban y todo se va apagando."]
   },
@@ -2348,6 +2360,14 @@
   {
     "id": "thing.shape.rope",
     "lines": ["una soga"]
+  },
+  {
+    "id": "thing.shape.saber",
+    "lines": ["un sable"]
+  },
+  {
+    "id": "thing.shape.spear",
+    "lines": ["una lanza"]
   },
   {
     "id": "thing.shape.stick",

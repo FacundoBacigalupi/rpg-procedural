@@ -90,6 +90,7 @@ import {
   type TrajectoryDef,
   tanningProcess,
   type ValueDef,
+  type WeaponDef,
   type WorldTruth,
   weatherAt,
 } from "../../sim/index.ts";
@@ -902,6 +903,8 @@ export interface LifeWorld {
   readonly tradeRecipes?: readonly TradeRecipeDef[];
   /** Las herramientas que el herrero forja nuevas (con `forge`; use-tools-mend-trade-buy). */
   readonly forgeTools?: readonly HouseholdToolDef[];
+  /** Las formas de objeto que sirven de arma en una pelea (novel3-weapons-wire). */
+  readonly weapons?: readonly WeaponDef[];
   readonly householdTrades?: readonly TradeAssignment[];
   /** Opt-in: cada hogar elige oficio por habilidad y necesidad (`tradeSkills`: receta a habilidad) y lo guarda; sin esto sale del seed. */
   readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
@@ -1298,6 +1301,10 @@ export function lifeWorld(
           // Con cultivo, se pelea con el cuerpo que dejó cada umbral (novel3-refined-wire) y se lanzan
           // las técnicas de ataque (novel3-technique-act).
           ...(parts.cultivation ? { refinedBodies: true, attackArts: true } : {}),
+          // Y cada uno pelea con el arma que tiene en la mano (novel3-weapons-wire).
+          ...(parts.cultivation && parts.weapons && parts.weapons.length > 0
+            ? { fightWeapons: parts.weapons }
+            : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
