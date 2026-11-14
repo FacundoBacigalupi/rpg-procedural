@@ -5,7 +5,8 @@
 //
 // Puro: recibe lo que el retado cree y siente; los números son de acá, sin calibrar.
 
-import type { Rng } from "../../core/index.ts";
+import type { AgentId, EventId, Rng, Tick } from "../../core/index.ts";
+import { table } from "../world/index.ts";
 import { faceStakes } from "./threats.ts";
 
 /** Hasta dónde va el duelo: que uno se rinda (o caiga), la primera sangre, o la muerte. */
@@ -133,4 +134,54 @@ export function challenges(norm: string): boolean {
     /\bret(?:o|ar|arte|arlo|arla|amos)\b/.test(norm) &&
     /\b(duelo|pelea\w*|combat\w*|batirnos|batirte|muerte|plataforma|primera sangre)\b/.test(norm)
   );
+}
+
+/** El evento de un desafío contestado: `data` lleva la regla, la respuesta y la cara de rechazar. */
+export const CHALLENGE_EVENT = "combat.challenge";
+
+/** Un duelo aceptado y todavía no peleado, en la entidad de cada uno de los dos. */
+export interface Duel {
+  /** Con quién. */
+  readonly with: AgentId;
+  readonly rule: DuelRule;
+  /** Quién retó. */
+  readonly challenger: AgentId;
+  readonly at: Tick;
+  /** Hasta cuándo vale lo acordado: después, ya no es un duelo. */
+  readonly until: Tick;
+  /** El desafío aceptado. */
+  readonly event: EventId;
+}
+
+export const DUEL = table<Duel>("combat.duel");
+
+/** Días que vale un desafío aceptado (calibración abierta). */
+export const DUEL_DAYS = 1;
+
+/** Si `d` es un duelo vivo con `other` en `now`. */
+export function duelWith(d: Duel | undefined, other: AgentId, now: Tick): d is Duel {
+  return d !== undefined && d.with === other && now <= d.until;
+}
+
+/** Lo que el retado cree de cada uno para pelear: su nivel (0-1) y los umbrales cruzados. */
+export interface DuelStanding {
+  readonly skill: number;
+  readonly stage: number;
+}
+
+/** Cuánto pesa un umbral cruzado frente al oficio (calibración abierta). */
+export const DUEL_STAGE_HALF = 2;
+
+/** Lo que vale alguien para pelear, creído: la mitad oficio, la mitad umbrales (con techo suave). */
+export function duelPower(s: DuelStanding): number {
+  const stage = Math.max(0, s.stage);
+  return clamp01(0.5 * clamp01(s.skill) + 0.5 * (stage / (stage + DUEL_STAGE_HALF)));
+}
+
+/**
+ * Las chances que el retado cree tener antes de pelear (sin golpes vistos, como `believedOdds`): lo
+ * que cree valer él, por cómo está el cuerpo (`condition`, 0-1), contra lo que cree del otro.
+ */
+export function challengeOdds(mine: DuelStanding, theirs: DuelStanding, condition: number): number {
+  return round(clamp01(0.5 + 0.8 * (duelPower(mine) * clamp01(condition) - duelPower(theirs))));
 }

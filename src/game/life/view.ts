@@ -25,6 +25,7 @@ import {
   believed,
   bodySigns,
   bookOf,
+  CHALLENGE_EVENT,
   COPPER,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
@@ -860,6 +861,18 @@ export function playerView(
           ? "mission_progress"
           : "mission_lapsed",
     );
+  }
+  // El desafío que hizo, contestado (novel3-challenge-ask): aceptado, o rechazado delante de otros.
+  const challenge =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === CHALLENGE_EVENT);
+  if (challenge) {
+    const d = challenge.data as { response?: unknown; refuseFace?: unknown } | null;
+    if (d?.response === "accept") cues.add("challenge_accepted");
+    else if (typeof d?.refuseFace === "number" && d.refuseFace > 0) {
+      cues.add("challenge_refused_public");
+    }
   }
   // Un prodigio que le contaron (novel2-trib-far-gossip): el `rumor.told` lo tiene de oyente.
   if (options.heardSince !== undefined) {

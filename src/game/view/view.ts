@@ -145,6 +145,10 @@ export type SelfCue =
   /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
   | "mission_hunt_done"
   | "mission_lapsed"
+  /** Retó a alguien y aceptó: el duelo quedó acordado (novel3-challenge-ask). */
+  | "challenge_accepted"
+  /** Retó a alguien delante de otros y se negó: el otro perdió cara (novel3-challenge-ask). */
+  | "challenge_refused_public"
   /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
   | "heard_prodigy"
   | "rank_unheard"

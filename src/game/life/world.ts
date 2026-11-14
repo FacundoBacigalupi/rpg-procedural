@@ -141,6 +141,7 @@ import { decideProcess } from "./decide.ts";
 import { DEEDS_PROCESS, deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { type DraftOptions, draftDefsOf } from "./draft.ts";
+import { duelsProcess } from "./duels.ts";
 import { ecologyProcess } from "./ecology.ts";
 import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
@@ -1626,7 +1627,10 @@ export function lifeWorld(
           ...(parts.cultivation?.pills && parts.cultivation.herbs
             ? { missions: { pills: parts.cultivation.pills, herbs: parts.cultivation.herbs } }
             : {}),
+          // Con cultivo, los desafíos a duelo se pesan y se anotan (novel3-challenge-ask).
+          ...(parts.cultivation ? { duels: { skills: parts.skills } } : {}),
         }),
+        ...(parts.cultivation ? [duelsProcess({ dayTicks: parts.clock.day })] : []),
         ...(economicBatch ? [converseProjectionProcess()] : []),
         ...(economicBatch
           ? [conversationSettlementProcess([OPEN_DEALS.name, KNOWN_DEEDS.name, RUMORS.name])]

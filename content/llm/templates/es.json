@@ -1465,6 +1465,16 @@
     ]
   },
   {
+    "id": "self.challenge_accepted",
+    "lines": ["Quedó acordado el duelo, con su regla; vale hasta mañana a esta hora."]
+  },
+  {
+    "id": "self.challenge_refused_public",
+    "lines": [
+      "Se negó delante de todos; los que miraban se lo notaron, y algo de eso se te anota a vos."
+    ]
+  },
+  {
     "id": "self.mission_lapsed",
     "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
   },

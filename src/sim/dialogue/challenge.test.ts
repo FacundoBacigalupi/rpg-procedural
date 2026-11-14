@@ -4,6 +4,7 @@ import { Rng } from "../../core/index.ts";
 import { normalize, understand } from "./acts.ts";
 import {
   type ChallengeInput,
+  challengeOdds,
   challenges,
   DUEL_RULES,
   duelFace,
@@ -70,6 +71,20 @@ describe("desafíos (novel3-challenge-core)", () => {
     expect(duelFace("yield", 3, 0).win).toBeGreaterThan(plain);
     expect(duelFace("death", 0, 0).win).toBeGreaterThan(plain);
     expect(duelFace("yield", 0, 1).win).toBeGreaterThan(plain);
+  });
+
+  it("las chances creídas: más umbrales y oficio suben, el cuerpo herido baja", () => {
+    const even = challengeOdds({ skill: 0.5, stage: 1 }, { skill: 0.5, stage: 1 }, 1);
+    expect(even).toBeCloseTo(0.5);
+    expect(challengeOdds({ skill: 0.5, stage: 3 }, { skill: 0.5, stage: 1 }, 1)).toBeGreaterThan(
+      even,
+    );
+    expect(challengeOdds({ skill: 0.8, stage: 1 }, { skill: 0.5, stage: 1 }, 1)).toBeGreaterThan(
+      even,
+    );
+    expect(challengeOdds({ skill: 0.5, stage: 1 }, { skill: 0.5, stage: 1 }, 0.5)).toBeLessThan(
+      even,
+    );
   });
 
   it("acotado y determinista", () => {
