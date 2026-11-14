@@ -16,6 +16,7 @@ import {
 import {
   ABSORBED_EVENT,
   type ActionPlan,
+  ART_KNOWN,
   BODY_STATE,
   CAVE_FOCUS,
   CULTIVATION_LAW,
@@ -37,6 +38,7 @@ import {
   QI_TAKEN,
   SECT,
   SECT_MEMBER,
+  SECT_SCHOOL,
   SECT_SITE_SPACES,
   SELF_IMAGES,
   SKILL_STATE,
@@ -342,6 +344,15 @@ describe("la sede en su celda (novel-sect-seat-switch)", () => {
     );
     expect(ranks).toContain("master");
     expect(ranks).toContain("inner");
+    // Los internos y el maestro saben la técnica de ataque de la escuela; los externos no (novel3-technique-school).
+    const art = w4.truth.get(SECT_SCHOOL, org4)?.art;
+    for (const x of hall?.people ?? []) {
+      const p = x.person as unknown as EntityRef;
+      const rank = w4.truth.get(SECT_MEMBER, p)?.rank;
+      const known = w4.truth.get(ART_KNOWN, p);
+      if (rank === "outer") expect(known).toBeUndefined();
+      else expect(known).toMatchObject({ org: org4, name: art?.name });
+    }
     const born = w4.log.all().filter((e) => e.kind === SECT_HALL_EVENT);
     expect(born.length).toBe(1);
     expect(born[0]?.causes).toContainEqual({ kind: "event", event: s4.originEventId });

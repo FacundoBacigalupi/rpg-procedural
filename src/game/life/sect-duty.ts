@@ -28,6 +28,7 @@ import {
   type PlaceId,
 } from "../../core/index.ts";
 import {
+  ART_KNOWN,
   BREAKTHROUGH_EVENT,
   CAVE_RANKS,
   CHORE_POINTS_PER_HOUR,
@@ -182,6 +183,7 @@ export function sectDutyProcess(
       SECT_MEMBER.name,
       SECT_LEAVE.name,
       CULTIVATION_TECHNIQUE.name,
+      ART_KNOWN.name,
     ],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -527,6 +529,7 @@ export function sectDutyProcess(
         });
       }
       // El ascenso (novel-sect-duty-rank): externo en su sede con las horas de tarea y el tramo.
+      const promotedHere: [number, { who: AgentId; org: EntityRef }][] = [];
       for (const [who, e] of maybe) {
         const ref = who as unknown as EntityRef;
         const member = ctx.truth.get(SECT_MEMBER, ref);
@@ -537,6 +540,7 @@ export function sectDutyProcess(
         changes.push(
           setComponent(SECT_MEMBER, who, { ...member, rank: "inner", rankSince: ctx.now }),
         );
+        promotedHere.push([events.length, { who, org: member.org }]);
         events.push({
           kind: SECT_PROMOTED_EVENT,
           actors: [who],
@@ -573,6 +577,21 @@ export function sectDutyProcess(
       }
       // La secta decide cada asunto una vez por paso (el primero que lo planteó).
       const reviewed = new Set<AgentId>();
+      /** El que deja de ser externo aprende la técnica de ataque de la escuela (novel3-technique-school). */
+      const teachArt = (who: AgentId, org: EntityRef, at: number) => {
+        const art = ctx.truth.get(SECT_SCHOOL, org)?.art;
+        const known = ctx.truth.get(ART_KNOWN, who as unknown as EntityRef);
+        if (!art || known?.org === org) return;
+        changes.push(
+          setComponent(ART_KNOWN, who, {
+            org,
+            name: art.name,
+            learnedAt: ctx.now,
+            event: draftEvent(at),
+          }),
+        );
+      };
+      for (const [at, e] of promotedHere) teachArt(e.who, e.org, at);
       for (const issue of issues) {
         if (reviewed.has(issue.who)) continue;
         const out = reviewRank(
@@ -587,7 +606,13 @@ export function sectDutyProcess(
         );
         if (out.events.length > 0) reviewed.add(issue.who);
         changes.push(...out.changes);
-        events.push(...out.events);
+        for (const e of out.events) {
+          const d = e.data as { org?: EntityRef; from?: string } | null;
+          if (e.kind === SECT_PROMOTED_EVENT && d?.org && d.from === "outer") {
+            teachArt(issue.who, d.org, events.length);
+          }
+          events.push(e);
+        }
       }
       // Las misiones vencidas se caen sin más puntos.
       for (const id of ctx.truth.ids(SECT_MISSION)) {
