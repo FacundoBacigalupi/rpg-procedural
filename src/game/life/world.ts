@@ -113,6 +113,7 @@ import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { type BanditsOptions, banditsProcess } from "./bandits.ts";
+import { beastAttackProcess } from "./beast-attack.ts";
 import { belongingProcess } from "./belonging.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
@@ -2603,6 +2604,22 @@ export function lifeWorld(
                       bodyPlans: parts.plans,
                       day: parts.clock.day,
                     }),
+                    // El que bajó con hambre ataca a quien encuentra solo afuera (novel3-beasts-fight-attack).
+                    ...(parts.lineages
+                      ? [
+                          beastAttackProcess({
+                            lineages: parts.lineages,
+                            bodyPlans: parts.plans,
+                            skills: parts.skills,
+                            traits: parts.traits,
+                            spaces: parts.spaces,
+                            map: parts.map,
+                            clock: parts.clock,
+                            seed: parts.seed,
+                            refined: true,
+                          }),
+                        ]
+                      : []),
                     sectHallProcess({
                       map: parts.map,
                       // La sede llega con su armería (novel3-weapons-sect).

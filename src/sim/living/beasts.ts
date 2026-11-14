@@ -30,6 +30,10 @@ export interface Beast {
   /** El lugar con `WILDS` de donde salió (y adonde vuelve). */
   readonly home: EntityRef;
   readonly until: Tick;
+  /** El hambre con que bajó (`predatorHunger`, 0..1): la que lo hace atacar (novel3-beasts-fight-attack). */
+  readonly hunger?: number;
+  /** Cuándo atacó a alguien: ataca una sola vez por bajada. */
+  readonly attacked?: Tick;
 }
 
 export const BEAST = table<Beast>("living.beast");
@@ -140,6 +144,7 @@ export function beastProcess(o: BeastOptions): ProcessDef {
               lineage: d.id,
               home,
               until: ctx.now + BEAST_STAY_DAYS * o.day,
+              hunger,
             }),
             setComponent(BODY_STATE, id, newBody(plan, d.bodyMass, ctx.now)),
             setComponent(LOCATION, id, { hex }),
