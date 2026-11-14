@@ -1459,6 +1459,12 @@
     ]
   },
   {
+    "id": "self.mission_hunt_done",
+    "lines": [
+      "De vuelta en la sede, la secta da por cumplida la caza de la bestia; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
     "id": "self.mission_lapsed",
     "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
   },

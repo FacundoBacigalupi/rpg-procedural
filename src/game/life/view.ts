@@ -853,7 +853,9 @@ export function playerView(
   if (missionEnd) {
     cues.add(
       missionEnd.kind === MISSION_DONE_EVENT
-        ? "mission_done"
+        ? (missionEnd.data as { kind?: unknown } | null)?.kind === "hunt"
+          ? "mission_hunt_done"
+          : "mission_done"
         : missionEnd.kind === MISSION_PROGRESS_EVENT
           ? "mission_progress"
           : "mission_lapsed",

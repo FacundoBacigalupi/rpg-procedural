@@ -55,6 +55,11 @@ export interface SectMission {
   readonly beast?: EntityRef;
   /** Cazar: cuándo vuelve al monte; el plazo es ese. */
   readonly until?: Tick;
+  /**
+   * Cazar (novel3-beasts-mission-claim): la última pelea de quien la tiene con la bestia. `done` pasa
+   * a 1 si en esa pelea murió o huyó; si quedó caída y muere después, también cuenta.
+   */
+  readonly fight?: EventId;
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -252,8 +257,15 @@ export function pickMission(
 export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until?: Tick): Tick =>
   Math.min(now + MISSION_DAYS[kind] * dayTicks, until ?? Number.POSITIVE_INFINITY);
 
-/** Si la misión ya venció sin cumplirse. */
-export const missionLapsed = (m: SectMission, now: Tick): boolean => now > m.due;
+/**
+ * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) no vence: espera
+ * a que quien la tiene vuelva a la sede a cobrarla.
+ */
+export const missionLapsed = (m: SectMission, now: Tick): boolean =>
+  now > m.due && !(m.kind === "hunt" && m.done >= 1);
+
+/** Lo que cuenta de una pelea para la misión de cazar: la bestia murió o huyó. */
+export const HUNT_SETTLED: ReadonlySet<string> = new Set(["dead", "fled"]);
 
 /**
  * Lo que vale una entrega de `amount` (gramos u horas) para la misión: cuánto cuenta (hasta lo que

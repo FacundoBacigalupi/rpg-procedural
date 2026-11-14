@@ -142,6 +142,8 @@ export type SelfCue =
   | "mission_hunt"
   | "mission_progress"
   | "mission_done"
+  /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
+  | "mission_hunt_done"
   | "mission_lapsed"
   /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
   | "heard_prodigy"

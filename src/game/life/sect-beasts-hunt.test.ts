@@ -1,6 +1,7 @@
 // La misión de cazar al lobo (novel3-beasts-mission-ask): un miembro de la secta vio al lobo que bajó
 // (`BEAST_SEEN`); al pedirle una misión al anciano, le da la de cazarlo antes que las de hierbas, con
-// plazo hasta que vuelve al monte. Una por bestia.
+// plazo hasta que vuelve al monte. Una por bestia. Se cobra (novel3-beasts-mission-claim) al estar en
+// la sede después de pelear con el lobo y que muriera o huyera; si vuelve al monte sin pelea, vence.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -14,8 +15,11 @@ import {
   checkInvariants,
   LOCATION,
   MISSION_ASSIGNED_EVENT,
+  MISSION_DONE_EVENT,
+  MISSION_LAPSED_EVENT,
   PLACE,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_MEMBER,
   SECT_MISSION,
   WILDS,
@@ -47,6 +51,14 @@ const say = (actor: AgentId, to: AgentId, text: string): ActionPlan => ({
     ],
     manner: [],
   },
+  manner: [],
+  causes: [{ kind: "state", entity: actor, key: "intent" }],
+});
+
+const hit = (actor: AgentId, target: EntityRef): ActionPlan => ({
+  actor,
+  source: "player",
+  root: { kind: "do", verb: "strike", args: [{ role: "target", entity: target }], manner: [] },
   manner: [],
   causes: [{ kind: "state", entity: actor, key: "intent" }],
 });
@@ -108,6 +120,55 @@ describe("la misión de cazar al lobo (novel3-beasts-mission-ask)", () => {
     expect(mission?.due).toBeGreaterThan(life.now);
     expect(mission?.cause).toBe(assigned?.id);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 600_000);
+
+  it("pelear hasta que muere o huye y estar en la sede la cobra", () => {
+    const { life, w, me, wolf, assigned } = run();
+    const before = w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0;
+    const from = life.now;
+    // Un lobo flaco y desangrado: la pelea se resuelve en pocos golpes.
+    const weak = w.truth.get(BODY_STATE, wolf);
+    if (weak) w.truth.set(BODY_STATE, wolf, { ...weak, blood: 0.45, fatigue: 0.9 });
+    const fights: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const wolfBody = w.truth.get(BODY_STATE, wolf);
+      const mine = w.truth.get(BODY_STATE, me);
+      if ((wolfBody?.death ?? null) !== null || (mine?.death ?? null) !== null) break;
+      if (!w.truth.get(SECT_MISSION, me)) break;
+      if (mine) w.truth.set(BODY_STATE, me, { ...mine, sleepDebt: 0, fatigue: 0 });
+      life.turn(hit(me, wolf), 1);
+      const last = w.log
+        .all()
+        .filter(
+          (e) => e.kind === "combat.fight" && e.tick >= from && e.actors.includes(wolf as never),
+        )
+        .at(-1);
+      fights.push(String((last?.data as { outcomes?: Record<string, string> })?.outcomes?.[wolf]));
+      if (fights.at(-1) === "fled") break;
+    }
+    const done = w.log.all().find((e) => e.tick >= from && e.kind === MISSION_DONE_EVENT);
+    expect(done?.actors).toEqual([me]);
+    expect(done?.data).toMatchObject({ kind: "hunt", beast: wolf });
+    expect(done?.causes).toContainEqual({ kind: "event", event: assigned?.id });
+    expect(w.truth.get(SECT_MISSION, me)).toBeUndefined();
+    expect(w.truth.get(SECT_CONTRIBUTION, me)?.points).toBeGreaterThan(before);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 600_000);
+
+  it("si vuelve al monte sin pelea, vence", () => {
+    const { life, w, me, wolf } = run();
+    const until = w.truth.get(BEAST, wolf)?.until as number;
+    const hex = w.truth.get(LOCATION, me)?.hex as number;
+    const elsewhere = [...w.truth.ids(PLACE)]
+      .map((id) => w.truth.get(PLACE, id)?.hexes[0])
+      .find((h) => h !== undefined && h !== hex) as number;
+    w.truth.set(LOCATION, me, { hex: elsewhere });
+    const from = life.now;
+    life.advanceTo(until + 3600);
+    const lapsed = w.log.all().find((e) => e.tick >= from && e.kind === MISSION_LAPSED_EVENT);
+    expect(lapsed?.data).toMatchObject({ kind: "hunt" });
+    expect(w.log.all().some((e) => e.tick >= from && e.kind === MISSION_DONE_EVENT)).toBe(false);
+    expect(w.truth.get(SECT_MISSION, me)).toBeUndefined();
   }, 600_000);
 
   it("es determinista", () => {
