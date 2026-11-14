@@ -1475,6 +1475,14 @@
     ]
   },
   {
+    "id": "self.duel_won",
+    "lines": ["Ganaste el duelo según lo pactado; los que miraban lo van a contar."]
+  },
+  {
+    "id": "self.duel_lost",
+    "lines": ["Perdiste el duelo según lo pactado; los que miraban lo vieron."]
+  },
+  {
     "id": "self.mission_lapsed",
     "lines": ["Se te venció el plazo de la misión: ya no cuenta lo que faltaba."]
   },

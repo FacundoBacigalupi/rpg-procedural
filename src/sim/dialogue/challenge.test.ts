@@ -33,6 +33,7 @@ describe("desafíos (novel3-challenge-core)", () => {
       ["Te reto a pelear hasta que uno se rinda", "yield"],
       ["Te reto a duelo a muerte", "death"],
       ["Te desafío a la plataforma de vida o muerte", "death"],
+      ["Te reto a la plataforma", "death"],
       ["Te reto a duelo, a primera sangre", "first_blood"],
     ];
     for (const [text, rule] of cases) {

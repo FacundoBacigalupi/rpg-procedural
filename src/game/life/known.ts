@@ -447,6 +447,7 @@ const SECT_SPACE_NAMES: Readonly<Record<SectSiteSpace, readonly string[]>> = {
   hall: ["el salón", "el salón principal", "el salón de la secta"],
   dorm: ["los dormitorios", "el dormitorio", "donde duermen los discípulos"],
   cave: ["la cueva", "la cueva de cultivo", "la caverna"],
+  arena: ["la plataforma", "la plataforma de vida o muerte", "el estrado", "la arena"],
 };
 /** La casa del herrero: toda la aldea sabe dónde está la fragua (use-tools-mend-smith). */
 const SMITHY_NAMES = ["la herrería", "la fragua", "la casa del herrero"];

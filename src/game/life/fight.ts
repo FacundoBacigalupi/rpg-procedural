@@ -11,6 +11,7 @@ import {
   type Body,
   type BodyPlanDef,
   CULTIVATION_STATE,
+  type DuelRule,
   deleteComponent,
   ENTITY,
   type EventDraft,
@@ -57,6 +58,7 @@ import {
   type Yielded,
 } from "../../sim/index.ts";
 import { beastFighter } from "./beasts.ts";
+import { platformElder } from "./duels.ts";
 
 /** Una pelea pausada del personaje: contra quién y con qué retomarla (combat §16). */
 export interface PausedFight {
@@ -181,7 +183,20 @@ export interface StrikeFightInput {
    * con el perfil de su linaje (arma natural, instinto, destreza) en vez de habilidades de persona.
    */
   readonly beasts?: readonly LineageDef[];
+  /**
+   * Un duelo pactado entre los dos (novel3-challenge-fight, `DUEL`): el otro también pelea con la
+   * intención de la regla, a primera sangre se corta en la primera herida que sangra, y el evento
+   * lleva la regla y si se respetó (nadie murió en uno que no era a muerte).
+   */
+  readonly duel?: DuelRule;
 }
+
+/** Con qué intención se pelea cada regla de duelo (combat §13). */
+export const DUEL_INTENT: Readonly<Record<DuelRule, FightIntent>> = {
+  yield: "subdue",
+  first_blood: "subdue",
+  death: "kill",
+};
 
 /** Lo que alguien tiene en la mano y sirve de arma (combat §6): el objeto, su forma y su desgaste. */
 export interface Wielded {
@@ -439,8 +454,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           i.start,
           day,
         ),
-        // En la práctica los dos frenan el golpe; si no, el otro se defiende para echarlo.
-        intent: i.intent === "spar" ? "spar" : "drive_off",
+        // En la práctica los dos frenan el golpe; en un duelo pelea por la regla; si no, se defiende para echarlo.
+        intent: i.duel ? DUEL_INTENT[i.duel] : i.intent === "spar" ? "spar" : "drive_off",
         at: { x: 0.7, y: 0 },
         ...coreOf(i.target),
         ...refinedOf(i.target),
@@ -455,6 +470,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     cause: i.resume?.event ?? i.cause,
     // Con lectura (combat §5, §11): chances creídas, quiebre desde lo leído y fintas.
     reading: true,
+    ...(i.duel === "first_blood" ? { stopAtBlood: true } : {}),
     ...(i.control ? { control: i.me } : {}),
     ...(i.resume ? { resume: i.resume.snapshot } : {}),
   });
@@ -464,6 +480,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   const hits = (by: AgentId) => result.log.filter((l) => l.kind === "hit" && l.actor === by).length;
   const myStage = stageOf(i.me);
   const theirStage = stageOf(i.target);
+  // Un duelo a muerte en la plataforma de la sede ante un anciano (novel3-challenge-platform).
+  const elder = i.duel === "death" ? platformElder(i.truth, i.me, i.target) : undefined;
   const speed = (stage: number) => refinementOf(stage).speed;
   const blur =
     speed(theirStage) >= speed(myStage) * BLUR_RATIO
@@ -480,6 +498,19 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       ...(result.paused ? { paused: result.paused.reason } : {}),
       seconds: result.seconds,
       outcomes: { [i.me]: mine.outcome, [i.target]: theirs.outcome },
+      // El duelo pactado: la regla y si se respetó (nadie murió; a muerte, en la plataforma de la
+      // sede ante un anciano de la secta, que queda anotado).
+      ...(i.duel
+        ? {
+            duel: {
+              rule: i.duel,
+              kept:
+                (i.duel === "death" && elder !== undefined) ||
+                (mine.outcome !== "dead" && theirs.outcome !== "dead"),
+              ...(elder !== undefined ? { platform: elder } : {}),
+            },
+          }
+        : {}),
       hits: result.log
         .filter((l) => l.kind === "hit")
         .map((l) => ({ t: l.t, by: l.actor, to: l.target, zone: l.zone, severity: l.severity })),

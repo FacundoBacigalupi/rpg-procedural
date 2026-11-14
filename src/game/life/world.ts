@@ -1630,7 +1630,9 @@ export function lifeWorld(
           // Con cultivo, los desafíos a duelo se pesan y se anotan (novel3-challenge-ask).
           ...(parts.cultivation ? { duels: { skills: parts.skills } } : {}),
         }),
-        ...(parts.cultivation ? [duelsProcess({ dayTicks: parts.clock.day })] : []),
+        ...(parts.cultivation
+          ? [duelsProcess({ dayTicks: parts.clock.day, traits: parts.traits })]
+          : []),
         ...(economicBatch ? [converseProjectionProcess()] : []),
         ...(economicBatch
           ? [conversationSettlementProcess([OPEN_DEALS.name, KNOWN_DEEDS.name, RUMORS.name])]

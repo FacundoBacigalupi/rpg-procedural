@@ -149,6 +149,9 @@ export type SelfCue =
   | "challenge_accepted"
   /** Retó a alguien delante de otros y se negó: el otro perdió cara (novel3-challenge-ask). */
   | "challenge_refused_public"
+  /** Peleó un duelo pactado y lo ganó, o lo perdió (novel3-challenge-fight). */
+  | "duel_won"
+  | "duel_lost"
   /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
   | "heard_prodigy"
   | "rank_unheard"
