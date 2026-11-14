@@ -1,3 +1,4 @@
+export * from "./beasts.ts";
 export * from "./cheese.ts";
 export * from "./draft-fatigue.ts";
 export * from "./ecology.ts";

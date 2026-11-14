@@ -18,6 +18,7 @@ import {
   type ActionCatalog,
   type BodyPlanDef,
   type BondDef,
+  beastProcess,
   bodyProcess,
   COPPER,
   type ConcernWords,
@@ -2594,6 +2595,12 @@ export function lifeWorld(
                     }),
                     // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
+                    // Las bestias del monte de la sede bajan con hambre (novel3-beasts-materialize).
+                    beastProcess({
+                      lineages: parts.lineages ?? [],
+                      bodyPlans: parts.plans,
+                      day: parts.clock.day,
+                    }),
                     sectHallProcess({
                       map: parts.map,
                       // La sede llega con su armería (novel3-weapons-sect).
