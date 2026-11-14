@@ -92,6 +92,8 @@ export function livedFrom(e: Event): Lived[] {
   switch (e.kind) {
     case "combat.fight":
     case "combat.finish":
+    // La técnica de ataque se vive como una pelea corta: lo que dolió según las heridas.
+    case "combat.art":
       return fightLived(e);
     case "combat.spare":
       return actor && second

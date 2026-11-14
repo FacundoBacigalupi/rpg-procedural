@@ -1295,8 +1295,9 @@ export function lifeWorld(
           ...(parts.cultivation?.pills
             ? { pillGoods: parts.cultivation.pills.map((p) => p.good) }
             : {}),
-          // Con cultivo, se pelea con el cuerpo que dejó cada umbral (novel3-refined-wire).
-          ...(parts.cultivation ? { refinedBodies: true } : {}),
+          // Con cultivo, se pelea con el cuerpo que dejó cada umbral (novel3-refined-wire) y se lanzan
+          // las técnicas de ataque (novel3-technique-act).
+          ...(parts.cultivation ? { refinedBodies: true, attackArts: true } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),

@@ -1023,9 +1023,8 @@ export function shownBy(
 ): number {
   let best = 0;
   for (const s of memoriesAbout(truth.get(MEMORIES, me), speaker, now)) {
-    if (s.memory.perceived.kind !== "combat.fight" && s.memory.perceived.kind !== "combat.finish") {
-      continue;
-    }
+    const kind = s.memory.perceived.kind;
+    if (kind !== "combat.fight" && kind !== "combat.finish" && kind !== "combat.art") continue;
     best = Math.max(best, unit(s.salience * Math.max(0, -s.memory.valence)));
   }
   return best;

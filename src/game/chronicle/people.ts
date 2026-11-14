@@ -143,7 +143,7 @@ export function importantPeople(w: LifeWorld, me: AgentId, now: Tick): Important
     .slice(0, MAX_PEOPLE_IN_CHRONICLE);
 }
 
-const CLASH_KINDS: ReadonlySet<string> = new Set(["combat.fight", "combat.finish"]);
+const CLASH_KINDS: ReadonlySet<string> = new Set(["combat.fight", "combat.finish", "combat.art"]);
 
 /**
  * Lo que el personaje creyó mal o nunca vio, contra la verdad, ponderado por cuánto pesaba la

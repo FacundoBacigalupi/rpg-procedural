@@ -120,7 +120,10 @@ export function offenseOf(e: Event): {
     noticedBy?: readonly string[];
     creditors?: readonly string[];
   } | null;
-  if ((e.kind === "combat.fight" || e.kind === "combat.finish") && second) {
+  if (
+    (e.kind === "combat.fight" || e.kind === "combat.finish" || e.kind === "combat.art") &&
+    second
+  ) {
     return { kind: "assault", by: first, victim: second, noticedBy: [second] };
   }
   if (e.kind === "law.default" && second) {

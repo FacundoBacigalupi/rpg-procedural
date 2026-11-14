@@ -119,6 +119,7 @@ export function fearOf(body: Pick<Body, "wounds">, since: number): number {
 export function themeOfMemory(m: Memory): Theme | undefined {
   switch (m.perceived.kind) {
     case "combat.fight":
+    case "combat.art":
       return m.valence < -0.2 ? "violence" : undefined;
     case "combat.finish":
       return m.valence < -0.5 ? "betrayal" : "violence";

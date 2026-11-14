@@ -613,6 +613,48 @@
     "lines": ["{target} no quiere practicar con vos.", "{target} niega con la cabeza: ahora no."]
   },
   {
+    "id": "outcome.strike.art.unknown",
+    "lines": [
+      "Querés lanzar una técnica, pero no sabés ninguna: no sale nada.",
+      "Querés lanzar una técnica que no te enseñaron; el qi no sabe adónde ir."
+    ]
+  },
+  {
+    "id": "outcome.strike.art.no_qi",
+    "lines": [
+      "Llamás al qi para {art} y el recipiente no da: no alcanza ni para empezarla.",
+      "Te falta qi para {art}; la técnica se muere antes de nacer."
+    ]
+  },
+  {
+    "id": "outcome.strike.art.faded",
+    "lines": [
+      "{art} sale de tu mano y se deshace en el aire antes de llegar a {target}.",
+      "Lanzás {art}, pero {target} está demasiado lejos: se apaga en el camino."
+    ]
+  },
+  {
+    "id": "outcome.strike.art.missed",
+    "lines": [
+      "Lanzás {art} contra {target}; pasa de largo y revienta detrás.",
+      "{target} se corre a tiempo: {art} no le da."
+    ]
+  },
+  {
+    "id": "outcome.strike.art.hit",
+    "lines": [
+      "Lanzás {art} y le da de lleno a {target}.",
+      "{art} sale de tu mano y alcanza a {target}."
+    ]
+  },
+  {
+    "id": "outcome.strike.art.backlash",
+    "lines": [
+      "El qi se te tuerce al salir y te quema por dentro los meridianos.",
+      "Algo se te vuelve: un dolor seco te corre por los canales del brazo."
+    ]
+  },
+  {
     "id": "outcome.strike.spar.won",
     "lines": [
       "{target} levanta la mano: te da la práctica.",

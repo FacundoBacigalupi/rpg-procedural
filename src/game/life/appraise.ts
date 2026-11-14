@@ -533,7 +533,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           move(lent.creditor, lent.debtor, e, lendDeltas("lender"));
           move(lent.debtor, lent.creditor, e, lendDeltas("borrower"));
         }
-        if (e.kind === "combat.fight" || e.kind === "combat.finish") {
+        if (e.kind === "combat.fight" || e.kind === "combat.finish" || e.kind === "combat.art") {
           fightAppraisals(e, truth, apply, rel, move);
           killAppraisals(e, truth, apply, rel, mentals);
         } else if (e.kind === "combat.spare") {
@@ -688,8 +688,13 @@ function fightAppraisals(
   const worstOn = (id: AgentId) =>
     Math.max(0, ...(data.hits ?? []).filter((h) => h.to === id).map((h) => h.severity ?? 0));
   // Un remate (`combat.finish`) no trae el desenlace: el golpeado no está de pie.
+  // Una técnica de ataque tampoco: queda de pie quien no cayó por la herida.
   const standing = (id: AgentId) =>
-    e.kind === "combat.fight" ? (data.outcomes?.[id] ?? "standing") === "standing" : id === first;
+    e.kind === "combat.fight"
+      ? (data.outcomes?.[id] ?? "standing") === "standing"
+      : e.kind === "combat.art"
+        ? id === first || worstOn(id) < 0.6
+        : id === first;
   const pairs: [AgentId, AgentId, "aggressor" | "victim"][] = [
     [first, second, "aggressor"],
     [second, first, "victim"],

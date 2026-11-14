@@ -29,7 +29,9 @@ import {
   type Activity,
   AMPUTATIONS,
   ANIMAL,
+  ART_KNOWN,
   type ArgValue,
+  ASLEEP,
   addToField,
   adulterate,
   advance,
@@ -148,6 +150,7 @@ import {
   resolve,
   SALE_RECEIPTS,
   SCAM_DEALS,
+  SECT_SCHOOL,
   SELF_IMAGES,
   SELLER_DAY,
   type SelfReport,
@@ -193,6 +196,7 @@ import {
   YIELDED,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
+import { castAtTarget } from "./art.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
@@ -478,6 +482,12 @@ export interface ActOptions {
    */
   readonly refinedBodies?: boolean;
   /**
+   * Opt-in (novel3-technique-act): «uso la técnica contra X» (modo `art` de `strike`) lanza la
+   * técnica de ataque que sabe (`castAtTarget`); el qi lo descuenta `life.meditate` al leer el
+   * evento. Apagado, el modo no hace nada distinto de un golpe.
+   */
+  readonly attackArts?: boolean;
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -728,7 +738,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
       ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
       ...(o.hearthTend ? [HEARTH.name] : []),
-      ...(o.refinedBodies ? [CULTIVATION_STATE.name] : []),
+      ...(o.refinedBodies || o.attackArts ? [CULTIVATION_STATE.name] : []),
+      ...(o.attackArts ? [ART_KNOWN.name, SECT_SCHOOL.name, ASLEEP.name] : []),
     ],
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
@@ -2114,6 +2125,39 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     });
     if (r.self.effect.kind === "strike") {
       record = { ...r.self, effect: { ...r.self.effect, finished: true } };
+    }
+  } else if (
+    o.attackArts &&
+    eff.kind === "strike" &&
+    eff.committed &&
+    targetId &&
+    [...state.plan.manner, ...node.manner].includes("art")
+  ) {
+    // La técnica de ataque (novel3-technique-act): sale de la mano y llega o no; no hay pelea.
+    const tb = truth.get(BODY_STATE, targetId);
+    const cast = castAtTarget({
+      truth,
+      me,
+      target: targetId,
+      plan: (tb ? e.plans.get(tb.plan) : undefined) ?? bodyPlan,
+      skills: o.skills,
+      rng: input.rng.fork("art"),
+      cause: draftEvent(0),
+      at: ctx.now,
+      place: input.place,
+    });
+    changes.push(...cast.changes);
+    if (cast.event) extraEvents.push(cast.event);
+    if (r.self.effect.kind === "strike") {
+      record = {
+        ...r.self,
+        effect: {
+          ...r.self.effect,
+          hit: cast.gist.outcome === "hit",
+          glancing: false,
+          art: cast.gist,
+        },
+      };
     }
   } else if (
     eff.kind === "strike" &&
