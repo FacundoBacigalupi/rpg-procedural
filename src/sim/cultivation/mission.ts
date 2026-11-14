@@ -118,6 +118,23 @@ export function herbNeeds(pills: readonly PillDef[], at: HerbLedger): MissionNee
   return out;
 }
 
+/**
+ * Lo que una secta sabe de una bestia que bajó (novel3-beasts-mission-seen): uno de sus miembros la
+ * vio (afuera en su hex, o atacado por ella). Por bestia: la última vez que la vio alguien de esa
+ * secta, quién y dónde. Sin testigo, la secta no sabe.
+ */
+export interface BeastSeen {
+  readonly org: EntityRef;
+  readonly by: AgentId;
+  readonly at: Tick;
+  readonly hex: number;
+  /** El evento de la vista (la primera vez); las siguientes solo mueven `at`, `by` y `hex`. */
+  readonly cause: EventId;
+}
+
+export const BEAST_SEEN = table<BeastSeen>("cultivation.beast_seen");
+export const BEAST_SEEN_EVENT = "cultivation.beast_seen";
+
 /** Una banda que la secta conoce: dónde anda y a qué distancia de la sede. */
 export interface BandSighting {
   readonly band: string;

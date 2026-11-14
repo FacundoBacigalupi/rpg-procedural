@@ -4,10 +4,15 @@
 // (`strikeFight` con intención `kill`): el lobo con el perfil de su linaje y la persona
 // defendiéndose para echarlo. Ataca una sola vez por bajada; después sigue hasta volver al monte.
 // Con más gente afuera no se anima, y adentro no hay a quién ver.
+// Quien la ve afuera en su hex y es miembro de una secta la anota para su secta
+// (novel3-beasts-mission-seen, `BEAST_SEEN`): la primera vez con un evento `cultivation.beast_seen`;
+// después solo cambia cuándo, quién y dónde. El atacado también la vio.
 
 import type { AgentId, EntityRef, PlaceId, PlanetClock, Seed } from "../../core/index.ts";
 import {
   BEAST,
+  BEAST_SEEN,
+  BEAST_SEEN_EVENT,
   BODY_STATE,
   type BodyPlanDef,
   draftEvent,
@@ -19,6 +24,7 @@ import {
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SECT_MEMBER,
   SKILL_STATE,
   type SkillCatalog,
   type SpaceGraph,
@@ -89,8 +95,17 @@ export function beastAttackProcess(o: BeastAttackOptions): ProcessDef {
       TRIBULATION.name,
       FIGHT_STATE.name,
       YIELDED.name,
+      SECT_MEMBER.name,
+      BEAST_SEEN.name,
     ],
-    writes: [BEAST.name, BODY_STATE.name, SKILL_STATE.name, FIGHT_STATE.name, YIELDED.name],
+    writes: [
+      BEAST_SEEN.name,
+      BEAST.name,
+      BODY_STATE.name,
+      SKILL_STATE.name,
+      FIGHT_STATE.name,
+      YIELDED.name,
+    ],
     scopeGuard: (truth) => truth.ids(BEAST).length > 0,
     run(ctx) {
       const truth = ctx.truth;
@@ -103,9 +118,43 @@ export function beastAttackProcess(o: BeastAttackOptions): ProcessDef {
         const me = id as unknown as AgentId;
         const at = truth.get(LOCATION, id);
         const body = truth.get(BODY_STATE, id);
-        if (!b || !at || !body || b.attacked !== undefined || ctx.now >= b.until) continue;
-        if (touched.has(me) || !canFight(truth, me)) continue;
+        if (!b || !at || !body || ctx.now >= b.until) continue;
+        if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
         const people = outdoorsAt(truth, o.spaces, at.hex);
+        // Lo ve el primer miembro de una secta que está afuera ahí (por id).
+        const witness = people.find((p) => truth.get(SECT_MEMBER, p) !== undefined);
+        const org = witness === undefined ? undefined : truth.get(SECT_MEMBER, witness)?.org;
+        if (witness !== undefined && org !== undefined && (body.death ?? null) === null) {
+          const before = truth.get(BEAST_SEEN, id);
+          if (before?.org === org) {
+            changes.push(
+              setComponent(BEAST_SEEN, id, { ...before, by: witness, at: ctx.now, hex: at.hex }),
+            );
+          } else {
+            const seen = events.length;
+            events.push({
+              kind: BEAST_SEEN_EVENT,
+              actors: [witness],
+              place: { kind: "place", place: b.home as unknown as PlaceId },
+              data: { beast: id, lineage: b.lineage, org, hex: at.hex },
+              causes: [
+                { kind: "state", entity: id, key: LOCATION.name },
+                { kind: "state", entity: witness, key: LOCATION.name },
+              ],
+              emissions: null,
+            });
+            changes.push(
+              setComponent(BEAST_SEEN, id, {
+                org,
+                by: witness,
+                at: ctx.now,
+                hex: at.hex,
+                cause: draftEvent(seen),
+              }),
+            );
+          }
+        }
+        if (b.attacked !== undefined || touched.has(me) || !canFight(truth, me)) continue;
         const prey = people[0];
         // Solo a quien está solo: con alguien más que lo vea, el lobo no se anima.
         if (people.length !== 1 || prey === undefined || touched.has(prey)) continue;
@@ -153,7 +202,7 @@ export function beastAttackProcess(o: BeastAttackOptions): ProcessDef {
         touched.add(me);
         touched.add(prey);
       }
-      return events.length === 0 ? {} : { changes, events };
+      return events.length === 0 && changes.length === 0 ? {} : { changes, events };
     },
   };
 }
