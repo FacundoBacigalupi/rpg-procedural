@@ -1,0 +1,94 @@
+[
+  {
+    "id": "wolf",
+    "species": "wolf",
+    "name": "Lobo",
+    "zones": [
+      {
+        "id": "head",
+        "name": "cabeza",
+        "size": 0.12,
+        "functions": { "consciousness": 1, "sight": 1, "hearing": 1, "manipulation": 1 },
+        "vital": { "kind": "brain", "lethal": 0.85 },
+        "vessel": 0.05,
+        "bone": 0.35,
+        "contamination": 0.15
+      },
+      {
+        "id": "neck",
+        "name": "cuello",
+        "size": 0.08,
+        "functions": { "breathing": 0.3, "circulation": 0.2 },
+        "vessel": 0.35,
+        "bone": 0.05,
+        "contamination": 0.2
+      },
+      {
+        "id": "chest",
+        "name": "pecho",
+        "size": 0.22,
+        "functions": { "breathing": 0.7, "circulation": 0.8, "strength": 0.2 },
+        "vital": { "kind": "organ", "lethal": 0.75 },
+        "vessel": 0.1,
+        "bone": 0.25,
+        "contamination": 0.25
+      },
+      {
+        "id": "abdomen",
+        "name": "vientre",
+        "size": 0.18,
+        "functions": { "strength": 0.2, "locomotion": 0.1 },
+        "vital": { "kind": "organ", "lethal": 0.7 },
+        "vessel": 0.08,
+        "bone": 0.05,
+        "contamination": 0.55
+      },
+      {
+        "id": "left_foreleg",
+        "name": "pata delantera izquierda",
+        "size": 0.1,
+        "functions": { "locomotion": 0.2, "strength": 0.15 },
+        "vessel": 0.06,
+        "bone": 0.35,
+        "contamination": 0.35
+      },
+      {
+        "id": "right_foreleg",
+        "name": "pata delantera derecha",
+        "size": 0.1,
+        "functions": { "locomotion": 0.2, "strength": 0.15 },
+        "vessel": 0.06,
+        "bone": 0.35,
+        "contamination": 0.35
+      },
+      {
+        "id": "left_hindleg",
+        "name": "pata trasera izquierda",
+        "size": 0.1,
+        "functions": { "locomotion": 0.25, "strength": 0.15 },
+        "vessel": 0.08,
+        "bone": 0.35,
+        "contamination": 0.35
+      },
+      {
+        "id": "right_hindleg",
+        "name": "pata trasera derecha",
+        "size": 0.1,
+        "functions": { "locomotion": 0.25, "strength": 0.15 },
+        "vessel": 0.08,
+        "bone": 0.35,
+        "contamination": 0.35
+      }
+    ],
+    "physiology": {
+      "refMassKg": 40,
+      "bloodPerKg": 0.08,
+      "kcalPerKgDay": 45,
+      "waterPerDay": 1.6,
+      "glycogenKcal": 1200,
+      "fatFraction": 0.1,
+      "muscleKcal": 16000,
+      "lethalDehydration": 0.15
+    }
+  }
+]

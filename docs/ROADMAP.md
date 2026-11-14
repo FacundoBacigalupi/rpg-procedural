@@ -35,6 +35,10 @@ cultivador pelea como un aldeano. La lista lleva la pelea a la novela ([combat.m
   - [x] (novel3-weapons-wire) Catálogo de armas en `content/` por forma (palo, sable, espada, lanza, y cuchillo o hacha improvisados); la pelea usa el arma que cada uno tiene, la gasta en `ITEM_WEAR` y se rompe al llegar a 1; dato en el evento y narración.
   - [x] (novel3-weapons-sect) La sede llega con su armería: el arma de la escuela (fija por seed y secta), en la mano de internos y maestro, y `ARMORY_SPARES` de repuesto en el salón, de la secta; el discípulo canjea puntos por una («pido una espada»), con negativas por existencias o puntos.
 - [ ] (novel3-beasts) Bestias del monte que pelean: armas naturales, instinto y huida; echarlas o cazarlas cerca de la sede como misión (combat §15), lo que destraba `novel2-missions-watch` con una amenaza real.
+  - [x] (novel3-beasts-core) `sim/combat` puro y contenido: el cuerpo del lobo (`content/body-plans`, cuadrúpedo con fauces) y `FighterInput.beast` (arma natural que no se gasta, instinto: nunca se rinde, se quiebra antes y huye, acorralado pelea); apuntar solo a zonas que el cuerpo del rival tiene.
+  - [ ] (novel3-beasts-materialize) Un lobo del monte baja cerca de la sede: sale de la población de la celda (ecología) como individuo con cuerpo y vuelve a ella al irse, con conservación; hambre como causa.
+  - [ ] (novel3-beasts-fight) Pelear con él: «le pego al lobo» con su instinto; el lobo con hambre ataca a quien encuentra solo; muerto deja su cuerpo (carne y cuero).
+  - [ ] (novel3-beasts-mission) La misión de echarlo o cazarlo cerca de la sede: la secta sabe del lobo por lo que vieron sus miembros, el anciano la asigna y se cobra al volver; destraba `novel2-missions-watch`.
 - [ ] (novel3-challenge) Desafíos y duelos con cara en la secta: retar es un acto social, rechazar cuesta, y la plataforma de vida o muerte (combat §13).
 
 ### Novela 2: subir de reino (2026-11-12, elegido por el usuario)
