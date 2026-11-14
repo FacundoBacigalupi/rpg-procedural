@@ -1,0 +1,83 @@
+[
+  {
+    "id": "spear",
+    "shape": "spear",
+    "reach": 2.4,
+    "mass": 2,
+    "wound": "puncture",
+    "sharpness": 0.7,
+    "rank": 7,
+    "material": "iron",
+    "size": "large",
+    "points": 40
+  },
+  {
+    "id": "sword",
+    "shape": "sword",
+    "reach": 1.4,
+    "mass": 1.2,
+    "wound": "cut",
+    "sharpness": 0.8,
+    "rank": 6,
+    "material": "iron",
+    "size": "medium",
+    "points": 40
+  },
+  {
+    "id": "saber",
+    "shape": "saber",
+    "reach": 1.3,
+    "mass": 1.3,
+    "wound": "cut",
+    "sharpness": 0.85,
+    "rank": 5,
+    "material": "iron",
+    "size": "medium",
+    "points": 40
+  },
+  {
+    "id": "stick",
+    "shape": "stick",
+    "reach": 1.6,
+    "mass": 1.2,
+    "wound": "blunt",
+    "sharpness": 0,
+    "rank": 4,
+    "material": "wood",
+    "size": "large",
+    "points": 10
+  },
+  {
+    "id": "axe",
+    "shape": "axe",
+    "reach": 1.1,
+    "mass": 1.5,
+    "wound": "cut",
+    "sharpness": 0.5,
+    "rank": 3,
+    "material": "iron",
+    "size": "medium"
+  },
+  {
+    "id": "sickle",
+    "shape": "sickle",
+    "reach": 1,
+    "mass": 0.5,
+    "wound": "cut",
+    "sharpness": 0.6,
+    "rank": 2,
+    "material": "iron",
+    "size": "medium"
+  },
+  {
+    "id": "knife",
+    "shape": "knife",
+    "reach": 0.95,
+    "mass": 0.25,
+    "wound": "cut",
+    "sharpness": 0.7,
+    "rank": 1,
+    "material": "iron",
+    "size": "small"
+  }
+]

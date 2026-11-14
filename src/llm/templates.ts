@@ -456,6 +456,15 @@ function outcome(
         const f = e.fight;
         const target = ref(e.target);
         if (f.blur) say(`outcome.strike.fight.blur_${f.blur}`, { target });
+        // Con qué peleó cada uno (novel3-weapons-wire): el nombre sale de la forma del objeto.
+        const named = (shape: string) => {
+          const id = `thing.shape.${shape}`;
+          return (book.lines(book.has(id) ? id : "thing.unknown")[0] as string) ?? "";
+        };
+        if (f.weapon) say("outcome.strike.fight.weapon_mine", { weapon: named(f.weapon) });
+        if (f.theirWeapon)
+          say("outcome.strike.fight.weapon_theirs", { target, weapon: named(f.theirWeapon) });
+        if (f.weaponSpent) say("outcome.strike.fight.weapon_spent");
         if (f.paused) say(`outcome.strike.fight.paused_${f.paused}`, { target });
         else if (f.spar)
           say(

@@ -23,6 +23,7 @@ import {
   type Event,
   type HolderRef,
   holderAccount,
+  type ItemId,
   type LedgerUnit,
   ledgerUnit,
   type PlaceId,
@@ -39,10 +40,14 @@ import {
   type DecayContext,
   deleteComponent,
   draftEvent,
+  ENTITY,
   type EventDraft,
   type ExchangeRefusal,
   exchangeHours,
   type HerbDef,
+  ITEM_HOLD,
+  ITEM_LOOK,
+  ITEM_WEAR,
   isSectCave,
   type KnownTechnique,
   LOCATION,
@@ -84,6 +89,7 @@ import {
   type StateChange,
   setComponent,
   TECHNIQUE_TAUGHT_EVENT,
+  type WeaponDef,
 } from "../../sim/index.ts";
 import { meditation } from "./meditate.ts";
 import { RANK_REVIEW_READS, type RankIssue, reviewRank } from "./rank-review.ts";
@@ -108,6 +114,56 @@ const METHOD_WORDS = /t[eé]cnica|m[eé]todo|escritura|manual|sutra|canon/iu;
 
 /** Lo que se pide al canjear cuando es una píldora. */
 const PILL_WORDS = /p[ií]ldora|elixir/iu;
+
+/** Lo que se pide al canjear cuando es un arma de la armería (novel3-weapons-sect). */
+const WEAPON_WORDS = /\b(?:arma|espada|sable|lanza|palo|bast[oó]n)\b/iu;
+
+/** La forma que pidió, si nombró una. */
+const WEAPON_SHAPES: readonly (readonly [RegExp, string])[] = [
+  [/espada/iu, "sword"],
+  [/sable/iu, "saber"],
+  [/lanza/iu, "spear"],
+  [/palo|bast[oó]n/iu, "stick"],
+];
+
+/** Por qué la armería no da el arma pedida. */
+export type WeaponRefusal = "not_member" | "no_stock" | "no_points";
+
+/**
+ * Canjear puntos por un arma de la armería (novel3-weapons-sect): la pide quien es de la secta,
+ * tiene que quedar una de repuesto (de la forma que nombró, si nombró una) y alcanzarle los puntos.
+ */
+export function weaponExchange(
+  member: boolean,
+  points: number,
+  spare: { readonly def: WeaponDef } | undefined,
+): { kind: "given"; cost: number } | { kind: "refused"; refused: WeaponRefusal } {
+  if (!member) return { kind: "refused", refused: "not_member" };
+  if (!spare || spare.def.points === undefined) return { kind: "refused", refused: "no_stock" };
+  if (spare.def.points > points) return { kind: "refused", refused: "no_points" };
+  return { kind: "given", cost: spare.def.points };
+}
+
+/** Las armas de repuesto de la secta `org` (suyas, sin gastar), de la forma pedida si la hay. */
+function spareWeapon(
+  truth: ReadonlyWorldTruth,
+  org: EntityRef,
+  weapons: readonly WeaponDef[],
+  asked: string | undefined,
+  handed: ReadonlySet<string>,
+): { item: ItemId; def: WeaponDef } | undefined {
+  const byShape = new Map(weapons.map((w) => [w.shape, w]));
+  for (const item of [...truth.ids(ITEM_HOLD)].sort() as ItemId[]) {
+    if (handed.has(item)) continue;
+    if (truth.get(ITEM_HOLD, item)?.possession !== (org as unknown as HolderRef)) continue;
+    if (truth.get(ENTITY, item)?.endedAt !== undefined) continue;
+    const def = byShape.get(truth.get(ITEM_LOOK, item)?.shape ?? "");
+    if (!def || def.points === undefined || (asked !== undefined && def.shape !== asked)) continue;
+    if ((truth.get(ITEM_WEAR, item)?.wear ?? 0) >= 1) continue;
+    return { item, def };
+  }
+  return undefined;
+}
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
@@ -153,6 +209,8 @@ export function sectDutyProcess(
     readonly relations?: Pick<DecayContext, "dims" | "bonds">;
     /** Las hierbas que piden las misiones, con su bien (novel2-missions-herbs). */
     readonly herbs?: readonly HerbDef[];
+    /** Las armas que canjea la armería (novel3-weapons-sect); sin esto no se canjean. */
+    readonly weapons?: readonly WeaponDef[];
   } = {},
 ): ProcessDef {
   const day = o.dayTicks ?? 86_400;
@@ -174,6 +232,7 @@ export function sectDutyProcess(
       CULTIVATION_TECHNIQUE.name,
       SECT_SCHOOL.name,
       ...RANK_REVIEW_READS,
+      ...(o.weapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name, ENTITY.name] : []),
     ],
     writes: [
       SECT_MISSION.name,
@@ -184,6 +243,7 @@ export function sectDutyProcess(
       SECT_LEAVE.name,
       CULTIVATION_TECHNIQUE.name,
       ART_KNOWN.name,
+      ...(o.weapons ? [ITEM_HOLD.name, LOCATION.name] : []),
     ],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -202,6 +262,8 @@ export function sectDutyProcess(
       const postings: PostingDraft[] = [];
       /** Las píldoras que salieron de cada tesoro en esta corrida (`org|unidad`). */
       const sold = new Map<string, number>();
+      /** Las armas que dio la armería en esta corrida. */
+      const handed = new Set<string>();
       // Quién pudo haber llegado al ascenso en esta corrida, y por qué evento.
       const maybe = new Map<AgentId, Event>();
       // Los asuntos de ascenso que alguien planteó en este paso (novel2-rank-review).
@@ -356,6 +418,49 @@ export function sectDutyProcess(
                 { kind: "event", event: e.id },
                 ...(r.kind === "given"
                   ? [{ kind: "state" as const, entity: who, key: SECT_CONTRIBUTION.name }]
+                  : []),
+              ],
+            });
+            continue;
+          }
+          // La armería (novel3-weapons-sect): un arma de repuesto pasa a la mano de quien canjea.
+          if (typeof effect?.what === "string" && WEAPON_WORDS.test(effect.what) && o.weapons) {
+            const asked = WEAPON_SHAPES.find(([re]) => re.test(effect.what as string))?.[1];
+            const spare = org ? spareWeapon(ctx.truth, org, o.weapons, asked, handed) : undefined;
+            const points = have?.org === org ? (have?.points ?? 0) : 0;
+            const r = weaponExchange(!!(org && member), points, spare);
+            if (r.kind === "given" && spare && have) {
+              rows.set(who, { ...have, points: round2(have.points - r.cost), last: ctx.now });
+              handed.add(spare.item);
+              const hold = ctx.truth.get(ITEM_HOLD, spare.item);
+              changes.push(
+                setComponent(ITEM_HOLD, spare.item, {
+                  possession: who as unknown as HolderRef,
+                  rights: hold?.rights ?? [],
+                }),
+                deleteComponent(LOCATION, spare.item),
+              );
+            }
+            events.push({
+              kind: SECT_EXCHANGE_EVENT,
+              actors: [who],
+              place: e.place,
+              data: {
+                ...(org ? { org } : {}),
+                what: "weapon",
+                ...(asked ? { asked } : {}),
+                ...(r.kind === "refused"
+                  ? { refused: r.refused, points: 0 }
+                  : { item: spare?.item, shape: spare?.def.shape, points: r.cost }),
+              },
+              emissions: {},
+              causes: [
+                { kind: "event", event: e.id },
+                ...(r.kind === "given" && spare
+                  ? [
+                      { kind: "state" as const, entity: who, key: SECT_CONTRIBUTION.name },
+                      { kind: "state" as const, entity: spare.item, key: ITEM_HOLD.name },
+                    ]
                   : []),
               ],
             });

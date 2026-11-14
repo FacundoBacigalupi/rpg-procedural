@@ -15,6 +15,7 @@ import {
   capabilitiesOf,
   injure,
   setActivity,
+  type WoundKind,
 } from "../body/index.ts";
 import { believedOdds, type RivalRead, readRival, resolveBreak, resolveFeint } from "./reading.ts";
 
@@ -53,6 +54,24 @@ export interface FighterInput {
    * `sim/cultivation`). Sin esto, un cuerpo mortal: la pelea no cambia.
    */
   readonly refined?: FighterRefinement;
+  /** Opt-in (novel3-weapons-core): lo que tiene en la mano. Sin esto, pelea con los puños. */
+  readonly weapon?: FighterWeapon;
+}
+
+/**
+ * Un arma en la mano (combat §6, novel3-weapons-core): el alcance reemplaza al del puño, la herida
+ * sale del tipo del arma y la fuerza crece con la masa y el filo que le queda.
+ */
+export interface FighterWeapon {
+  /** Hasta dónde llega, metros (un puño llega a `FIST_REACH`). */
+  readonly reach: number;
+  /** kg: pega más fuerte y cansa más. */
+  readonly mass: number;
+  readonly wound: WoundKind;
+  /** 0-1: filo o punta cuando está nueva. */
+  readonly sharpness: number;
+  /** 0-1: desgaste; a 1 está rota y no sirve. */
+  readonly wear: number;
 }
 
 /**
@@ -169,6 +188,8 @@ export interface FighterResult {
   readonly woundsTaken: number;
   /** Con qué ganas terminó, 0-1 (para el miedo y el trauma después). */
   readonly myOdds: number;
+  /** El desgaste del arma al terminar (solo si peleó con una); a 1 se rompió. */
+  readonly weaponWear?: number;
 }
 
 export interface FightResult {
@@ -182,6 +203,10 @@ export interface FightResult {
 
 /** Alcance de un puño, metros. */
 export const FIST_REACH = 0.8;
+/** Desgaste que le deja a un arma cada golpe que mete o para (calibración abierta). */
+export const WEAPON_WEAR_HIT = 0.01;
+/** Lo que se gasta de más un filo o una punta al golpear (calibración abierta). */
+export const WEAPON_WEAR_EDGE = 0.5;
 /** Metros por pulso de un cuerpo entero. */
 export const STRIDE = 1.5;
 /** Distancia a la que quien huyó rompe el contacto, metros. */
@@ -201,6 +226,22 @@ export const SPAR_CONCEDE_POWER = 0.55;
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const dist = (a: Vec2, b: Vec2) => hypot(a.x - b.x, a.y - b.y);
+/** Hasta dónde llega: el arma si tiene una sana, si no el puño. */
+const reachOf = (s: { weapon: FighterWeapon | null }) => s.weapon?.reach ?? FIST_REACH;
+/** Cuánto más pega con el arma: la masa suma golpe y el filo o la punta abren la carne. */
+function weaponForce(w: FighterWeapon | null): number {
+  if (!w) return 1;
+  const mass = 1 + 0.4 * clamp01(w.mass / 3);
+  const edge = w.wound === "blunt" ? 1 : 1 + 0.4 * w.sharpness * (1 - w.wear);
+  return mass * edge;
+}
+/** Le suma desgaste a un arma; si llega a 1 se rompe y queda sin ella. */
+function wearWeapon(s: State, extra: number): void {
+  const w = s.weapon;
+  if (!w) return;
+  s.wear = Math.min(1, s.wear + WEAPON_WEAR_HIT * (1 + extra));
+  s.weapon = s.wear >= 1 ? null : { ...w, wear: s.wear };
+}
 
 type Phase = "ready" | "windup" | "recover" | "fleeing";
 
@@ -233,6 +274,10 @@ interface State {
   read: RivalRead | null;
   readOf: AgentId | null;
   opening: number;
+  /** El arma en la mano, con el desgaste que lleva; sin arma o rota, `null`. */
+  weapon: FighterWeapon | null;
+  /** El desgaste del arma con la que empezó (sigue contando aunque se rompa). */
+  wear: number;
 }
 
 type Action =
@@ -349,6 +394,8 @@ export function runFight(input: FightInput): FightResult {
       read: null,
       readOf: null,
       opening: 0,
+      weapon: f.weapon && f.weapon.wear < 1 ? f.weapon : null,
+      wear: clamp01(f.weapon?.wear ?? 0),
     });
   }
   for (const saved of input.resume?.fighters ?? []) {
@@ -417,7 +464,7 @@ export function runFight(input: FightInput): FightResult {
       }
       const rng = input.rng.fork("fight", base + pulse, a.id, "exchange");
       const frozen = snapshot.get(d.id) as { phase: Phase; alert: boolean };
-      const inReach = dist(a.at, d.at) <= FIST_REACH * 1.25;
+      const inReach = dist(a.at, d.at) <= reachOf(a) * 1.25;
       // Ver venir el golpe (§4.3): la vista, la luz, lo que se nota y el ojo de quien defiende.
       const seen =
         inReach &&
@@ -438,14 +485,18 @@ export function runFight(input: FightInput): FightResult {
       a.opening = 0;
       const defended = inReach && seen && free && rng.normal(def - atk, 0.2) > 0;
       const hit = inReach && !defended && rng.chance(clamp01(0.45 + 0.5 * atk * edgeOf(a)));
-      a.breath = clamp01(a.breath - 0.1 / wind(a));
+      a.breath = clamp01(a.breath - (0.1 * (1 + 0.05 * (a.weapon?.mass ?? 0))) / wind(a));
       a.phase = "recover";
       a.until = t + hollow(a, 2 + (a.breath < 0.25 ? 1 : 0) + (hit || defended ? 0 : 1));
       a.target = null;
       if (hit) blows.push({ from: a, to: d, seen, hit });
       else {
         a.balance = clamp01(a.balance - (defended ? 0.1 : 0.25));
-        if (defended) d.breath = clamp01(d.breath - 0.04);
+        if (defended) {
+          d.breath = clamp01(d.breath - 0.04);
+          wearWeapon(a, 0);
+          wearWeapon(d, 0);
+        }
         log.push({
           t,
           kind: defended ? "parried" : "whiffed",
@@ -470,20 +521,28 @@ export function runFight(input: FightInput): FightResult {
             b.from.caps.strength *
             b.from.refined.might *
             (0.7 + 0.3 * b.from.breath) *
-            (0.8 + 0.4 * rng.float()),
+            (0.8 + 0.4 * rng.float()) *
+            weaponForce(b.from.weapon),
         ) *
         (1 - clamp01(b.to.refined.hardness)) *
         (b.from.intent === "spar" ? SPAR_FORCE : 1);
       const injury = injure(
         b.to.plan,
         b.to.body,
-        { kind: "blunt", force, ...(zone ? { zone } : {}), cause: input.cause, at: t },
+        {
+          kind: b.from.weapon?.wound ?? "blunt",
+          force,
+          ...(zone ? { zone } : {}),
+          cause: input.cause,
+          at: t,
+        },
         rng.fork("injure"),
       );
       b.to.body = injury.body;
       b.to.caps = coreCaps(capabilitiesOf(b.to.plan, b.to.body), b.to.coreC);
       b.to.woundsTaken += 1;
       b.from.landed += 1;
+      wearWeapon(b.from, b.from.weapon && b.from.weapon.wound !== "blunt" ? WEAPON_WEAR_EDGE : 0);
       b.to.alert = true;
       b.to.balance = clamp01(b.to.balance - 0.15 - force);
       log.push({
@@ -514,7 +573,7 @@ export function runFight(input: FightInput): FightResult {
           break;
         case "close":
           if (rival) {
-            s.at = stepToward(s.at, rival.at, strideOf(s), FIST_REACH * 0.9);
+            s.at = stepToward(s.at, rival.at, strideOf(s), reachOf(s) * 0.9);
             s.breath = clamp01(s.breath - 0.04 / wind(s));
             log.push({ t, kind: "close", actor: s.id, target: rival.id });
           }
@@ -607,6 +666,7 @@ export function runFight(input: FightInput): FightResult {
       outcome: s.outcome === "standing" && !active(s) ? "down" : s.outcome,
       woundsTaken: s.woundsTaken,
       myOdds: s.odds,
+      ...(input.fighters.some((f) => f.id === s.id && f.weapon) ? { weaponWear: s.wear } : {}),
     })),
     seconds: pulse,
     end,
@@ -738,7 +798,7 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   if (s.phase === "fleeing") s.phase = "ready";
   const d = dist(s.at, rival.at);
   // Quien ganó no persigue lejos si solo quería echarlo.
-  if (d > FIST_REACH * 1.25) {
+  if (d > reachOf(s) * 1.25) {
     const chase = s.intent === "kill" || s.intent === "subdue" || s.intent === "spar" || d < 3;
     return chase && s.breath > 0.15 ? { kind: "close", to: rival.id } : { kind: "idle" };
   }

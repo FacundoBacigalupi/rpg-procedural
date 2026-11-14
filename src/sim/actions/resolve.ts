@@ -842,6 +842,12 @@ export interface FightGist {
   readonly blur?: "foe" | "me";
   /** Fue práctica (novel3-spar-act): golpes frenados y quien pierde concede. */
   readonly spar?: boolean;
+  /** La forma del arma con la que peleó (novel3-weapons-wire); sin esto, a mano. */
+  readonly weapon?: string;
+  /** La forma del arma del rival, que se ve en la pelea. */
+  readonly theirWeapon?: string;
+  /** Su arma quedó gastada del todo: ya no sirve. */
+  readonly weaponSpent?: boolean;
 }
 
 /** Lo que el actor cree de su paso. */

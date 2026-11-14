@@ -4,7 +4,13 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, loadContent, makeId, Rng } from "../../core/index.ts";
 import { BODY_PLANS, type BodyPlanDef, newBody } from "../body/index.ts";
 import { refinementOf } from "../cultivation/index.ts";
-import { type FighterInput, type FightIntent, PAUSE_MIN_PULSES, runFight } from "./index.ts";
+import {
+  type FighterInput,
+  type FighterWeapon,
+  type FightIntent,
+  PAUSE_MIN_PULSES,
+  runFight,
+} from "./index.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -328,5 +334,83 @@ describe("práctica (novel3-spar-core)", () => {
       if (r.fighters.find((f) => f.id === B)?.outcome === "yielded") wins++;
     }
     expect(wins).toBeGreaterThan(20);
+  });
+});
+
+describe("armas (novel3-weapons-core)", () => {
+  const sword: FighterWeapon = { reach: 1.4, mass: 1.2, wound: "cut", sharpness: 0.8, wear: 0 };
+  const spear: FighterWeapon = { reach: 2.4, mass: 2, wound: "puncture", sharpness: 0.7, wear: 0 };
+  const duel = (seed: number, a?: FighterWeapon, b?: FighterWeapon, gap = 3) =>
+    fight(
+      [
+        fighter(A, "a", 0, { intent: "subdue", ...(a ? { weapon: a } : {}) }),
+        fighter(B, "b", gap, { intent: "subdue", ...(b ? { weapon: b } : {}) }),
+      ],
+      seed,
+    );
+
+  it("sin arma, la pelea es la misma y el resultado no trae desgaste", () => {
+    for (const seed of [1, 2, 5]) {
+      const r = fight([fighter(A, "a", 0), fighter(B, "b", 0.7)], seed);
+      for (const f of r.fighters) expect(f.weaponWear).toBeUndefined();
+    }
+    const broken = { ...sword, wear: 1 };
+    const fs = [fighter(A, "a", 0), fighter(B, "b", 0.7)];
+    const withBroken = [fighter(A, "a", 0, { weapon: broken }), fs[1] as FighterInput];
+    const x = fight(withBroken, 3);
+    const y = fight(fs, 3);
+    expect(x.log).toEqual(y.log);
+    expect(x.fighters.find((f) => f.id === A)?.weaponWear).toBe(1);
+  });
+
+  it("la espada corta y la lanza pincha: las heridas salen del tipo del arma", () => {
+    const kinds = (w: FighterWeapon) => {
+      const seen = new Set<string>();
+      for (let seed = 1; seed <= 20; seed++) {
+        const b = duel(seed, w).fighters.find((f) => f.id === B);
+        for (const wd of b?.body.wounds ?? []) seen.add(wd.kind);
+      }
+      return seen;
+    };
+    expect([...kinds(sword)]).toEqual(["cut"]);
+    expect([...kinds(spear)]).toEqual(["puncture"]);
+  });
+
+  it("el arma se gasta con cada golpe y el filo más que el palo", () => {
+    const stick: FighterWeapon = { reach: 1.3, mass: 1, wound: "blunt", sharpness: 0, wear: 0 };
+    let edged = 0;
+    let blunt = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = duel(seed, sword).fighters.find((f) => f.id === A);
+      const k = duel(seed, stick).fighters.find((f) => f.id === A);
+      edged += s?.weaponWear ?? 0;
+      blunt += k?.weaponWear ?? 0;
+      expect(s?.weaponWear).toBeGreaterThanOrEqual(0);
+    }
+    expect(edged).toBeGreaterThan(0);
+    expect(blunt).toBeGreaterThan(0);
+    expect(edged / 20).toBeGreaterThan(blunt / 20);
+  });
+
+  it("el alcance pesa: la lanza le gana al puño más seguido, y es determinista", () => {
+    let withSpear = 0;
+    let bare = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const r = duel(seed, spear).fighters;
+      const n = duel(seed).fighters;
+      if (
+        r.find((f) => f.id === A)?.outcome === "standing" &&
+        r.find((f) => f.id === B)?.outcome !== "standing"
+      )
+        withSpear++;
+      if (
+        n.find((f) => f.id === A)?.outcome === "standing" &&
+        n.find((f) => f.id === B)?.outcome !== "standing"
+      )
+        bare++;
+    }
+    expect(withSpear).toBeGreaterThan(bare);
+    const fs = [fighter(A, "a", 0, { weapon: spear }), fighter(B, "b", 3, { weapon: sword })];
+    expect(fight([...fs].reverse(), 8)).toEqual(fight(fs, 8));
   });
 });

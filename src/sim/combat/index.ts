@@ -5,4 +5,5 @@ export * from "./aftermath.ts";
 export * from "./fight.ts";
 export * from "./reading.ts";
 export * from "./technique.ts";
+export * from "./weapons.ts";
 export * from "./yielded.ts";

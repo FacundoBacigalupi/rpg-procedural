@@ -3,7 +3,7 @@
 // rasgos, nivel de pelea), se corre `runFight` y lo que resulta vuelve como cambios de cuerpo y un
 // evento con las causas. La sim no sabe de `game`: esto es el pegamento, como `cook` en act.ts.
 
-import type { AgentId, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
+import type { AgentId, EventId, HolderRef, ItemId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import {
   type ActionPlan,
   atMercyOf,
@@ -20,8 +20,13 @@ import {
   type FightIntent,
   type FightSnapshot,
   familiarWith,
+  fighterWeapon,
   holdBackWish,
   INNATE,
+  ITEM_HOLD,
+  ITEM_LOOK,
+  ITEM_WEAR,
+  LOCATION,
   levelOf,
   OPINIONS,
   opinionKey,
@@ -46,6 +51,7 @@ import {
   type Trait,
   table,
   verbSkill,
+  type WeaponDef,
   YIELDED,
   type Yielded,
 } from "../../sim/index.ts";
@@ -163,6 +169,43 @@ export interface StrikeFightInput {
    * (`CULTIVATION_STATE.stage`, `refinementOf`). Apagado, todos pelean como mortales.
    */
   readonly refined?: boolean;
+  /**
+   * Opt-in (novel3-weapons-wire): cada uno pelea con el arma que tiene en la mano (la de más
+   * `rank` del catálogo, sin gastar del todo) y la gasta en `ITEM_WEAR`. Sin esto, a mano limpia.
+   */
+  readonly weapons?: readonly WeaponDef[];
+}
+
+/** Lo que alguien tiene en la mano y sirve de arma (combat §6): el objeto, su forma y su desgaste. */
+export interface Wielded {
+  readonly item: ItemId;
+  readonly def: WeaponDef;
+  readonly wear: number;
+}
+
+/**
+ * El arma en la mano de `who` (novel3-weapons-wire): un objeto que lleva encima (sin lugar propio),
+ * de una forma del catálogo y sin gastar del todo; entre varias, la de más `rank` y después el id.
+ */
+export function wieldedWeapon(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  weapons: readonly WeaponDef[],
+): Wielded | undefined {
+  const byShape = new Map(weapons.map((w) => [w.shape, w]));
+  let best: Wielded | undefined;
+  for (const item of [...truth.ids(ITEM_HOLD)].sort() as ItemId[]) {
+    if (!String(item).startsWith("item:")) continue;
+    if (truth.get(ITEM_HOLD, item)?.possession !== (who as unknown as HolderRef)) continue;
+    if (truth.get(LOCATION, item) !== undefined) continue;
+    if (truth.get(ENTITY, item)?.endedAt !== undefined) continue;
+    const def = byShape.get(truth.get(ITEM_LOOK, item)?.shape ?? "");
+    if (!def) continue;
+    const wear = truth.get(ITEM_WEAR, item)?.wear ?? 0;
+    if (wear >= 1) continue;
+    if (best === undefined || def.rank > best.def.rank) best = { item, def, wear };
+  }
+  return best;
 }
 
 /** Cuánto más rápido tiene que ser uno para que el otro no alcance a seguirlo. */
@@ -332,6 +375,9 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     const n = i.truth.get(INNATE, id);
     return p && n ? standardize(n, i.traits, p.sex) : {};
   };
+  const myWeapon = i.weapons ? wieldedWeapon(i.truth, i.me, i.weapons) : undefined;
+  const theirWeapon = i.weapons ? wieldedWeapon(i.truth, i.target, i.weapons) : undefined;
+  const armed = (w: Wielded | undefined) => (w ? { weapon: fighterWeapon(w.def, w.wear) } : {});
   const theirBody = i.truth.get(BODY_STATE, i.target) as Body;
   const plan = (b: Body) => i.plans.get(b.plan) as BodyPlanDef;
   const result = runFight({
@@ -359,6 +405,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         at: { x: 0, y: 0 },
         ...coreOf(i.me),
         ...refinedOf(i.me),
+        ...armed(myWeapon),
       },
       {
         id: i.target,
@@ -384,6 +431,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         at: { x: 0.7, y: 0 },
         ...coreOf(i.target),
         ...refinedOf(i.target),
+        ...armed(theirWeapon),
         unaware: theirBody.activity === "sleep",
       },
     ],
@@ -425,6 +473,21 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       ...(myStage > 0 || theirStage > 0
         ? { stages: { [i.me]: myStage, [i.target]: theirStage } }
         : {}),
+      // Con qué peleó cada uno y cómo quedó el arma (novel3-weapons-wire).
+      ...(myWeapon || theirWeapon
+        ? {
+            weapons: Object.fromEntries(
+              (
+                [
+                  [i.me, myWeapon, mine.weaponWear],
+                  [i.target, theirWeapon, theirs.weaponWear],
+                ] as const
+              ).flatMap(([id, w, wear]) =>
+                w ? [[id, { item: w.item, shape: w.def.shape, wear: wear ?? w.wear }]] : [],
+              ),
+            ),
+          }
+        : {}),
     },
     emissions: { sight: 1, sound: 0.8 },
     causes: [{ kind: "event", event: i.cause }],
@@ -447,6 +510,17 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       : {}),
     changes: [
       setComponent(BODY_STATE, i.target, theirs.body),
+      // El arma se gasta con cada golpe que mete o para; a 1 ya no sirve (novel3-weapons-wire).
+      ...(
+        [
+          [myWeapon, mine.weaponWear],
+          [theirWeapon, theirs.weaponWear],
+        ] as const
+      ).flatMap(([w, wear]) =>
+        w && wear !== undefined && wear !== w.wear
+          ? [setComponent(ITEM_WEAR, w.item, { ...i.truth.get(ITEM_WEAR, w.item), wear })]
+          : [],
+      ),
       ...(strike
         ? [
             setComponent(
@@ -507,6 +581,9 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       ...(result.paused ? { paused: result.paused.reason } : {}),
       ...(blur ? { blur } : {}),
       ...(i.intent === "spar" ? { spar: true } : {}),
+      ...(myWeapon ? { weapon: myWeapon.def.shape } : {}),
+      ...(theirWeapon ? { theirWeapon: theirWeapon.def.shape } : {}),
+      ...(myWeapon && (mine.weaponWear ?? 0) >= 1 ? { weaponSpent: true } : {}),
     },
   };
 }

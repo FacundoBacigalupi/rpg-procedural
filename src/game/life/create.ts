@@ -174,6 +174,7 @@ import {
   villageCulture,
   villagePopulation,
   WAGES_SINK,
+  WEAPONS,
   WORK_TYPES,
   WORKSHOP,
   WORKSHOP_WASTE,
@@ -1580,6 +1581,7 @@ export function resumeParts(
   | "recipes"
   | "tradeRecipes"
   | "forgeTools"
+  | "weapons"
   | "statuses"
   | "cultureTraits"
   | "speech"
@@ -1620,6 +1622,7 @@ export function resumeParts(
     recipes: content.all(RECIPES),
     tradeRecipes: content.all(TRADE_RECIPES),
     forgeTools: content.all(HOUSEHOLD_TOOLS).filter((t) => t.forge !== undefined),
+    weapons: content.all(WEAPONS),
     statuses: content.all(STATUSES),
     cultureTraits: content.all(CULTURE_TRAITS),
     speech: content.all(SPEECH_LINES),
@@ -2378,6 +2381,7 @@ export function createLife(
       recipes: content.all(RECIPES),
       tradeRecipes: content.all(TRADE_RECIPES),
       forgeTools: content.all(HOUSEHOLD_TOOLS).filter((t) => t.forge !== undefined),
+      weapons: content.all(WEAPONS),
       statuses: content.all(STATUSES),
       cultureTraits: content.all(CULTURE_TRAITS),
       speech: content.all(SPEECH_LINES),

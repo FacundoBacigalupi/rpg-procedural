@@ -616,18 +616,22 @@ const VERBS: readonly {
   {
     // El canje de aportes (novel-sect-duty-exchange): puntos por horas de pase a la cueva, o por el
     // método del reino siguiente (novel2-method-pavilion).
-    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase|pido (?:el |la )?(?:método|técnica|manual) (?:del reino )?siguiente|pido (?:el |la )?siguiente (?:método|técnica)|pido (?:una |otra )?(?=p[ií]ldora))\b/iu,
+    re: /^(?:canjeo mis (?:puntos|aportes)|canjear mis (?:puntos|aportes)|cambio mis (?:puntos|aportes)|cambiar mis (?:puntos|aportes)|pido (?:un )?pase|pedir (?:un )?pase|pido (?:el |la )?(?:método|técnica|manual) (?:del reino )?siguiente|pido (?:el |la )?siguiente (?:método|técnica)|pido (?:una |otra )?(?=p[ií]ldora)|pido (?:un |una |otro |otra )?(?=(?:arma|espada|sable|lanza)\b))/iu,
     build: (rest, _ctx, all) => {
       const d = duration(rest);
       // Una píldora del tesoro (novel2-pills-exchange): cuál, como la dijo.
       const pill = /p[ií]ldora[^,.;]*/iu.exec(all)?.[0]?.trim();
+      // Un arma de la armería (novel3-weapons-sect): cuál, si la nombró.
+      const weapon = /\b(?:arma|espada|sable|lanza|palo|bast[oó]n)\b/iu.exec(all)?.[0];
       const what = pill
         ? pill
-        : /t[eé]cnica|m[eé]todo|manual|escritura/i.test(all)
-          ? "técnica"
-          : /cueva|pase/i.test(all)
-            ? "cueva"
-            : "";
+        : weapon
+          ? weapon
+          : /t[eé]cnica|m[eé]todo|manual|escritura/i.test(all)
+            ? "técnica"
+            : /cueva|pase/i.test(all)
+              ? "cueva"
+              : "";
       return {
         node: act("redeem", [
           ...(d ? [{ role: "for", duration: d.duration }] : []),
