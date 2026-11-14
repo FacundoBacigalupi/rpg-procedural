@@ -383,12 +383,17 @@ export function villageSpaces(input: VillageSpacesInput): SpaceGraph {
 }
 
 /** Los espacios de la sede de una secta, en el orden en que se entra. */
-export const SECT_SITE_SPACES = ["gate", "hall", "dorm", "cave"] as const;
+export const SECT_SITE_SPACES = ["gate", "hall", "dorm", "cave", "arena"] as const;
 export type SectSiteSpace = (typeof SECT_SITE_SPACES)[number];
 
 /** La clave de un espacio de la sede `place` (el lugar de la sede, `PLACE` con `kind: "sect"`). */
 export function sectSpaceKey(place: string, part: SectSiteSpace): SpaceKey {
   return `sect:${place}/${part}`;
+}
+
+/** Si `space` es la plataforma de vida o muerte de una sede (novel3-challenge-platform). */
+export function isSectArena(space: string | undefined): boolean {
+  return space !== undefined && space.startsWith("sect:") && space.endsWith("/arena");
 }
 
 /** Si `space` es la cueva de cultivo de una sede (novel-sect-cave-vein). */
@@ -400,7 +405,8 @@ export function isSectCave(space: string | undefined): boolean {
  * La sede de una secta como sitio (novel-sect-seat-hall-spaces): un patio tras el portón, al aire
  * libre (se une al campo del hex); el salón de piedra que da al patio; los dormitorios de los
  * discípulos detrás del salón; y la cueva de cultivo, excavada en la roca al fondo del patio, sin
- * luz de día, sin viento y casi sin ruido. Como la aldea mínima, es dato derivado: sale del lugar.
+ * luz de día, sin viento y casi sin ruido; y la plataforma de vida o muerte junto al patio. Como la
+ * aldea mínima, es dato derivado: sale del lugar.
  */
 export function sectSiteSpaces(place: string, hex: number): SpaceGraph {
   const node = (part: SectSiteSpace, n: Omit<SpaceNode, "key" | "hex">): SpaceNode => ({
@@ -453,12 +459,24 @@ export function sectSiteSpaces(place: string, hex: number): SpaceGraph {
     openness: 0.05,
     wall: "cave",
   });
+  // La plataforma de vida o muerte (novel3-challenge-platform): un estrado de piedra al costado
+  // del patio, al aire libre, donde los duelos a muerte se pelean ante un anciano.
+  const arena = node("arena", {
+    kind: "yard",
+    area: 12 * 12,
+    indoor: false,
+    daylight: 1,
+    lamp: 0,
+    noise: 0.03,
+    clearSight: 1,
+  });
   return {
-    spaces: [gate, hall, dorm, cave],
+    spaces: [gate, hall, dorm, cave, arena],
     edges: [
       { a: gate.key, b: hall.key, barrier: "doorway" },
       { a: hall.key, b: dorm.key, barrier: "door_closed" },
       { a: gate.key, b: cave.key, barrier: "doorway" },
+      { a: gate.key, b: arena.key, barrier: "doorway" },
     ],
   };
 }

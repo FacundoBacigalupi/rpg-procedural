@@ -25,6 +25,7 @@ import {
   believed,
   bodySigns,
   bookOf,
+  CHALLENGE_EVENT,
   COPPER,
   CULTIVATION_STATE,
   CULTIVATION_TECHNIQUE,
@@ -102,6 +103,7 @@ import { animalsInSight } from "./animals.ts";
 import { beastsInSight } from "./beasts.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
+import { DUEL_SETTLED_EVENT } from "./duels.ts";
 import { anyLivePause, pauseLeft } from "./fight.ts";
 import { fixturesInSight } from "./fixtures.ts";
 import { heardClaimsForView } from "./heardclaims.ts";
@@ -860,6 +862,44 @@ export function playerView(
           ? "mission_progress"
           : "mission_lapsed",
     );
+  }
+  // El desafío que hizo, contestado (novel3-challenge-ask): aceptado, o rechazado delante de otros.
+  const challenge =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === CHALLENGE_EVENT);
+  if (challenge) {
+    const d = challenge.data as { response?: unknown; refuseFace?: unknown } | null;
+    if (d?.response === "accept") cues.add("challenge_accepted");
+    else if (typeof d?.refuseFace === "number" && d.refuseFace > 0) {
+      cues.add("challenge_refused_public");
+    }
+  }
+  // Un desafío que le hicieron (novel3-challenge-npc): esperando su respuesta, aceptado, o dejado
+  // vencer sin contestar.
+  if (options.heardSince !== undefined) {
+    const events = w.log.all();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!e || e.tick < options.heardSince) break;
+      if (e.kind !== CHALLENGE_EVENT || e.actors[1] !== w.player) continue;
+      const d = e.data as { response?: unknown } | null;
+      if (d?.response === "pending") cues.add("challenge_received");
+      else if (d?.response === "accept") cues.add("challenge_accepted");
+      else if (d?.response === "ignored") cues.add("challenge_ignored");
+      break;
+    }
+  }
+  // El duelo peleado (novel3-challenge-fight): ganado o perdido, con su cara.
+  if (options.heardSince !== undefined) {
+    const events = w.log.all();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!e || e.tick < options.heardSince) break;
+      if (e.kind !== DUEL_SETTLED_EVENT || !e.actors.includes(w.player)) continue;
+      cues.add(e.actors[0] === w.player ? "duel_won" : "duel_lost");
+      break;
+    }
   }
   // Un prodigio que le contaron (novel2-trib-far-gossip): el `rumor.told` lo tiene de oyente.
   if (options.heardSince !== undefined) {

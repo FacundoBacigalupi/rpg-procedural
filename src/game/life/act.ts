@@ -59,9 +59,11 @@ import {
   DEFICIENCY_EFFECTS,
   type DealBudget,
   DRAFT_FATIGUE,
+  DUEL,
   dayOf,
   deleteComponent,
   draftEvent,
+  duelWith,
   ENTITY,
   type EventDraft,
   endEntity,
@@ -152,6 +154,7 @@ import {
   resolve,
   SALE_RECEIPTS,
   SCAM_DEALS,
+  SECT_MEMBER,
   SECT_SCHOOL,
   SELF_IMAGES,
   SELLER_DAY,
@@ -214,6 +217,7 @@ import {
   anyLivePause,
   atMyMercy,
   canFight,
+  DUEL_INTENT,
   type Exposure,
   exposeSkills,
   FIGHT_STATE,
@@ -725,6 +729,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELF_IMAGES.name,
       YIELDED.name,
       FIGHT_STATE.name,
+      DUEL.name,
+      SECT_MEMBER.name,
       PRICE_BELIEFS.name,
       LOT_QUALITY.name,
       MARKET_TAPE.name,
@@ -2217,6 +2223,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   } else if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
     // Si la pelea quedó pausada contra el mismo rival y sigue caliente, esto la retoma.
     const resumed = livePause(truth, me, targetId, ctx.now);
+    // Un duelo pactado con él (novel3-challenge-fight): sin otra intención dicha, la de la regla.
+    const pact = truth.get(DUEL, me);
+    const duel = duelWith(pact, targetId, ctx.now) ? pact.rule : undefined;
+    const said = [...state.plan.manner, ...node.manner];
     const fight = strikeFight({
       truth,
       me,
@@ -2225,7 +2235,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       plans: e.plans,
       skills: o.skills,
       traits: o.traits,
-      intent: fightIntentOf([...state.plan.manner, ...node.manner], resumed?.intent),
+      intent: fightIntentOf(said, resumed?.intent ?? (duel ? DUEL_INTENT[duel] : undefined)),
+      ...(duel ? { duel } : {}),
       light: e.light,
       ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,

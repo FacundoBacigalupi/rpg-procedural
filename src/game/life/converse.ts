@@ -42,11 +42,15 @@ import {
   beliefAbout,
   beliefConfidenceAt,
   believed,
+  CHALLENGE_EVENT,
+  type ChallengeResponse,
+  type ChallengeVerdict,
   type ConceptDef,
   CREDIT,
   type Credit,
   CULTIVATION_STATE,
   callName,
+  challengeOdds,
   clampTemper,
   credulity,
   DEFAULT_FACE,
@@ -54,6 +58,8 @@ import {
   type Deed,
   type DetectionInput,
   type DimensionDef,
+  DUEL,
+  DUEL_OFFER,
   daysInRank,
   decideReply,
   deedsBy,
@@ -108,7 +114,9 @@ import {
   missionLapsed,
   normalize,
   type Offense,
+  OPINIONS,
   OWN_DEEDS,
+  opinionKey,
   PERSON,
   PERSON_NAME,
   type PillDef,
@@ -143,6 +151,8 @@ import {
   SECT_RANK_RULING,
   SECT_TRIAL,
   type SectMission,
+  SKILL_STATE,
+  type SkillCatalog,
   type SpaceGraph,
   type SpeakAct,
   type SpeechAct,
@@ -173,14 +183,18 @@ import {
   transmit,
   understand,
   utter,
+  verbSkill,
   villageCulture,
   warmth,
+  weighChallenge,
   worstDeed,
+  YIELDED,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-economy.ts";
 import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
+import { FIGHT_STATE } from "./fight.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { TOLD_CLAIMS_KEY, type ToldClaim, toldAliveClaims } from "./knowing.ts";
 import { KNOWN_NAMES, learnName } from "./known-names.ts";
@@ -245,6 +259,8 @@ export function withDeclared(
       case "greet":
       case "farewell":
         return { kind: declared.kind, ...form };
+      case "challenge":
+        return { kind: "challenge", rule: declared.rule, ...form };
       case "ask":
         return { kind: "ask", about: known(declared.about), ...form };
       case "request":
@@ -362,6 +378,11 @@ export interface ConverseOptions {
    * le falta al alquimista. Sin esto, nadie da misiones.
    */
   readonly missions?: { readonly pills: readonly PillDef[]; readonly herbs: readonly HerbDef[] };
+  /**
+   * Los desafíos a duelo (novel3-challenge-ask): con esto el retado los pesa; sin esto, no los toma
+   * en serio. El catálogo de habilidades da el oficio de pelear de cada uno.
+   */
+  readonly duels?: { readonly skills: SkillCatalog };
 }
 
 /**
@@ -810,6 +831,63 @@ function sourceKnown(
     return { kind: "named", name: givenName(truth, src.teller) ?? "alguien", voices: src.voices };
   }
   return src;
+}
+
+/** Los escalones de rango en una secta, de abajo hacia arriba. */
+const SECT_RANK_ORDER = ["outer", "inner", "core", "elder", "master"] as const;
+
+/**
+ * Cómo pesa un desafío el retado (novel3-challenge-ask, combat §13): lo que cree de los dos para
+ * pelear (su oficio, lo que opina del oficio del otro —sin opinión, lo supone como él— y los umbrales
+ * cruzados, que se dejan ver entre los de una misma secta), cómo tiene el cuerpo, el orgullo y la
+ * valentía del temperamento, los presentes, la distancia de rango en la secta y el rencor. Dormido,
+ * en otra pelea, rendido o sin poder pelear, no contesta un desafío.
+ */
+function challengeOf(
+  truth: ReadonlyWorldTruth,
+  skills: SkillCatalog,
+  act: Extract<SpeechAct, { kind: "challenge" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick; rng: Rng },
+  feel: { resentment: number },
+  z: Readonly<Record<string, number>>,
+): ChallengeVerdict | undefined {
+  const { me, speaker } = ctx;
+  const body = truth.get(BODY_STATE, me);
+  if (!body || body.death !== null || body.consciousness === "unconscious") return undefined;
+  if (body.activity === "sleep") return undefined;
+  if (truth.get(FIGHT_STATE, me) || truth.get(YIELDED, me)) return undefined;
+  const use = skills.forVerb("strike");
+  const mySkill = verbSkill(skills, truth.get(SKILL_STATE, me), "strike");
+  const opinion = use ? truth.get(OPINIONS, me)?.[opinionKey(speaker, use.skill.id)] : undefined;
+  const myStage = truth.get(CULTIVATION_STATE, me)?.stage ?? 0;
+  const mine = truth.get(SECT_MEMBER, me);
+  const theirs = truth.get(SECT_MEMBER, speaker);
+  const sameSect = mine !== undefined && theirs !== undefined && mine.org === theirs.org;
+  const theirStage = sameSect ? (truth.get(CULTIVATION_STATE, speaker)?.stage ?? 0) : myStage;
+  const condition = unit(body.blood * (1 - 0.5 * body.fatigue));
+  const bold = clampTemper(z["boldness"] ?? 0);
+  const present = truth
+    .ids(PERSON)
+    .map((id) => id as AgentId)
+    .filter((id) => id !== me && id !== speaker && alive(truth, id) && sameSpot(truth, id, me));
+  return weighChallenge(
+    {
+      rule: act.rule,
+      myOdds: challengeOdds(
+        { skill: mySkill, stage: myStage },
+        { skill: opinion?.estimate.level ?? mySkill, stage: theirStage },
+        condition,
+      ),
+      pride: unit(0.4 + 0.2 * clampTemper(z["reactivity"] ?? 0)),
+      courage: unit(0.5 + 0.25 * bold + 0.15 * clampTemper(z["willpower"] ?? 0)),
+      witnesses: present.length,
+      rankGap: sameSect
+        ? SECT_RANK_ORDER.indexOf(mine.rank) - SECT_RANK_ORDER.indexOf(theirs.rank)
+        : 0,
+      grudge: unit(feel.resentment),
+    },
+    ctx.rng,
+  );
 }
 
 /**
@@ -1292,6 +1370,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       SECT_CONTRIBUTION.name,
       CULTIVATION_STATE.name,
       MASTER_OF.name,
+      ...(o.duels ? [SKILL_STATE.name, OPINIONS.name, FIGHT_STATE.name, YIELDED.name] : []),
       ...(o.missions ? [SECT_MISSION.name, SECT_HALL.name] : []),
     ],
     writes: [
@@ -1444,11 +1523,63 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         act.kind === "mission" && o.missions && ctx.ledger
           ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now)
           : null;
+      // El desafío que este oyente le hizo a quien le habla y que espera respuesta (novel3-challenge-npc):
+      // un sí, un no, o retarlo de vuelta (que es aceptar).
+      const offer = o.duels ? truth.get(DUEL_OFFER, speaker) : undefined;
+      const offered = offer && offer.from === me && ctx.now <= offer.until ? offer : undefined;
+      const challengeAnswer: ChallengeResponse | undefined = offered
+        ? act.kind === "accept" || act.kind === "challenge"
+          ? "accept"
+          : act.kind === "refuse"
+            ? "refuse"
+            : undefined
+        : undefined;
+      const challenge =
+        act.kind === "challenge" && o.duels && !challengeAnswer
+          ? challengeOf(
+              truth,
+              o.duels.skills,
+              act,
+              { me, speaker, now: ctx.now, rng: ctx.rng.fork("challenge", pending.key) },
+              feel,
+              z,
+            )
+          : undefined;
+      // Al personaje no se le contesta por él (novel3-challenge-npc): el desafío queda esperando lo que
+      // diga, con la cara que le costaría no aceptarlo; `life.duels` se lo anota.
+      if (challenge && act.kind === "challenge" && truth.has(PLAYER, me)) {
+        // Ya se lo dijo y sigue esperando: repetirlo no abre otro.
+        const open = truth.get(DUEL_OFFER, me);
+        if (open && open.from === speaker && ctx.now <= open.until) return { changes: [clear] };
+        const pact = truth.get(DUEL, me);
+        if (pact && pact.with === speaker && ctx.now <= pact.until) return { changes: [clear] };
+        return {
+          changes: [clear],
+          events: [
+            {
+              kind: CHALLENGE_EVENT,
+              actors: [speaker, me],
+              place: o.placeOf(truth, me),
+              data: {
+                challenger: speaker,
+                challenged: me,
+                rule: act.rule,
+                response: "pending",
+                refuseFace: challenge.refuseFace,
+              },
+              emissions: { sight: 0.3, sound: 0.6 },
+              causes: [{ kind: "state", entity: me, key: PENDING.name }],
+            },
+          ],
+        };
+      }
       const reply = decideReply(
         {
           act,
           speaker,
           listener: me,
+          ...(challenge ? { challenge: { response: challenge.response } } : {}),
+          ...(challengeAnswer ? { challengeAnswer } : {}),
           feel,
           ...(hearsayVerdict ? { hearsay: { verdict: hearsayVerdict } } : {}),
           ...(source ? { source } : {}),
@@ -1713,6 +1844,42 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             ],
           }
         : undefined;
+      // El desafío contestado (novel3-challenge-ask): si lo acepta, `life.duels` anota el duelo a los dos.
+      const challengeEvent: EventDraft | undefined =
+        offered && challengeAnswer
+          ? {
+              kind: CHALLENGE_EVENT,
+              actors: [me, speaker],
+              place: o.placeOf(truth, me),
+              data: {
+                challenger: me,
+                challenged: speaker,
+                rule: offered.rule,
+                response: challengeAnswer,
+                refuseFace: challengeAnswer === "refuse" ? offered.refuseFace : 0,
+              },
+              emissions: { sight: 0.3, sound: 0.6 },
+              causes: [
+                { kind: "event", event: draftEvent(0) },
+                { kind: "event", event: offered.event },
+              ],
+            }
+          : challenge && act.kind === "challenge"
+            ? {
+                kind: CHALLENGE_EVENT,
+                actors: [speaker, me],
+                place: o.placeOf(truth, me),
+                data: {
+                  challenger: speaker,
+                  challenged: me,
+                  rule: act.rule,
+                  response: challenge.response,
+                  refuseFace: challenge.response === "refuse" ? challenge.refuseFace : 0,
+                },
+                emissions: { sight: 0.3, sound: 0.6 },
+                causes: [{ kind: "event", event: draftEvent(0) }],
+              }
+            : undefined;
       let rumorEvent: EventDraft | undefined;
       if (rumor) {
         const { heard, told } = rumor;
@@ -1770,15 +1937,25 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             }
           : undefined;
       // La cara de quien oye: la falta de forma y la amenaza o el insulto que lo dejó mal parado.
-      const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0);
-      if (lostFace > 0) {
+      // Rechazar un desafío delante de otros (novel3-challenge-ask): el retado pierde, quien retó gana la mitad.
+      // Si es el personaje quien lo rechaza (su desafío), al revés: pierde él y gana este.
+      const refused =
+        challenge?.response === "refuse"
+          ? challenge.refuseFace
+          : challengeAnswer === "refuse" && offered
+            ? -offered.refuseFace / 2
+            : 0;
+      // Negativa cuando el personaje rechazó su desafío: la cara que gana este.
+      const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0) + refused;
+      if (lostFace !== 0) {
         if (o.projectSharedEffects)
           conversationEffects.push({ kind: "face", actor: me, delta: -lostFace, at: ctx.now });
         else
           changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
       }
       // La de quien habló: sube si le cedieron; la vergüenza de la ofensa de forma baja abajo.
-      let speakerFace = regard?.faceGain ?? 0;
+      let speakerFace =
+        (regard?.faceGain ?? 0) + (refused > 0 ? refused / 2 : refused < 0 ? 2 * refused : 0);
       // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
       // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
       // cometió pierde cara si se la reprochan.
@@ -1994,6 +2171,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(masterEvent ? [masterEvent] : []),
           ...(petitionEvent ? [petitionEvent] : []),
           ...(missionEvent ? [missionEvent] : []),
+          ...(challengeEvent ? [challengeEvent] : []),
         ],
         postings:
           swaps.length > 0
