@@ -111,6 +111,8 @@ export type SelfCue =
   | "pill_no_points"
   /** La armería de la secta le dio un arma por puntos (novel3-weapons-sect). */
   | "weapon_bought"
+  /** Una bestia del monte ronda a la vista (novel3-beasts-fight-strike). */
+  | "beast_near"
   /** Pidió un arma y en la armería no queda (o no de esa forma). */
   | "weapon_no_stock"
   /** Pidió un arma y su aporte no alcanza. */

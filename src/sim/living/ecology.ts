@@ -3,6 +3,7 @@
 // trófica de `trophic.ts`) y el monte (sucesión y combustible de `succession.ts`). Puro: sin RNG ni IO.
 
 import { contentId, defineContent, exp, z } from "../../core/index.ts";
+import { WOUND_KINDS } from "../body/index.ts";
 import { type ReadonlyWorldTruth, table } from "../world/index.ts";
 import type { PatchVegetation, SuccessionStage, Trajectory } from "./succession.ts";
 import type { CellEcology, Lineage } from "./trophic.ts";
@@ -31,6 +32,23 @@ export const LineageDef = z.strictObject({
    * animal más pesado (kg) que se lleva; sin esto, no asalta.
    */
   raid: z.strictObject({ perDay: z.number().min(0), maxPreyKg: z.number().positive() }).optional(),
+  /**
+   * Cómo pelea un individuo que bajó (novel3-beasts-fight-strike): el arma natural (alcance en
+   * metros, masa que empuja el golpe, tipo de herida y filo o punta), cuánto antes que una persona
+   * se quiebra (`shy`) y su destreza (0-1, la del golpe de una persona). Sin esto no pelea.
+   */
+  fight: z
+    .strictObject({
+      natural: z.strictObject({
+        reach: z.number().positive(),
+        mass: z.number().positive(),
+        wound: z.enum(WOUND_KINDS),
+        sharpness: z.number().min(0).max(1),
+      }),
+      shy: z.number().min(0).max(1),
+      skill: z.number().min(0).max(1),
+    })
+    .optional(),
 });
 export type LineageDef = z.infer<typeof LineageDef>;
 export const LINEAGES = defineContent("lineages", LineageDef, (l) =>

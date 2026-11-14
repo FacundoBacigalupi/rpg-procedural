@@ -99,6 +99,7 @@ import {
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { animalsInSight } from "./animals.ts";
+import { beastsInSight } from "./beasts.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
 import { anyLivePause, pauseLeft } from "./fight.ts";
@@ -717,6 +718,8 @@ export function playerView(
     const c = CUES[s];
     if (c) cues.add(c);
   }
+  // Una bestia viva a la vista (novel3-beasts-fight-strike).
+  if (beastsInSight(w).some((b) => !b.dead)) cues.add("beast_near");
 
   if (body.scars.some((sc) => sc.lost)) cues.add("maimed");
   if (options.heardSince !== undefined && thermalBlackout(w, options.heardSince))
@@ -1014,6 +1017,8 @@ export function playerView(
     fixtures: [
       ...fixturesInSight(w),
       // Los animales a la vista se miran como lo fijo (livestock-draft-rest-say).
+      // Las bestias que bajaron del monte, también (novel3-beasts-fight-strike).
+      ...beastsInSight(w).map((b) => ({ ref: b.ref, shape: b.lineage, size: "medium" as const })),
       ...animalsInSight(w).map((a) => ({
         ref: a.ref,
         shape: a.species,

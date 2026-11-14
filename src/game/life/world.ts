@@ -1307,6 +1307,8 @@ export function lifeWorld(
           ...(parts.cultivation && parts.weapons && parts.weapons.length > 0
             ? { fightWeapons: parts.weapons }
             : {}),
+          // Y las bestias del monte pelean con su linaje (novel3-beasts-fight-strike).
+          ...(parts.cultivation && parts.lineages ? { fightBeasts: parts.lineages } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),

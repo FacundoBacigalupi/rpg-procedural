@@ -36,6 +36,7 @@ import {
   adulterate,
   advance,
   applyAcute,
+  BEAST,
   type Bearing,
   BODY_STATE,
   type Body,
@@ -95,6 +96,7 @@ import {
   itemTransferChanges,
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
+  type LineageDef,
   LOCATION,
   LOT_ESSENCE,
   LOT_QUALITY,
@@ -494,6 +496,11 @@ export interface ActOptions {
    */
   readonly fightWeapons?: readonly WeaponDef[];
   /**
+   * Opt-in (novel3-beasts-fight-strike): las bestias que bajaron del monte pelean con el perfil de
+   * su linaje (`strikeFight.beasts`). Apagado, una bestia no tiene con qué pelear.
+   */
+  readonly fightBeasts?: readonly LineageDef[];
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -747,6 +754,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.refinedBodies || o.attackArts ? [CULTIVATION_STATE.name] : []),
       ...(o.attackArts ? [ART_KNOWN.name, SECT_SCHOOL.name, ASLEEP.name] : []),
       ...(o.fightWeapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
+      ...(o.fightBeasts ? [BEAST.name] : []),
     ],
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
@@ -1562,7 +1570,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   };
   const parties: ResolveInput["parties"] = Object.fromEntries(
     node.args.flatMap((a) =>
-      "entity" in a && a.entity.startsWith("agent:") ? [[a.role, partyOf(a.entity)]] : [],
+      "entity" in a &&
+      (a.entity.startsWith("agent:") ||
+        // La bestia que bajó del monte (novel3-beasts-fight-strike) es contraparte como una persona.
+        (o.fightBeasts !== undefined && truth.get(BEAST, a.entity) !== undefined))
+        ? [[a.role, partyOf(a.entity)]]
+        : [],
     ),
   );
   // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. Desde
@@ -2202,6 +2215,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...(o.coreEffects ? { coreEffects: true } : {}),
       ...(o.refinedBodies ? { refined: true } : {}),
       ...(o.fightWeapons ? { weapons: o.fightWeapons } : {}),
+      ...(o.fightBeasts ? { beasts: o.fightBeasts } : {}),
       ...(o.legacyNoFleeShed === true ? {} : { shed: true }),
       day: o.clock.day,
       cause: draftEvent(0),

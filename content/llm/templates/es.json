@@ -1334,6 +1334,13 @@
     ]
   },
   {
+    "id": "self.beast_near",
+    "lines": [
+      "Un lobo ronda cerca, flaco, con la cabeza gacha y la mirada fija.",
+      "Entre los árboles se mueve un lobo; se detiene, mira y no se va."
+    ]
+  },
+  {
     "id": "self.weapon_bought",
     "lines": [
       "El encargado descuenta tus puntos en el libro y te alcanza un arma de la armería del salón.",
