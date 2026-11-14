@@ -835,7 +835,9 @@ export function playerView(
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
-    cues.add(kind === "watch" ? "mission_watch" : "mission_herbs");
+    cues.add(
+      kind === "watch" ? "mission_watch" : kind === "hunt" ? "mission_hunt" : "mission_herbs",
+    );
   }
   const missionEnd =
     options.heardSince === undefined

@@ -138,6 +138,8 @@ export type SelfCue =
   | "rank_refused"
   | "mission_herbs"
   | "mission_watch"
+  /** Le tocó cazar a la bestia que bajó (novel3-beasts-mission-ask). */
+  | "mission_hunt"
   | "mission_progress"
   | "mission_done"
   | "mission_lapsed"

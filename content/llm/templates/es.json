@@ -1443,6 +1443,10 @@
     "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
   },
   {
+    "id": "self.mission_hunt",
+    "lines": ["Te tocó una misión: cazar o echar a la bestia que bajó del monte."]
+  },
+  {
     "id": "self.mission_progress",
     "lines": [
       "El anciano recibe las hierbas y las anota a tu nombre; todavía falta para cumplir la misión."

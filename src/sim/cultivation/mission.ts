@@ -4,6 +4,8 @@
 // - Hierbas: lo que le falta al alquimista para tener las píldoras por cabeza (`endowPerHead`), menos
 //   lo que ya hay de esa hierba en el tesoro y lo que ya salieron a juntar otros.
 // - Vigilar: una banda viva cerca de la sede; se vigila el lugar donde anda.
+// - Cazar (novel3-beasts-mission-ask): una bestia que bajó del monte, que vio alguien de la secta y
+//   que sigue viva y abajo; vence cuando vuelve al monte.
 // Lo que pide cada misión, el plazo y los puntos son números de acá, sin calibrar.
 //
 // Puro: recibe lo que la secta sabe (cuántos viven, qué hay en el tesoro, dónde anda la banda) y lo
@@ -14,7 +16,7 @@ import { table } from "../world/index.ts";
 import type { MemberRank } from "./member.ts";
 import type { PillDef } from "./pill.ts";
 
-export type MissionKind = "herbs" | "watch";
+export type MissionKind = "herbs" | "watch" | "hunt";
 
 /** Una necesidad de la secta, antes de volverse encargo. */
 export type MissionNeed =
@@ -27,6 +29,15 @@ export type MissionNeed =
       readonly hex: number;
       /** A cuántos hex de la sede. */
       readonly distance: number;
+    }
+  | {
+      readonly kind: "hunt";
+      /** La bestia que vio alguien de la secta. */
+      readonly beast: EntityRef;
+      /** Donde se la vio por última vez. */
+      readonly hex: number;
+      /** Cuándo vuelve al monte: el plazo. */
+      readonly until: Tick;
     };
 
 /** Un encargo tomado: lo que pide, hasta cuándo y cuánto paga. */
@@ -40,6 +51,10 @@ export interface SectMission {
   readonly band?: string;
   readonly hex?: number;
   readonly hours?: number;
+  /** Cazar: la bestia (y `hex`, donde se la vio). */
+  readonly beast?: EntityRef;
+  /** Cazar: cuándo vuelve al monte; el plazo es ese. */
+  readonly until?: Tick;
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -71,12 +86,19 @@ export const MISSION_WATCH_HOURS = 8;
 export const MISSION_WATCH_POINTS_PER_HOUR = 2;
 /** Hasta cuántos hex de la sede una banda es asunto de la secta. */
 export const MISSION_WATCH_RADIUS = 3;
-/** Días de plazo. */
-export const MISSION_DAYS: Readonly<Record<MissionKind, number>> = { herbs: 14, watch: 7 };
+/** Lo que paga cazar a una bestia que bajó (o echarla): como un día y medio de guardia. */
+export const MISSION_HUNT_POINTS = 24;
+/** Días de plazo (cazar vence antes si la bestia vuelve al monte: `until`). */
+export const MISSION_DAYS: Readonly<Record<MissionKind, number>> = {
+  herbs: 14,
+  watch: 7,
+  hunt: 2,
+};
 /** Desde qué rango se da cada clase: vigilar a una banda no es para un externo. */
 export const MISSION_MIN_RANK: Readonly<Record<MissionKind, MemberRank>> = {
   herbs: "outer",
   watch: "inner",
+  hunt: "outer",
 };
 
 const RANK_ORDER: readonly MemberRank[] = ["outer", "inner", "core", "elder", "master"];
@@ -150,11 +172,27 @@ export function watchNeeds(bands: readonly BandSighting[]): MissionNeed[] {
     .map((b) => ({ kind: "watch" as const, band: b.band, hex: b.hex, distance: b.distance }));
 }
 
+/** Una bestia que la secta vio: cuál, dónde y hasta cuándo anda abajo. */
+export interface BeastSighting {
+  readonly beast: EntityRef;
+  readonly hex: number;
+  readonly until: Tick;
+}
+
+/** Las bestias vistas que siguen abajo en `now`, la que se va antes primero. */
+export function huntNeeds(beasts: readonly BeastSighting[], now: Tick): MissionNeed[] {
+  return beasts
+    .filter((b) => b.until > now)
+    .sort((a, b) => a.until - b.until || (a.beast < b.beast ? -1 : a.beast > b.beast ? 1 : 0))
+    .map((b) => ({ kind: "hunt" as const, beast: b.beast, hex: b.hex, until: b.until }));
+}
+
 /** Lo que el que asigna le da a quien pide: el encargo, sin quién ni cuándo. */
 export type MissionOffer = Omit<SectMission, "by" | "at" | "due" | "cause" | "done">;
 
 /**
- * El encargo para quien pide: primero vigilar (una banda cerca apura más), después hierbas; de cada
+ * El encargo para quien pide: primero cazar (la bestia se va pronto), después vigilar (una banda cerca
+ * apura más), después hierbas; una sola misión por bestia y por banda; de cada
  * necesidad se resta lo que ya salieron a hacer otros de la misma secta. Nada si no hay necesidad
  * que su rango pueda tomar.
  */
@@ -166,11 +204,23 @@ export function pickMission(
 ): MissionOffer | undefined {
   const mine = assigned.filter((m) => m.org === org);
   const ordered = [
+    ...needs.filter((n) => n.kind === "hunt"),
     ...needs.filter((n) => n.kind === "watch"),
     ...needs.filter((n) => n.kind === "herbs"),
   ];
   for (const need of ordered) {
     if (!missionFits(need.kind, rank)) continue;
+    if (need.kind === "hunt") {
+      if (mine.some((m) => m.kind === "hunt" && m.beast === need.beast)) continue;
+      return {
+        org,
+        kind: "hunt",
+        beast: need.beast,
+        hex: need.hex,
+        until: need.until,
+        points: MISSION_HUNT_POINTS,
+      };
+    }
     if (need.kind === "watch") {
       if (mine.some((m) => m.kind === "watch" && m.band === need.band)) continue;
       return {
@@ -198,9 +248,9 @@ export function pickMission(
   return undefined;
 }
 
-/** El plazo de una misión dada en `now`. */
-export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number): Tick =>
-  now + MISSION_DAYS[kind] * dayTicks;
+/** El plazo de una misión dada en `now`; la de cazar, a más tardar cuando la bestia vuelve (`until`). */
+export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until?: Tick): Tick =>
+  Math.min(now + MISSION_DAYS[kind] * dayTicks, until ?? Number.POSITIVE_INFINITY);
 
 /** Si la misión ya venció sin cumplirse. */
 export const missionLapsed = (m: SectMission, now: Tick): boolean => now > m.due;
