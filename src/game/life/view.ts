@@ -99,6 +99,7 @@ import {
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { animalsInSight } from "./animals.ts";
+import { beastsInSight } from "./beasts.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
 import { anyLivePause, pauseLeft } from "./fight.ts";
@@ -717,6 +718,8 @@ export function playerView(
     const c = CUES[s];
     if (c) cues.add(c);
   }
+  // Una bestia viva a la vista (novel3-beasts-fight-strike).
+  if (beastsInSight(w).some((b) => !b.dead)) cues.add("beast_near");
 
   if (body.scars.some((sc) => sc.lost)) cues.add("maimed");
   if (options.heardSince !== undefined && thermalBlackout(w, options.heardSince))
@@ -832,7 +835,9 @@ export function playerView(
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
-    cues.add(kind === "watch" ? "mission_watch" : "mission_herbs");
+    cues.add(
+      kind === "watch" ? "mission_watch" : kind === "hunt" ? "mission_hunt" : "mission_herbs",
+    );
   }
   const missionEnd =
     options.heardSince === undefined
@@ -848,7 +853,9 @@ export function playerView(
   if (missionEnd) {
     cues.add(
       missionEnd.kind === MISSION_DONE_EVENT
-        ? "mission_done"
+        ? (missionEnd.data as { kind?: unknown } | null)?.kind === "hunt"
+          ? "mission_hunt_done"
+          : "mission_done"
         : missionEnd.kind === MISSION_PROGRESS_EVENT
           ? "mission_progress"
           : "mission_lapsed",
@@ -1014,6 +1021,8 @@ export function playerView(
     fixtures: [
       ...fixturesInSight(w),
       // Los animales a la vista se miran como lo fijo (livestock-draft-rest-say).
+      // Las bestias que bajaron del monte, también (novel3-beasts-fight-strike).
+      ...beastsInSight(w).map((b) => ({ ref: b.ref, shape: b.lineage, size: "medium" as const })),
       ...animalsInSight(w).map((a) => ({
         ref: a.ref,
         shape: a.species,

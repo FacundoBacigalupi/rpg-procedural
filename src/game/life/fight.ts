@@ -26,6 +26,7 @@ import {
   ITEM_HOLD,
   ITEM_LOOK,
   ITEM_WEAR,
+  type LineageDef,
   LOCATION,
   levelOf,
   OPINIONS,
@@ -55,6 +56,7 @@ import {
   YIELDED,
   type Yielded,
 } from "../../sim/index.ts";
+import { beastFighter } from "./beasts.ts";
 
 /** Una pelea pausada del personaje: contra quién y con qué retomarla (combat §16). */
 export interface PausedFight {
@@ -174,6 +176,11 @@ export interface StrikeFightInput {
    * `rank` del catálogo, sin gastar del todo) y la gasta en `ITEM_WEAR`. Sin esto, a mano limpia.
    */
   readonly weapons?: readonly WeaponDef[];
+  /**
+   * Opt-in (novel3-beasts-fight-strike): los linajes del monte. Una bestia que bajó (`BEAST`) pelea
+   * con el perfil de su linaje (arma natural, instinto, destreza) en vez de habilidades de persona.
+   */
+  readonly beasts?: readonly LineageDef[];
 }
 
 /** Lo que alguien tiene en la mano y sirve de arma (combat §6): el objeto, su forma y su desgaste. */
@@ -378,6 +385,11 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   const myWeapon = i.weapons ? wieldedWeapon(i.truth, i.me, i.weapons) : undefined;
   const theirWeapon = i.weapons ? wieldedWeapon(i.truth, i.target, i.weapons) : undefined;
   const armed = (w: Wielded | undefined) => (w ? { weapon: fighterWeapon(w.def, w.wear) } : {});
+  // Una bestia pelea con su linaje: ni habilidades, ni estilos, ni contenerse (novel3-beasts-fight-strike).
+  const wild = (id: AgentId) => {
+    const b = i.beasts ? beastFighter(i.truth, id, i.beasts) : undefined;
+    return b ? { beast: b.beast, skill: b.skill, eye: b.skill, familiarity: 0, hides: 0 } : {};
+  };
   const theirBody = i.truth.get(BODY_STATE, i.target) as Body;
   const plan = (b: Body) => i.plans.get(b.plan) as BodyPlanDef;
   const result = runFight({
@@ -406,6 +418,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         ...coreOf(i.me),
         ...refinedOf(i.me),
         ...armed(myWeapon),
+        ...wild(i.me),
       },
       {
         id: i.target,
@@ -432,6 +445,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         ...coreOf(i.target),
         ...refinedOf(i.target),
         ...armed(theirWeapon),
+        ...wild(i.target),
         unaware: theirBody.activity === "sleep",
       },
     ],

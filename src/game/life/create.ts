@@ -34,6 +34,7 @@ import {
   BUILDING_TYPES,
   bearingDeg,
   CARCASS_SOURCE,
+  type CellEcology,
   CHEESE_PRESS,
   type ChosenTaste,
   CONCEPTS,
@@ -94,6 +95,7 @@ import {
   nameRules,
   OFFERING_ASH,
   PARCEL_SOIL,
+  type PatchSpan,
   PERSON,
   type Person,
   PILLS,
@@ -175,6 +177,7 @@ import {
   villagePopulation,
   WAGES_SINK,
   WEAPONS,
+  WILDS,
   WORK_TYPES,
   WORKSHOP,
   WORKSHOP_WASTE,
@@ -939,6 +942,28 @@ function seatHexOf(map: LocalMap, cell: LocalMap["cell"]): number | undefined {
     if (best === undefined || (map.elevationM?.[h] ?? 0) > (map.elevationM?.[best] ?? 0)) best = h;
   }
   return best;
+}
+
+/**
+ * El monte de la celda de la sede (novel3-beasts-wilds): los linajes que su clima sostiene, con la
+ * densidad de cada uno sobre el área del parche y el abrigo del bosque que tiene.
+ */
+export function seatWilds(content: Content, map: LocalMap, span: PatchSpan): CellEcology {
+  const hexes = Math.max(1, span.size);
+  let forest = 0;
+  for (let h = span.base; h < span.base + span.size; h++) if (map.forest[h]) forest++;
+  return initialCell(content.all(LINEAGES), {
+    annualMeanC: span.climate.annualMeanC,
+    annualPrecipMm: span.climate.annualPrecipMm,
+    hexes,
+    shelter: forest / hexes,
+    productivity: dailyProductivity({
+      tempMeanC: span.climate.annualMeanC,
+      annualPrecipMm: span.climate.annualPrecipMm,
+      soilFertility: SOIL_START,
+      hexes,
+    }),
+  });
 }
 
 /** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
@@ -1714,9 +1739,21 @@ export function ledgerConfigOf(
     ),
   ];
   // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
-  const carcass = livestockCarcass
-    ? carcassUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))
-    : [];
+  const carcass = [
+    ...new Set([
+      ...(livestockCarcass
+        ? carcassUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))
+        : []),
+      // Lo que deja el lobo que bajó del monte de la sede (novel3-beasts-fight-carcass).
+      ...(cultivation
+        ? content
+            .all(LINEAGES)
+            .flatMap((l) => [l.carcass?.meat, l.carcass?.hide])
+            .filter((g) => g !== undefined)
+            .map((g) => ledgerUnit(`good:${g}`))
+        : []),
+    ]),
+  ].sort();
   // Lo que pone el ganado (livestock-yield): huevos, ya comida.
   const laid = livestockYield
     ? yieldUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))
@@ -2224,6 +2261,11 @@ export function createLife(
         // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
         truth.set(PLACE_QI, sect.sect.seatPlace, sect.sect.seat.qi);
         truth.set(QI_TAKEN, sect.sect.seatPlace, { taken: 0, drawn: 0, at: pop.now });
+        // El monte de su celda (novel3-beasts-wilds): las bestias que el clima de ahí sostiene.
+        const span = patchesOf(map).find(
+          (p) => p.cell === terrain.planet.grid.cellId(sect.sect.seat.cell),
+        );
+        if (span) truth.set(WILDS, sect.sect.seatPlace, seatWilds(content, map, span));
       }
     }
     // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.

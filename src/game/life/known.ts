@@ -29,6 +29,7 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { ANIMAL_WORDS, animalsInSight } from "./animals.ts";
+import { BEAST_WORDS, beastsInSight } from "./beasts.ts";
 import { FIXTURE_WORDS, fixturesInSight } from "./fixtures.ts";
 import { smithOf } from "./smith.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
@@ -304,6 +305,24 @@ export function knownEntities(
       names,
       features: a.tired === true ? ["cansado"] : [],
       shape: a.species,
+      relations: [],
+      present: true,
+      ...(here === undefined ? {} : { at: here.hex }),
+      via: [],
+    });
+  }
+  // Las bestias vivas que ve ahora (novel3-beasts-fight-strike): se las señala como a alguien, para
+  // pegarles o mirarlas.
+  for (const b of beastsInSight(w)) {
+    const names = BEAST_WORDS[b.lineage];
+    if (b.dead || names === undefined || listed.has(b.ref)) continue;
+    listed.add(b.ref);
+    out.push({
+      ref: b.ref,
+      kind: "person",
+      names,
+      features: [],
+      shape: b.lineage,
       relations: [],
       present: true,
       ...(here === undefined ? {} : { at: here.hex }),

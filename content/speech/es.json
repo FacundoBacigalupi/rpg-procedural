@@ -601,6 +601,16 @@
     ]
   },
   {
+    "id": "mission.give.hunt",
+    "lines": [
+      "Bajó una bestia del monte y anda cerca de la sede. Matala o echala antes de que vuelva arriba, y vení a contarlo.",
+      "Vieron una bestia rondando la sede. Andá a darle caza; si se te escapa al monte, no cuenta."
+    ],
+    "formal": [
+      "Una bestia bajó del monte y ronda la sede. Cácela o ahuyéntela antes de que regrese, y venga a informar."
+    ]
+  },
+  {
     "id": "mission.refuse.not_member",
     "lines": ["No sos de esta secta. Las misiones son para los nuestros."],
     "formal": ["Usted no pertenece a esta secta."]

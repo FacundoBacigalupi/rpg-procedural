@@ -29,8 +29,11 @@ import {
   AMENDS,
   adjustFace,
   alternativesAmong,
+  BEAST,
+  BEAST_SEEN,
   BELIEFS,
   BELIEVED_AT,
+  type BeastSighting,
   type Belief,
   BODY_STATE,
   type BondDef,
@@ -79,6 +82,7 @@ import {
   herbNeeds,
   holdsGrudge,
   honestyShift,
+  huntNeeds,
   INNATE,
   isFormal,
   judgeRankUp,
@@ -1699,7 +1703,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             data: {
               ...mission.offer,
               by: me,
-              due: missionDue(mission.offer.kind, ctx.now, o.day),
+              due: missionDue(mission.offer.kind, ctx.now, o.day, mission.offer.until),
             },
             emissions: {},
             causes: [
@@ -2124,10 +2128,20 @@ function missionOf(
     const m = truth.get(SECT_MISSION, id);
     if (m && id !== (speaker as unknown as EntityRef) && !missionLapsed(m, now)) assigned.push(m);
   }
+  // Las bestias que vio alguien de la secta y siguen vivas y abajo (novel3-beasts-mission-ask).
+  const beasts: BeastSighting[] = [];
+  for (const id of [...truth.ids(BEAST_SEEN)].sort() as EntityRef[]) {
+    const seen = truth.get(BEAST_SEEN, id);
+    const b = truth.get(BEAST, id);
+    if (seen?.org !== mine.org || !b) continue;
+    if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    if ((truth.get(BODY_STATE, id)?.death ?? null) !== null) continue;
+    beasts.push({ beast: id, hex: seen.hex, until: b.until });
+  }
   const offer = pickMission(
     mine.org,
     theirs.rank,
-    herbNeeds(defs.pills, { alive, pills, herbs }),
+    [...huntNeeds(beasts, now), ...herbNeeds(defs.pills, { alive, pills, herbs })],
     assigned,
   );
   return offer ? { org: mine.org, offer } : { org: mine.org, refused: "none" };

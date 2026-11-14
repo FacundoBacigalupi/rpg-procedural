@@ -18,6 +18,7 @@ import {
   type ActionCatalog,
   type BodyPlanDef,
   type BondDef,
+  beastProcess,
   bodyProcess,
   COPPER,
   type ConcernWords,
@@ -112,6 +113,7 @@ import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { type BanditsOptions, banditsProcess } from "./bandits.ts";
+import { beastAttackProcess } from "./beast-attack.ts";
 import { belongingProcess } from "./belonging.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
@@ -1306,6 +1308,8 @@ export function lifeWorld(
           ...(parts.cultivation && parts.weapons && parts.weapons.length > 0
             ? { fightWeapons: parts.weapons }
             : {}),
+          // Y las bestias del monte pelean con su linaje (novel3-beasts-fight-strike).
+          ...(parts.cultivation && parts.lineages ? { fightBeasts: parts.lineages } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
@@ -2594,6 +2598,28 @@ export function lifeWorld(
                     }),
                     // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
+                    // Las bestias del monte de la sede bajan con hambre (novel3-beasts-materialize).
+                    beastProcess({
+                      lineages: parts.lineages ?? [],
+                      bodyPlans: parts.plans,
+                      day: parts.clock.day,
+                    }),
+                    // El que bajó con hambre ataca a quien encuentra solo afuera (novel3-beasts-fight-attack).
+                    ...(parts.lineages
+                      ? [
+                          beastAttackProcess({
+                            lineages: parts.lineages,
+                            bodyPlans: parts.plans,
+                            skills: parts.skills,
+                            traits: parts.traits,
+                            spaces: parts.spaces,
+                            map: parts.map,
+                            clock: parts.clock,
+                            seed: parts.seed,
+                            refined: true,
+                          }),
+                        ]
+                      : []),
                     sectHallProcess({
                       map: parts.map,
                       // La sede llega con su armería (novel3-weapons-sect).

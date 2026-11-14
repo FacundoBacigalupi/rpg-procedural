@@ -111,6 +111,8 @@ export type SelfCue =
   | "pill_no_points"
   /** La armería de la secta le dio un arma por puntos (novel3-weapons-sect). */
   | "weapon_bought"
+  /** Una bestia del monte ronda a la vista (novel3-beasts-fight-strike). */
+  | "beast_near"
   /** Pidió un arma y en la armería no queda (o no de esa forma). */
   | "weapon_no_stock"
   /** Pidió un arma y su aporte no alcanza. */
@@ -136,8 +138,12 @@ export type SelfCue =
   | "rank_refused"
   | "mission_herbs"
   | "mission_watch"
+  /** Le tocó cazar a la bestia que bajó (novel3-beasts-mission-ask). */
+  | "mission_hunt"
   | "mission_progress"
   | "mission_done"
+  /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
+  | "mission_hunt_done"
   | "mission_lapsed"
   /** Alguien que le hablaba le contó un prodigio que se vio en el cielo (novel2-trib-far-gossip). */
   | "heard_prodigy"

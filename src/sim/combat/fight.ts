@@ -56,6 +56,19 @@ export interface FighterInput {
   readonly refined?: FighterRefinement;
   /** Opt-in (novel3-weapons-core): lo que tiene en la mano. Sin esto, pelea con los puños. */
   readonly weapon?: FighterWeapon;
+  /**
+   * Opt-in (novel3-beasts-core): pelea como bestia (combat §15). Muerde o araña con su arma
+   * natural, que no se gasta, nunca se rinde y se quiebra antes que una persona; acorralada sigue.
+   */
+  readonly beast?: FighterBeast;
+}
+
+/** El instinto y el arma natural de una bestia (combat §15, novel3-beasts-core). */
+export interface FighterBeast {
+  /** Fauces, garras o cuernos: como un arma que no se gasta. */
+  readonly natural: Omit<FighterWeapon, "wear">;
+  /** 0-1: cuánto antes que una persona se quiebra y huye (un animal no pelea por orgullo). */
+  readonly shy: number;
 }
 
 /**
@@ -238,7 +251,8 @@ function weaponForce(w: FighterWeapon | null): number {
 /** Le suma desgaste a un arma; si llega a 1 se rompe y queda sin ella. */
 function wearWeapon(s: State, extra: number): void {
   const w = s.weapon;
-  if (!w) return;
+  // Las fauces y las garras no se gastan.
+  if (!w || s.beast) return;
   s.wear = Math.min(1, s.wear + WEAPON_WEAR_HIT * (1 + extra));
   s.weapon = s.wear >= 1 ? null : { ...w, wear: s.wear };
 }
@@ -278,6 +292,8 @@ interface State {
   weapon: FighterWeapon | null;
   /** El desgaste del arma con la que empezó (sigue contando aunque se rompa). */
   wear: number;
+  /** Pelea como bestia (novel3-beasts-core); su arma es la natural. */
+  beast: FighterBeast | null;
 }
 
 type Action =
@@ -343,8 +359,9 @@ function breakAt(s: State): number {
     0.32 -
     0.2 * (s.z["boldness"] ?? 0) -
     0.1 * (s.z["willpower"] ?? 0) -
-    (s.intent === "kill" ? 0.1 : 0);
-  return Math.min(0.6, Math.max(0.02, v));
+    (s.intent === "kill" ? 0.1 : 0) +
+    (s.beast ? clamp01(s.beast.shy) * 0.4 : 0);
+  return Math.min(s.beast ? 0.85 : 0.6, Math.max(0.02, v));
 }
 
 /**
@@ -394,8 +411,10 @@ export function runFight(input: FightInput): FightResult {
       read: null,
       readOf: null,
       opening: 0,
-      weapon: f.weapon && f.weapon.wear < 1 ? f.weapon : null,
+      weapon:
+        f.weapon && f.weapon.wear < 1 ? f.weapon : f.beast ? { ...f.beast.natural, wear: 0 } : null,
       wear: clamp01(f.weapon?.wear ?? 0),
+      beast: f.beast ?? null,
     });
   }
   for (const saved of input.resume?.fighters ?? []) {
@@ -512,8 +531,12 @@ export function runFight(input: FightInput): FightResult {
       const rng = input.rng.fork("fight", base + pulse, b.from.id, "blow");
       // En la práctica se elige siempre dónde tocar (sin cabeza ni cuello).
       const aimed = b.from.intent === "spar" || (b.from.skill > 0.35 && rng.chance(b.from.skill));
-      const zones = AIM[b.from.intent];
-      const zone = aimed ? Object.keys(zones)[rng.weighted(Object.values(zones))] : undefined;
+      // Solo se apunta a lo que el cuerpo del otro tiene (un lobo no tiene brazos).
+      const zones = Object.entries(AIM[b.from.intent]).filter(([id]) =>
+        b.to.plan.zones.some((zn) => zn.id === id),
+      );
+      const zone =
+        aimed && zones.length > 0 ? zones[rng.weighted(zones.map(([, w]) => w))]?.[0] : undefined;
       const power = 0.34 + 0.08 * Math.max(-2, Math.min(2, b.from.z["constitution"] ?? 0));
       const force =
         clamp01(
@@ -781,18 +804,28 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
     });
     s.odds = belief.myOdds;
     const decision = resolveBreak(
-      { belief, breakAt: breakAt(s), drivers: {}, canRun, cornered: false, foeFaster: quicker },
+      {
+        belief,
+        breakAt: breakAt(s),
+        drivers: {},
+        canRun,
+        cornered: s.beast !== null && !canRun,
+        foeFaster: quicker,
+      },
       rng.fork("break"),
     );
     if (decision.kind === "flee") return { kind: "flee", from: rival.id };
-    if (decision.kind === "yield") return { kind: "yield" };
+    // La bestia no se rinde: si no puede huir, sigue peleando.
+    if (decision.kind === "yield" && !s.beast) return { kind: "yield" };
     if (decision.kind === "freeze") return { kind: "idle" };
   } else {
     s.odds = oddsOf(s, rival, input.light);
     // Quebrarse: huye si puede correr, se rinde si no (o si el otro lo alcanzaría).
     if (s.odds < breakAt(s)) {
+      // La bestia que se quiebra huye aunque el otro sea más rápido; acorralada, sigue.
+      if (s.beast && canRun) return { kind: "flee", from: rival.id };
       if (canRun && (!quicker || rng.chance(0.3))) return { kind: "flee", from: rival.id };
-      return { kind: "yield" };
+      if (!s.beast) return { kind: "yield" };
     }
   }
   if (s.phase === "fleeing") s.phase = "ready";

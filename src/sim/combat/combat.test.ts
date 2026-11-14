@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, loadContent, makeId, Rng } from "../../core/index.ts";
-import { BODY_PLANS, type BodyPlanDef, newBody } from "../body/index.ts";
+import { BODY_PLANS, type BodyPlanDef, capabilitiesOf, injure, newBody } from "../body/index.ts";
 import { refinementOf } from "../cultivation/index.ts";
 import {
+  type FighterBeast,
   type FighterInput,
   type FighterWeapon,
   type FightIntent,
@@ -15,9 +16,13 @@ import {
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
   [BODY_PLANS],
-  [{ kind: "body-plans", file: "b.json", data: json("content/body-plans/human.json") }],
+  [
+    { kind: "body-plans", file: "b.json", data: json("content/body-plans/human.json") },
+    { kind: "body-plans", file: "w.json", data: json("content/body-plans/wolf.json") },
+  ],
 );
-const plan = content.all(BODY_PLANS)[0] as BodyPlanDef;
+const plan = content.get(BODY_PLANS, "human") as BodyPlanDef;
+const wolfPlan = content.get(BODY_PLANS, "wolf") as BodyPlanDef;
 const cause = makeId("event", 1) as EventId;
 const A = makeId("agent", 1);
 const B = makeId("agent", 2);
@@ -412,5 +417,81 @@ describe("armas (novel3-weapons-core)", () => {
     expect(withSpear).toBeGreaterThan(bare);
     const fs = [fighter(A, "a", 0, { weapon: spear }), fighter(B, "b", 3, { weapon: sword })];
     expect(fight([...fs].reverse(), 8)).toEqual(fight(fs, 8));
+  });
+});
+
+describe("bestias (novel3-beasts-core)", () => {
+  const fangs: FighterBeast = {
+    natural: { reach: 0.9, mass: 0.6, wound: "puncture", sharpness: 0.8 },
+    shy: 0.5,
+  };
+  const wolf = (at: number, over: Partial<FighterInput> = {}): FighterInput =>
+    fighter(B, "beast", at, {
+      plan: wolfPlan,
+      body: newBody(wolfPlan, 40, 0),
+      skill: 0.5,
+      intent: "kill",
+      beast: fangs,
+      ...over,
+    });
+
+  it("muerde con heridas punzantes, la mordida no se gasta y nunca se rinde", () => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = fight([fighter(A, "a", 0, { intent: "kill" }), wolf(1)], seed);
+      const w = r.fighters.find((f) => f.id === B);
+      expect(w?.outcome).not.toBe("yielded");
+      expect(w?.weaponWear).toBeUndefined();
+      for (const wd of r.fighters.find((f) => f.id === A)?.body.wounds ?? []) kinds.add(wd.kind);
+      // Los golpes a la bestia caen en zonas que tiene.
+      for (const wd of w?.body.wounds ?? []) {
+        expect(wolfPlan.zones.some((zn) => zn.id === wd.zone)).toBe(true);
+      }
+    }
+    expect([...kinds]).toEqual(["puncture"]);
+  });
+
+  it("se quiebra y huye antes que una persona; acorralada, sigue peleando", () => {
+    let fledShy = 0;
+    let fledBold = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const shy = fight([fighter(A, "a", 0, { skill: 0.7 }), wolf(1)], seed);
+      const bold = fight(
+        [fighter(A, "a", 0, { skill: 0.7 }), wolf(1, { beast: { ...fangs, shy: 0 } })],
+        seed,
+      );
+      if (shy.fighters.find((f) => f.id === B)?.outcome === "fled") fledShy++;
+      if (bold.fighters.find((f) => f.id === B)?.outcome === "fled") fledBold++;
+    }
+    expect(fledShy).toBeGreaterThan(fledBold);
+    // Con las patas traseras rotas no puede correr: no huye ni se rinde.
+    let lame = newBody(wolfPlan, 40, 0);
+    const legs = ["left_hindleg", "right_hindleg", "left_foreleg", "right_foreleg"];
+    const rng = Rng.root(9);
+    for (let k = 0; k < 40 && capabilitiesOf(wolfPlan, lame).locomotion > 0.3; k++) {
+      lame = injure(
+        wolfPlan,
+        lame,
+        { kind: "blunt", force: 0.9, zone: legs[k % 4] as string, cause, at: 0 },
+        rng.fork("leg", k),
+      ).body;
+    }
+    expect(capabilitiesOf(wolfPlan, lame).locomotion).toBeLessThanOrEqual(0.4);
+    for (let seed = 1; seed <= 20; seed++) {
+      const r = fight(
+        [
+          fighter(A, "a", 0, { skill: 0.7 }),
+          wolf(1, { body: lame, beast: { ...fangs, shy: 1 }, intent: "drive_off" }),
+        ],
+        seed,
+      );
+      expect(r.fighters.find((f) => f.id === B)?.outcome).not.toBe("yielded");
+    }
+  });
+
+  it("entre personas nada cambia y la pelea con la bestia es determinista", () => {
+    const fs = [fighter(A, "a", 0, { intent: "kill" }), wolf(1)];
+    expect(fight([...fs].reverse(), 4)).toEqual(fight(fs, 4));
+    expect(fight(fs, 4)).toEqual(fight(fs, 4));
   });
 });

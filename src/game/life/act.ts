@@ -36,6 +36,7 @@ import {
   adulterate,
   advance,
   applyAcute,
+  BEAST,
   type Bearing,
   BODY_STATE,
   type Body,
@@ -95,6 +96,7 @@ import {
   itemTransferChanges,
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
+  type LineageDef,
   LOCATION,
   LOT_ESSENCE,
   LOT_QUALITY,
@@ -198,6 +200,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { castAtTarget } from "./art.ts";
+import { beastCarcassOf } from "./beasts.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
@@ -494,6 +497,11 @@ export interface ActOptions {
    */
   readonly fightWeapons?: readonly WeaponDef[];
   /**
+   * Opt-in (novel3-beasts-fight-strike): las bestias que bajaron del monte pelean con el perfil de
+   * su linaje (`strikeFight.beasts`). Apagado, una bestia no tiene con qué pelear.
+   */
+  readonly fightBeasts?: readonly LineageDef[];
+  /**
    * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
@@ -747,6 +755,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.refinedBodies || o.attackArts ? [CULTIVATION_STATE.name] : []),
       ...(o.attackArts ? [ART_KNOWN.name, SECT_SCHOOL.name, ASLEEP.name] : []),
       ...(o.fightWeapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
+      ...(o.fightBeasts ? [BEAST.name] : []),
     ],
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
@@ -755,6 +764,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
+      // La bestia carneada termina (novel3-beasts-fight-carcass).
+      ...(o.fightBeasts ? [ENTITY.name] : []),
       // La ordeñada a mano ya no tiene leche pendiente (livestock-milk-hand); `LACTATING` ya está.
       // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
       ...(o.slaughter?.gift === true || o.slaughter?.steal === true || o.slaughter?.sell === true
@@ -1562,7 +1573,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   };
   const parties: ResolveInput["parties"] = Object.fromEntries(
     node.args.flatMap((a) =>
-      "entity" in a && a.entity.startsWith("agent:") ? [[a.role, partyOf(a.entity)]] : [],
+      "entity" in a &&
+      (a.entity.startsWith("agent:") ||
+        // La bestia que bajó del monte (novel3-beasts-fight-strike) es contraparte como una persona.
+        (o.fightBeasts !== undefined && truth.get(BEAST, a.entity) !== undefined))
+        ? [[a.role, partyOf(a.entity)]]
+        : [],
     ),
   );
   // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. Desde
@@ -1802,9 +1818,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ? milkTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
         : undefined,
     slaughterTarget:
-      o.slaughter && node.verb === "slaughter"
-        ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
-        : undefined,
+      node.verb !== "slaughter"
+        ? undefined
+        : ((o.slaughter
+            ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
+            : undefined) ??
+          // El lobo muerto a la vista se carnea igual (novel3-beasts-fight-carcass).
+          (o.fightBeasts
+            ? beastCarcassOf(
+                { truth, player: me, spaces: o.spaces },
+                textArg(node, "what"),
+                o.fightBeasts,
+              )
+            : undefined)),
     consumables:
       (o.consumables || o.pillGoods) && node.verb === "consume"
         ? new Set([
@@ -1919,7 +1945,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...giftChanges(truth, animalSale));
   } else if (eff.kind === "milk" && eff.done && eff.animal !== null && o.slaughter?.milk === true) {
     changes.push(...milkChanges(truth, eff.animal as AnimalId));
-  } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
+  } else if (
+    eff.kind === "slaughter" &&
+    eff.done &&
+    eff.animal !== null &&
+    (o.slaughter || o.fightBeasts)
+  ) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
     changes.push(deleteComponent(HEARTH, eff.hearth as EntityRef));
@@ -2202,6 +2233,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...(o.coreEffects ? { coreEffects: true } : {}),
       ...(o.refinedBodies ? { refined: true } : {}),
       ...(o.fightWeapons ? { weapons: o.fightWeapons } : {}),
+      ...(o.fightBeasts ? { beasts: o.fightBeasts } : {}),
       ...(o.legacyNoFleeShed === true ? {} : { shed: true }),
       day: o.clock.day,
       cause: draftEvent(0),

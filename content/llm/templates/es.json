@@ -1334,6 +1334,13 @@
     ]
   },
   {
+    "id": "self.beast_near",
+    "lines": [
+      "Un lobo ronda cerca, flaco, con la cabeza gacha y la mirada fija.",
+      "Entre los árboles se mueve un lobo; se detiene, mira y no se va."
+    ]
+  },
+  {
     "id": "self.weapon_bought",
     "lines": [
       "El encargado descuenta tus puntos en el libro y te alcanza un arma de la armería del salón.",
@@ -1436,6 +1443,10 @@
     "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
   },
   {
+    "id": "self.mission_hunt",
+    "lines": ["Te tocó una misión: cazar o echar a la bestia que bajó del monte."]
+  },
+  {
     "id": "self.mission_progress",
     "lines": [
       "El anciano recibe las hierbas y las anota a tu nombre; todavía falta para cumplir la misión."
@@ -1445,6 +1456,12 @@
     "id": "self.mission_done",
     "lines": [
       "El anciano recibe las hierbas y da la misión por cumplida; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
+    "id": "self.mission_hunt_done",
+    "lines": [
+      "De vuelta en la sede, la secta da por cumplida la caza de la bestia; los puntos quedan anotados a tu nombre."
     ]
   },
   {

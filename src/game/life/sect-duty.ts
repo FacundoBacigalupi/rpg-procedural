@@ -13,7 +13,10 @@
 // se anota acá en `SECT_MISSION` (una por miembro), con el evento como causa. Las hierbas
 // (novel2-missions-herbs): dárselas a un anciano de la secta en la sede las pasa al tesoro y anota
 // los puntos de lo que cuenta (`cultivation.mission_progress`, o `mission_done` si la cumple); la
-// misión vencida se cae sin más puntos (`cultivation.mission_lapsed`).
+// misión vencida se cae sin más puntos (`cultivation.mission_lapsed`). Cazar (novel3-beasts-mission-
+// claim): una pelea de quien la tiene con la bestia la deja hecha si la bestia murió o huyó (o si
+// quedó caída y murió después); de vuelta en la sede se cobran los puntos (`mission_done`). Si la
+// bestia vuelve al monte sin eso, vence como las otras.
 // Y el permiso para bajar (novel-sect-seat-return-leave): `furlough` en la sede deja `SECT_LEAVE`
 // con `cultivation.sect_leave`; la ausencia la lleva `life.sect_absence` (`sect-leave.ts`).
 
@@ -30,6 +33,7 @@ import {
 } from "../../core/index.ts";
 import {
   ART_KNOWN,
+  BODY_STATE,
   BREAKTHROUGH_EVENT,
   CAVE_RANKS,
   CHORE_POINTS_PER_HOUR,
@@ -45,6 +49,7 @@ import {
   type ExchangeRefusal,
   exchangeHours,
   type HerbDef,
+  HUNT_SETTLED,
   ITEM_HOLD,
   ITEM_LOOK,
   ITEM_WEAR,
@@ -231,6 +236,7 @@ export function sectDutyProcess(
       CULTIVATION_STATE.name,
       CULTIVATION_TECHNIQUE.name,
       SECT_SCHOOL.name,
+      BODY_STATE.name,
       ...RANK_REVIEW_READS,
       ...(o.weapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name, ENTITY.name] : []),
     ],
@@ -280,6 +286,17 @@ export function sectDutyProcess(
           const who = e.actors[0] as AgentId | undefined;
           if (who !== undefined && d)
             missions.set(who, { ...d, at: ctx.now, done: 0, cause: e.id });
+          continue;
+        }
+        if (e.kind === "combat.fight") {
+          const d = e.data as { outcomes?: Record<string, string> } | null;
+          for (const who of e.actors as AgentId[]) {
+            const m = missionOf(who);
+            if (m?.kind !== "hunt" || m.beast === undefined) continue;
+            if (!e.actors.includes(m.beast as unknown as AgentId)) continue;
+            const settled = HUNT_SETTLED.has(d?.outcomes?.[m.beast] ?? "");
+            missions.set(who, { ...m, fight: e.id, done: settled ? 1 : m.done });
+          }
           continue;
         }
         if (e.kind === "action.give" && e.outcome !== "failure") {
@@ -718,6 +735,40 @@ export function sectDutyProcess(
           }
           events.push(e);
         }
+      }
+      // Cazar: quien la tiene hecha y está en la sede la cobra (novel3-beasts-mission-claim).
+      for (const id of [...ctx.truth.ids(SECT_MISSION)].sort()) {
+        const who = id as unknown as AgentId;
+        const m = missionOf(who);
+        if (m?.kind !== "hunt" || m.beast === undefined || m.fight === undefined) continue;
+        const dead = (ctx.truth.get(BODY_STATE, m.beast)?.death ?? null) !== null;
+        if (m.done < 1 && !dead) continue;
+        const seat = ctx.truth.get(SECT, m.org)?.seatPlace;
+        const hexes = seat ? ctx.truth.get(PLACE, seat)?.hexes : undefined;
+        const at = ctx.truth.get(LOCATION, id)?.hex;
+        if (at === undefined || !hexes?.includes(at)) continue;
+        missions.set(who, null);
+        const before = pointsOf(who);
+        const same = before?.org === m.org ? before : undefined;
+        rows.set(who, {
+          org: m.org,
+          points: round2((same?.points ?? 0) + m.points),
+          hours: same?.hours ?? 0,
+          last: ctx.now,
+        });
+        events.push({
+          kind: MISSION_DONE_EVENT,
+          actors: [who],
+          place: { kind: "place", place: seat as unknown as PlaceId },
+          data: { org: m.org, kind: m.kind, beast: m.beast, points: m.points },
+          emissions: {},
+          causes: [
+            { kind: "event", event: m.fight },
+            ...(m.cause ? [{ kind: "event" as const, event: m.cause }] : []),
+            { kind: "state", entity: id, key: SECT_MISSION.name },
+            { kind: "state", entity: id, key: LOCATION.name },
+          ],
+        });
       }
       // Las misiones vencidas se caen sin más puntos.
       for (const id of ctx.truth.ids(SECT_MISSION)) {
