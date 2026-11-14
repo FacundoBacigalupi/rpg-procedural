@@ -63,3 +63,20 @@ describe("rendirse (novel3-intent-resolve-talk)", () => {
     },
   );
 });
+
+describe("practicar (novel3-spar-act)", () => {
+  it.each([
+    "entreno con Wu",
+    "practico con Wu",
+    "hago una práctica con Wu",
+    "me mido con Wu",
+    "practico pelea con Wu",
+  ])("«%s» es pelear de práctica con Wu", (t) => {
+    const s = strike(t);
+    expect(s?.manner).toEqual(["spar"]);
+    const a = s?.args[0];
+    expect(a?.role).toBe("target");
+    expect(a && "ref" in a ? a.ref.text : undefined).toBe("Wu");
+    expect(fightIntentOf(s?.manner ?? [])).toBe("spar");
+  });
+});

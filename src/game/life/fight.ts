@@ -28,6 +28,7 @@ import {
   type PauseReason,
   PERSON,
   type PlanNode,
+  RELATIONS,
   type ReadonlyWorldTruth,
   refinementOf,
   rivalKey,
@@ -259,6 +260,29 @@ export function canFight(truth: ReadonlyWorldTruth, target: AgentId): boolean {
   );
 }
 
+/** Cuánto tiene que conocerlo para aceptarle una práctica (calibración abierta). */
+export const SPAR_FAMILIARITY = 0.1;
+/** Con menos afecto que esto no practica con él: no le tiene confianza (calibración abierta). */
+export const SPAR_AFFECTION = -0.3;
+
+/**
+ * Si `target` acepta practicar con `me` (novel3-spar-act, combat §13): puede pelear, está despierto,
+ * no está en otra pelea, lo conoce y no le tiene inquina. Se lee de la verdad del turno.
+ */
+export function sparWilling(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  target: AgentId,
+  now: Tick,
+): boolean {
+  if (target === me || !canFight(truth, target)) return false;
+  if (truth.get(BODY_STATE, target)?.activity === "sleep") return false;
+  if (truth.get(FIGHT_STATE, target) || truth.get(YIELDED, target)) return false;
+  if (atMyMercy(truth, target, me, now)) return false;
+  const dims = truth.get(RELATIONS, target)?.toward[me]?.dims;
+  return (dims?.familiarity ?? 0) >= SPAR_FAMILIARITY && (dims?.affection ?? 0) > SPAR_AFFECTION;
+}
+
 /** Si `target` sigue a merced de `me`. */
 export function atMyMercy(
   truth: ReadonlyWorldTruth,
@@ -355,7 +379,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           i.start,
           day,
         ),
-        intent: "drive_off",
+        // En la práctica los dos frenan el golpe; si no, el otro se defiende para echarlo.
+        intent: i.intent === "spar" ? "spar" : "drive_off",
         at: { x: 0.7, y: 0 },
         ...coreOf(i.target),
         ...refinedOf(i.target),
@@ -385,7 +410,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         ? "me"
         : undefined;
   const event: EventDraft = {
-    kind: "combat.fight",
+    kind: i.intent === "spar" ? "combat.spar" : "combat.fight",
     actors: [i.me, i.target],
     place: i.place,
     data: {
@@ -456,7 +481,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           ? [deleteComponent(FIGHT_STATE, i.me)]
           : []),
       // Quien se rinde queda a merced del que ganó: rematarlo o perdonarlo es de ahora en más.
-      ...(theirs.outcome === "yielded" && mine.outcome === "standing"
+      // En la práctica conceder no deja a nadie a merced del otro.
+      ...(theirs.outcome === "yielded" && mine.outcome === "standing" && i.intent !== "spar"
         ? [
             setComponent(YIELDED, i.target, {
               to: i.me,
@@ -480,6 +506,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       woundsDealt: hits(i.me),
       ...(result.paused ? { paused: result.paused.reason } : {}),
       ...(blur ? { blur } : {}),
+      ...(i.intent === "spar" ? { spar: true } : {}),
     },
   };
 }

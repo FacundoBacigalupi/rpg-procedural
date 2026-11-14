@@ -703,6 +703,20 @@ const VERBS: readonly {
     },
   },
   {
+    // «Entreno con X», «practico con X»: una pelea de práctica (novel3-spar-act, combat §13).
+    re: /^(?:entreno|entrenar|practico|practicar|hago\s+(?:una\s+)?pr[aá]ctica|me\s+mido|medirme)\b/i,
+    build: (rest) => {
+      const cleaned = rest
+        .replace(MANNER_WORDS, " ")
+        .replace(
+          /^\s*(?:de\s+pelea|(?:a\s+)?(?:la\s+)?pelea|combate|lucha)?\s*(?:con|contra)\s+/i,
+          " a ",
+        );
+      const p = personAfterA(cleaned);
+      return { node: act("strike", p ? [{ role: "target", ref: p.ref }] : [], ["spar"]) };
+    },
+  },
+  {
     // «Mato a X», «lo reduzco»: pegar con la intención en el verbo (novel3-intent-words).
     re: /^(?:le|la|lo)?\s*(?:mato|matar|matarlo|matarla|asesino|asesinar|reduzco|reducir|reducirlo|reducirla|inmovilizo|inmovilizar|inmovilizarlo|inmovilizarla)\b/i,
     build: (rest, _ctx, all) => {

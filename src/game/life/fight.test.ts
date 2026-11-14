@@ -10,6 +10,8 @@ import {
   checkInvariants,
   LOCATION,
   PERSON,
+  RELATIONS,
+  SKILL_STATE,
   YIELD_WINDOW,
   YIELDED,
 } from "../../sim/index.ts";
@@ -144,6 +146,83 @@ describe("rematar o perdonar a quien se rindió", () => {
       [],
     );
   }, 240_000);
+});
+
+describe("practicar (novel3-spar-act)", () => {
+  const sparPlan = (actor: AgentId, target: AgentId): ActionPlan => ({
+    actor,
+    source: "player",
+    root: {
+      kind: "do",
+      verb: "strike",
+      args: [{ role: "target", entity: target }],
+      manner: ["spar"],
+    },
+    manner: [],
+    causes: [{ kind: "state", entity: actor, key: "intent" }],
+  });
+  /** Alguien de su casa, parado al lado; `stranger` borra lo que siente por el personaje. */
+  function setUp(seed: number, stranger = false) {
+    const life = Life.create(seed, content);
+    const w = life.world;
+    const me = life.player;
+    const house = w.truth.get(PERSON, me)?.household;
+    const other = living(w.truth).find(
+      (id) => id !== me && w.truth.get(PERSON, id)?.household === house,
+    ) as AgentId;
+    const here = w.truth.get(LOCATION, me);
+    if (here) w.truth.set(LOCATION, other, here);
+    const rel = w.truth.get(RELATIONS, other);
+    if (rel) {
+      const toward = { ...rel.toward };
+      const cur = toward[me];
+      if (cur) {
+        toward[me] = stranger
+          ? { ...cur, dims: { ...cur.dims, familiarity: 0, affection: 0 } }
+          : {
+              ...cur,
+              dims: { ...cur.dims, familiarity: Math.max(0.3, cur.dims.familiarity ?? 0) },
+            };
+      }
+      w.truth.set(RELATIONS, other, { ...rel, toward });
+    }
+    return { life, w, me, other };
+  }
+
+  it("con alguien que lo conoce es práctica: su evento, sin rendidos ni delito, y se aprende", () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const { life, w, me, other } = setUp(seed);
+      const skillsBefore = w.truth.get(SKILL_STATE, me);
+      const report = life.turn(sparPlan(me, other), 1);
+      const spar = report.events.find((e) => e.kind === "combat.spar");
+      // Dudó (el nervio frena el golpe): no hubo práctica en este seed.
+      if (!spar) continue;
+      expect(report.events.some((e) => e.kind === "combat.fight")).toBe(false);
+      expect(spar.actors).toEqual([me, other]);
+      expect(w.truth.get(YIELDED, me)).toBeUndefined();
+      expect(w.truth.get(YIELDED, other)).toBeUndefined();
+      expect(offenseOf(spar)).toBeNull();
+      expect(w.truth.get(SKILL_STATE, me)).not.toEqual(skillsBefore);
+      for (const id of [me, other]) {
+        for (const wound of w.truth.get(BODY_STATE, id)?.wounds ?? []) {
+          expect(["head", "neck"]).not.toContain(wound.zone);
+        }
+      }
+      expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+      return;
+    }
+    throw new Error("ningún seed practicó");
+  }, 240_000);
+
+  it("con un extraño no hay práctica: no quiere, y no hay golpe", () => {
+    const { life, w, me, other } = setUp(1, true);
+    const before = w.truth.get(BODY_STATE, other)?.wounds.length ?? 0;
+    const report = life.turn(sparPlan(me, other), 1);
+    expect(report.events.some((e) => e.kind === "combat.spar" || e.kind === "combat.fight")).toBe(
+      false,
+    );
+    expect(w.truth.get(BODY_STATE, other)?.wounds.length ?? 0).toBe(before);
+  }, 120_000);
 });
 
 describe("pausas de la pelea del personaje", () => {

@@ -424,6 +424,10 @@ function outcome(
         say("outcome.strike.finished", { target: ref(e.target) });
         break;
       }
+      if (e.declined) {
+        say("outcome.strike.spar.declined", { target: ref(e.target) });
+        break;
+      }
       if (e.target === undefined && !e.hit) say("outcome.strike.missed_anyone");
       else {
         const target = ref(e.target);
@@ -444,6 +448,15 @@ function outcome(
         const target = ref(e.target);
         if (f.blur) say(`outcome.strike.fight.blur_${f.blur}`, { target });
         if (f.paused) say(`outcome.strike.fight.paused_${f.paused}`, { target });
+        else if (f.spar)
+          say(
+            f.theirs === "yielded"
+              ? "outcome.strike.spar.won"
+              : f.mine === "yielded"
+                ? "outcome.strike.spar.lost"
+                : "outcome.strike.spar.parted",
+            { target },
+          );
         else if (f.mine === "standing" && f.theirs === "standing")
           say("outcome.strike.fight.parted");
         else if (f.mine === "standing") say(`outcome.strike.fight.foe_${f.theirs}`, { target });

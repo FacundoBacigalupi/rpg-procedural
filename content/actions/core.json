@@ -1314,6 +1314,11 @@
         "id": "escape",
         "duration": 1,
         "ease": 0
+      },
+      {
+        "id": "spar",
+        "duration": 1,
+        "ease": 0
       }
     ],
     "requires": [

@@ -105,6 +105,7 @@ import { ROUTINE_BREAK_EVENT, ROUTINE_MEDITATE_EVENT } from "./meditate.ts";
 import { PLAYER } from "./player.ts";
 import { routineToolStep } from "./routine-tools.ts";
 import { ROUTINE_CHORE_EVENT } from "./sect-duty.ts";
+import { ROUTINE_SPAR_EVENT } from "./sect-spar.ts";
 import { SMITH } from "./smith.ts";
 import {
   cropStarts,
@@ -297,6 +298,11 @@ export interface RoutineOptions {
    * o, lleno, intenta romper (novel-cult-delegate: `routine.meditate`, `routine.breakthrough`).
    */
   readonly sectLore?: boolean;
+  /**
+   * Opt-in (novel3-spar-npc): a esta hora local, quien medita en la sede (no el de tareas) practica
+   * en `work` con los demás (`routine.spar`, que resuelve `life.sect_spar`).
+   */
+  readonly sparHour?: number;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -603,7 +609,12 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         const work = o.spaces.spaces.find((s) => s.key === seat.work);
         if (work) there = { hex: work.hex, space: work.key };
         events.push({
-          kind: seat.chores === true ? ROUTINE_CHORE_EVENT : ROUTINE_MEDITATE_EVENT,
+          kind:
+            seat.chores === true
+              ? ROUTINE_CHORE_EVENT
+              : hour === o.sparHour
+                ? ROUTINE_SPAR_EVENT
+                : ROUTINE_MEDITATE_EVENT,
           actors: [me],
           place: o.placeOf(truth, me),
           data: { seconds: 3600 },

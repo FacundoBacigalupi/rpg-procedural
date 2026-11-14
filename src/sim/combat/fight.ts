@@ -18,7 +18,8 @@ import {
 } from "../body/index.ts";
 import { believedOdds, type RivalRead, readRival, resolveBreak, resolveFeint } from "./reading.ts";
 
-export const FIGHT_INTENTS = ["kill", "subdue", "drive_off", "escape"] as const;
+/** `spar` es la práctica (combat §13, novel3-spar-core): golpes frenados y se concede, no se huye. */
+export const FIGHT_INTENTS = ["kill", "subdue", "drive_off", "escape", "spar"] as const;
 export type FightIntent = (typeof FIGHT_INTENTS)[number];
 
 export interface Vec2 {
@@ -191,6 +192,12 @@ export const MAX_PULSES = 90;
 export const PAIN_NOTICE = 0.2;
 /** Pulsos mínimos entre dos pausas, para no pedirle una decisión por golpe (calibración abierta). */
 export const PAUSE_MIN_PULSES = 3;
+/** En la práctica el golpe se frena: la parte de la fuerza que llega (calibración abierta). */
+export const SPAR_FORCE = 0.25;
+/** En la práctica concede quien recibió estos toques más de los que metió (calibración abierta). */
+export const SPAR_TOUCHES = 3;
+/** En la práctica concede quien siente el cuerpo por debajo de esto: se lastimó (calibración abierta). */
+export const SPAR_CONCEDE_POWER = 0.55;
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const dist = (a: Vec2, b: Vec2) => hypot(a.x - b.x, a.y - b.y);
@@ -280,6 +287,8 @@ const AIM: Readonly<Record<FightIntent, Readonly<Record<string, number>>>> = {
   subdue: { left_arm: 2, right_arm: 2, left_leg: 2, right_leg: 2, abdomen: 2, chest: 1 },
   drive_off: { left_arm: 2, right_arm: 2, chest: 2, abdomen: 1, head: 1 },
   escape: { left_arm: 1, right_arm: 1, abdomen: 1 },
+  // En la práctica no se busca la cabeza ni el cuello.
+  spar: { left_arm: 2, right_arm: 2, left_leg: 1, right_leg: 1, chest: 3, abdomen: 1 },
 };
 
 /** Cuándo se quiebra: el audaz y el de voluntad aguantan más; quien viene a matar, también. */
@@ -450,7 +459,8 @@ export function runFight(input: FightInput): FightResult {
     for (const b of blows.sort((x, y) => (x.from.id < y.from.id ? -1 : 1))) {
       if (b.to.body.death) continue;
       const rng = input.rng.fork("fight", base + pulse, b.from.id, "blow");
-      const aimed = b.from.skill > 0.35 && rng.chance(b.from.skill);
+      // En la práctica se elige siempre dónde tocar (sin cabeza ni cuello).
+      const aimed = b.from.intent === "spar" || (b.from.skill > 0.35 && rng.chance(b.from.skill));
       const zones = AIM[b.from.intent];
       const zone = aimed ? Object.keys(zones)[rng.weighted(Object.values(zones))] : undefined;
       const power = 0.34 + 0.08 * Math.max(-2, Math.min(2, b.from.z["constitution"] ?? 0));
@@ -462,7 +472,8 @@ export function runFight(input: FightInput): FightResult {
             (0.7 + 0.3 * b.from.breath) *
             (0.8 + 0.4 * rng.float()),
         ) *
-        (1 - clamp01(b.to.refined.hardness));
+        (1 - clamp01(b.to.refined.hardness)) *
+        (b.from.intent === "spar" ? SPAR_FORCE : 1);
       const injury = injure(
         b.to.plan,
         b.to.body,
@@ -669,7 +680,17 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   const quicker =
     rival.caps.locomotion * rival.refined.speed >= s.caps.locomotion * s.refined.speed * 1.2;
   const canRun = s.caps.locomotion > 0.4 && s.breath > 0.1;
-  if (input.reading === true) {
+  if (s.intent === "spar") {
+    // La práctica no se huye: concede quien va perdiendo por toques, se lastimó o quedó sin aire.
+    s.odds = oddsOf(s, rival, input.light);
+    if (
+      s.woundsTaken >= s.landed + SPAR_TOUCHES ||
+      powerOf(s) < SPAR_CONCEDE_POWER ||
+      s.breath < 0.08
+    ) {
+      return { kind: "yield" };
+    }
+  } else if (input.reading === true) {
     // Con lectura (§5, §11): cree lo que leyó del rival, no lo que es.
     const base =
       (rival.caps.manipulation +
@@ -718,7 +739,7 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   const d = dist(s.at, rival.at);
   // Quien ganó no persigue lejos si solo quería echarlo.
   if (d > FIST_REACH * 1.25) {
-    const chase = s.intent === "kill" || s.intent === "subdue" || d < 3;
+    const chase = s.intent === "kill" || s.intent === "subdue" || s.intent === "spar" || d < 3;
     return chase && s.breath > 0.15 ? { kind: "close", to: rival.id } : { kind: "idle" };
   }
   if (s.intent === "escape") return { kind: "flee", from: rival.id };
