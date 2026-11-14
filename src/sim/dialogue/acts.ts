@@ -4,6 +4,7 @@
 // le cuentan. Lo que no encaja es `other`, y el oyente lo toma como charla.
 
 import type { AgentId } from "../../core/index.ts";
+import { challenges, type DuelRule, duelRuleIn } from "./challenge.ts";
 import type { SpokenForm } from "./form.ts";
 import type { Appeal } from "./persuasion.ts";
 import type { ElicitTechnique } from "./secrets.ts";
@@ -24,6 +25,8 @@ type SpeechBody =
   | { readonly kind: "promotion" }
   /** Pide una misión de la secta (novel2-missions-ask). */
   | { readonly kind: "mission" }
+  /** Reta al oyente a duelo con una regla (novel3-challenge-core). */
+  | { readonly kind: "challenge"; readonly rule: DuelRule }
   /**
    * ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). `via` es
    * la maniobra con que se pregunta (dialogue §11): sin ella, de frente; si el otro guarda un secreto
@@ -505,6 +508,8 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
   // Una amenaza gana sobre el pedido que la acompaña («dame el grano o te mato»).
   // La exigencia que la acompaña (el bien pedido) se conserva: es lo que el amenazado cede o no.
   const demand = !blur && good !== null && REQUEST.test(norm) ? { demand: good } : {};
+  // Un desafío gana sobre la amenaza que lo acompaña: «te reto a muerte» no es «te mato».
+  if (challenges(norm)) return { kind: "challenge", rule: duelRuleIn(norm) };
   if (THREAT_DEADLY.test(norm)) return { kind: "threaten", harm: 1, ...demand };
   if (THREAT_BEATING.test(norm)) {
     return { kind: "threaten", harm: THREAT_BEATING_HARM, ...demand };

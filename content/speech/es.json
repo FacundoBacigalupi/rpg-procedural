@@ -581,6 +581,36 @@
     "lines": ["¿Misiones? Las da un anciano, no yo.", "Eso pedíselo a los ancianos."]
   },
   {
+    "id": "challenge.ignore",
+    "lines": ["No voy a pelear con vos.", "¿Un duelo? No es momento."]
+  },
+  {
+    "id": "challenge.accept.yield",
+    "lines": [
+      "Acepto. Hasta que uno de los dos se rinda.",
+      "Está bien: peleamos hasta que uno pida basta."
+    ],
+    "formal": ["Acepto el desafío. Hasta que uno de los dos se rinda."]
+  },
+  {
+    "id": "challenge.accept.first_blood",
+    "lines": ["Acepto. A la primera sangre.", "Dale: el primero que sangre, pierde."],
+    "formal": ["Acepto el desafío, a primera sangre."]
+  },
+  {
+    "id": "challenge.accept.death",
+    "lines": [
+      "A muerte, entonces. Que no se diga que me eché atrás.",
+      "Acepto. Uno de los dos no sale de esta."
+    ],
+    "formal": ["Acepto el duelo a muerte."]
+  },
+  {
+    "id": "challenge.refuse",
+    "lines": ["No acepto. Buscate otro.", "No tengo nada que probarte."],
+    "formal": ["Declino el desafío."]
+  },
+  {
     "id": "mission.give.herbs",
     "lines": [
       "Al alquimista le faltan hierbas espirituales. Andá al monte, juntá lo que puedas y traéselas a un anciano antes de dos semanas.",

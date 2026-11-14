@@ -17,6 +17,7 @@ import {
   hearAccusation,
 } from "./accusations.ts";
 import type { PromiseTerms, SpeechAct } from "./acts.ts";
+import type { ChallengeResponse } from "./challenge.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import { type FormJudgeInput, type FormJudgement, judgeForm } from "./form.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -162,6 +163,11 @@ export interface ReplyInput {
    * Sin esto el oyente no es quien da misiones.
    */
   readonly mission?: { readonly given: string } | { readonly refused: string };
+  /**
+   * Lo que contesta el retado a un desafío (novel3-challenge-core): ya pesado por quien lo cablea
+   * (`weighChallenge`). Sin esto el oyente no lo toma en serio (no puede pelear, o no es el caso).
+   */
+  readonly challenge?: { readonly response: ChallengeResponse };
   /**
    * Cómo pesó el oyente el rumor que le pasan (information §3, `hearRumor`): ya hecho por quien
    * lo cablea porque necesita el estado y el sorteo. Sin esto el rumor no tiene respaldo (nada
@@ -391,6 +397,10 @@ function decideBody(i: ReplyInput, at: number): Reply {
         return say("introduce.wary");
       }
       return say("introduce", { name: i.nameOf(i.listener) });
+    case "challenge":
+      if (!i.challenge) return say("challenge.ignore");
+      if (i.challenge.response === "accept") return say(`challenge.accept.${a.rule}`);
+      return say("challenge.refuse");
     case "mission":
       if (!i.mission) return say("mission.no");
       if ("given" in i.mission) return say(`mission.give.${i.mission.given}`);
