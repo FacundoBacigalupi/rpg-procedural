@@ -1319,6 +1319,11 @@
         "id": "spar",
         "duration": 1,
         "ease": 0
+      },
+      {
+        "id": "art",
+        "duration": 1,
+        "ease": 0
       }
     ],
     "requires": [

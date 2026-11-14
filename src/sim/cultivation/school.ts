@@ -12,6 +12,7 @@ import {
   contentId,
   defineContent,
   type EntityRef,
+  type EventId,
   type Rng,
   type Tick,
   z,
@@ -26,6 +27,11 @@ export const SchoolNames = z.strictObject({
   layer: z.string().min(1),
   realms: z.array(z.array(z.string().min(1)).min(1)).min(2),
   techniques: z.array(z.string().min(1)).min(1),
+  /** Las técnicas de ataque (novel3-technique-school): nombre y qué herida dejan. */
+  arts: z
+    .array(z.strictObject({ name: z.string().min(1), wound: z.enum(["cut", "puncture", "blunt"]) }))
+    .min(1)
+    .optional(),
 });
 export type SchoolNames = z.infer<typeof SchoolNames>;
 export const SCHOOLS = defineContent("schools", SchoolNames);
@@ -57,7 +63,44 @@ export interface School {
   readonly technique: EntryTechnique;
   /** Un método por reino, en orden (novel2-method-school); sin él, solo la técnica de entrada. */
   readonly methods?: readonly SchoolMethod[];
+  /** La técnica de ataque que enseña a sus internos (novel3-technique-school). */
+  readonly art?: SchoolArt;
 }
+
+/**
+ * Una técnica de ataque de la escuela: un proyectil de qi (`sim/combat` `AttackArt`, con `shape`
+ * «projectile» y el nombre como id). Los números salen de la ley (`ART_RANGES`), no del nombre.
+ */
+export interface SchoolArt {
+  readonly name: string;
+  /** Qi del recipiente que gasta. */
+  readonly cost: number;
+  /** Metros hasta donde llega con fuerza. */
+  readonly range: number;
+  /** 0-1: la fuerza con que pega a quemarropa y bien hecha. */
+  readonly power: number;
+  /** 0-1: el control que pide. */
+  readonly difficulty: number;
+  readonly wound: "cut" | "puncture" | "blunt";
+}
+
+/** Entre qué extremos sale cada número de una técnica de ataque (sin calibrar). */
+export const ART_RANGES = {
+  cost: [6, 14],
+  range: [8, 20],
+  power: [0.35, 0.7],
+  difficulty: [0.3, 0.65],
+} as const;
+
+/** Quién sabe la técnica de ataque de qué escuela, desde cuándo y por qué evento. */
+export interface KnownArt {
+  readonly org: EntityRef;
+  readonly name: string;
+  readonly learnedAt: Tick;
+  readonly event: EventId;
+}
+
+export const ART_KNOWN = table<KnownArt>("cultivation.art_known");
 
 /** La escuela, en la entidad de la secta. */
 export const SECT_SCHOOL = table<School>("cultivation.school");
@@ -114,7 +157,32 @@ export function generateSchool(rng: Rng, law: CultivationLaw, names: SchoolNames
       100;
     methods.push({ name: base, factor: f, realm: i });
   }
-  return { realms, layer: names.layer, technique: { name, factor }, methods };
+  // La técnica de ataque, de su propio rng: no mueve lo de arriba.
+  const art =
+    names.arts && names.arts.length > 0 ? generateArt(rng.fork("art"), names.arts) : undefined;
+  return {
+    realms,
+    layer: names.layer,
+    technique: { name, factor },
+    methods,
+    ...(art ? { art } : {}),
+  };
+}
+
+function generateArt(rng: Rng, arts: NonNullable<SchoolNames["arts"]>): SchoolArt {
+  const pick = arts[rng.int(0, arts.length - 1)] as (typeof arts)[number];
+  const between = (key: keyof typeof ART_RANGES, scale: 1 | 100) => {
+    const [lo, hi] = ART_RANGES[key];
+    return Math.round((lo + (hi - lo) * rng.fork(key).float()) * scale) / scale;
+  };
+  return {
+    name: pick.name,
+    cost: between("cost", 1),
+    range: between("range", 1),
+    power: between("power", 100),
+    difficulty: between("difficulty", 100),
+    wound: pick.wound,
+  };
 }
 
 /** El índice del reino de un tramo según la escuela; pasado el último umbral, el último. */

@@ -80,3 +80,25 @@ describe("practicar (novel3-spar-act)", () => {
     expect(fightIntentOf(s?.manner ?? [])).toBe("spar");
   });
 });
+
+describe("la técnica de ataque (novel3-technique-act)", () => {
+  it.each([
+    "uso la técnica contra Wu",
+    "uso mi técnica contra Wu",
+    "le lanzo la técnica a Wu",
+    "lanzo mi técnica de ataque contra Wu",
+    "le pego a Wu con la técnica",
+    "ataco a Wu con mi tecnica",
+  ])("«%s» es golpear a Wu con la técnica", (t) => {
+    const s = strike(t);
+    expect(s?.manner).toEqual(["art"]);
+    const a = s?.args[0];
+    expect(a?.role).toBe("target");
+    expect(a && "ref" in a ? a.ref.text : undefined).toBe("Wu");
+  });
+
+  it("usar una cosa sigue siendo usarla", () => {
+    const d = parseCommand("uso el hacha");
+    expect(d?.plan?.kind === "do" ? d.plan.verb : undefined).toBe("use");
+  });
+});

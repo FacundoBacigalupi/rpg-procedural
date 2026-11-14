@@ -8,6 +8,7 @@ import { generateCultivationLaw, QI_THRESHOLDS } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
 import { METHOD_POINTS_PER_REALM, methodExchange } from "./pavilion.ts";
 import {
+  ART_RANGES,
   BLIND_PREP,
   breaksBlind,
   generateSchool,
@@ -372,6 +373,25 @@ describe("la escuela (novel-cult-school)", () => {
       expect(school.technique.factor).toBeGreaterThanOrEqual(1.2);
       expect(school.technique.factor).toBeLessThanOrEqual(1.6);
       expect(names.techniques).toContain(school.technique.name);
+    }
+  });
+
+  it("una técnica de ataque del contenido, con números de la ley en rango; sin nombres, ninguna (novel3-technique-school)", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const school = generateSchool(Rng.root(seed), lawOf(seed), names);
+      const art = school.art;
+      if (!art) throw new Error("sin técnica de ataque");
+      expect(names.arts?.map((x) => x.name)).toContain(art.name);
+      expect(names.arts?.find((x) => x.name === art.name)?.wound).toBe(art.wound);
+      for (const key of ["cost", "range", "power", "difficulty"] as const) {
+        expect(art[key]).toBeGreaterThanOrEqual(ART_RANGES[key][0]);
+        expect(art[key]).toBeLessThanOrEqual(ART_RANGES[key][1]);
+      }
+      // Sale de su propio rng: lo demás de la escuela no cambia.
+      const { arts: _, ...bare } = names;
+      const without = generateSchool(Rng.root(seed), lawOf(seed), bare);
+      expect(without.art).toBeUndefined();
+      expect({ ...without, art }).toEqual(school);
     }
   });
 

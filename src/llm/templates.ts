@@ -428,6 +428,15 @@ function outcome(
         say("outcome.strike.spar.declined", { target: ref(e.target) });
         break;
       }
+      if (e.art) {
+        // La técnica de ataque (novel3-technique-act): cómo salió y si se le volvió.
+        say(`outcome.strike.art.${e.art.outcome}`, {
+          target: ref(e.target),
+          art: e.art.name ?? "",
+        });
+        if (e.art.backlash) say("outcome.strike.art.backlash");
+        break;
+      }
       if (e.target === undefined && !e.hit) say("outcome.strike.missed_anyone");
       else {
         const target = ref(e.target);

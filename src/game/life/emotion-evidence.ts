@@ -103,6 +103,7 @@ export function ownEmotionSignals(
         a.blame !== null &&
         event.actors.includes(owner) &&
         (event.kind === "combat.fight" ||
+          event.kind === "combat.art" ||
           event.kind === "combat.finish" ||
           event.kind === "family.rearing")) ||
       (a.stimulus.theme === "guilt" &&

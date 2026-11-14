@@ -104,6 +104,7 @@ import {
   waveForce,
   waveTemper,
 } from "../../sim/index.ts";
+import { ART_EVENT } from "./art.ts";
 import { TRIBULATION_PROCESS } from "./tribulation.ts";
 
 export const MEDITATE_PROCESS = "life.cultivation.meditate";
@@ -580,6 +581,28 @@ export function meditateProcess(o: {
       const stateOf = (who: AgentId): CultivationState =>
         rows.get(who) ?? ctx.truth.get(CULTIVATION_STATE, who) ?? { sensitivity: 0, hours: 0 };
       for (const e of ctx.recent) {
+        // Lanzó una técnica de ataque (novel3-technique-act): el qi sale del recipiente y vuelve a
+        // la reserva de donde está; un contragolpe le deja los meridianos dañados.
+        if (e.kind === ART_EVENT) {
+          const caster = e.actors[0] as AgentId | undefined;
+          const d = (e.data ?? {}) as { spent?: number; backlash?: number };
+          const spent = d.spent ?? 0;
+          const backlash = d.backlash ?? 0;
+          if (!caster || (spent <= 0 && backlash <= 0)) continue;
+          const before = stateOf(caster);
+          rows.set(caster, {
+            ...before,
+            qi: round4(Math.max(0, (before.qi ?? 0) - spent)),
+            ...(backlash > 0
+              ? { meridianDamage: round4(Math.min(1, (before.meridianDamage ?? 0) + backlash)) }
+              : {}),
+          });
+          const back = pools.get(poolFor(caster)) as { taken?: QiTaken };
+          if (back.taken) {
+            back.taken = { ...back.taken, taken: round4(Math.max(0, back.taken.taken - spent)) };
+          }
+          continue;
+        }
         // La tribulación cayó: la energía vuelve a su reserva y la ruptura se resuelve.
         const struck = e.kind === TRIBULATION_STRIKES_EVENT ? (e.actors[0] as AgentId) : undefined;
         if (struck) {

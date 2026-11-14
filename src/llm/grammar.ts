@@ -143,6 +143,8 @@ const SUBDUE_SOURCE =
 const DRIVE_OFF_SOURCE =
   "para echar(?:lo|la)?|para espantar(?:lo|la)?|para que se vaya|para sac[aá]rmel[oa] de encima|para alejar(?:lo|la)?";
 const ESCAPE_SOURCE = "para (?:escaparme|zafarme|soltarme|irme|huir|poder irme|poder huir)";
+/** Pegar con la técnica de ataque en vez de con la mano (novel3-technique-act). */
+const ART_SOURCE = "con (?:la|mi) t[eé]cnica(?: de ataque)?";
 
 const MANNERS: readonly { re: RegExp; manner: string }[] = [
   { re: new RegExp(`\\b(?:${KILL_SOURCE})\\b`, "i"), manner: "kill" },
@@ -159,10 +161,12 @@ const MANNERS: readonly { re: RegExp; manner: string }[] = [
   },
   { re: /\b(?:corro|corriendo|r[aá]pido|a las corridas|apurad[oa])\b/i, manner: "fast" },
   { re: new RegExp(`\\b(?:${HOLD_BACK_SOURCE})\\b`, "i"), manner: "hold_back" },
+  // «Le pego con la técnica»: el golpe sale del qi (novel3-technique-act).
+  { re: new RegExp(`\\b(?:${ART_SOURCE})\\b`, "i"), manner: "art" },
   { re: /\b(?:en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo)\b/i, manner: "pawn" },
 ];
 const MANNER_WORDS = new RegExp(
-  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo|bien|${HOLD_BACK_SOURCE}|${KILL_SOURCE}|${SUBDUE_SOURCE}|${DRIVE_OFF_SOURCE}|${ESCAPE_SOURCE})\\b`,
+  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo|bien|${HOLD_BACK_SOURCE}|${KILL_SOURCE}|${SUBDUE_SOURCE}|${DRIVE_OFF_SOURCE}|${ESCAPE_SOURCE}|${ART_SOURCE})\\b`,
   "gi",
 );
 
@@ -493,6 +497,17 @@ const VERBS: readonly {
           { role: "how", text: sit ? "sentarme" : "calentarme" },
         ]),
       };
+    },
+  },
+  {
+    // «Uso la técnica contra X», «le lanzo mi técnica a X» (novel3-technique-act, combat §9): el
+    // golpe que sale del qi; antes del «uso» de las cosas.
+    re: /^(?:le\s+|la\s+)?(?:uso|usar|lanzo|lanzar|tiro|tirar|suelto|soltar|ejecuto|ejecutar)\s+(?:la|mi)\s+t[eé]cnica(?:\s+de\s+ataque)?\b/i,
+    build: (rest) => {
+      const p = personAfterA(
+        rest.replace(MANNER_WORDS, " ").replace(/^\s*(?:contra|sobre|en)\s+/i, " a "),
+      );
+      return { node: act("strike", p ? [{ role: "target", ref: p.ref }] : [], ["art"]) };
     },
   },
   {

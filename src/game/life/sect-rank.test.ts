@@ -14,6 +14,7 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionPlan,
+  ART_KNOWN,
   BODY_STATE,
   CULTIVATION_STATE,
   caveBarred,
@@ -27,6 +28,7 @@ import {
   SECT_CONTRIBUTION,
   SECT_MEMBER,
   SECT_PROMOTED_EVENT,
+  SECT_SCHOOL,
   sectSpaceKey,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -113,6 +115,15 @@ describe("el ascenso en la secta", () => {
       { kind: "state", entity: me, key: CULTIVATION_STATE.name },
     ]);
     expect(w.truth.get(SECT_MEMBER, ref)?.rank).toBe("inner");
+    // Y aprende la técnica de ataque de la escuela por ese ascenso (novel3-technique-school).
+    const art = w.truth.get(SECT_SCHOOL, org)?.art;
+    expect(art).toBeDefined();
+    expect(w.truth.get(ART_KNOWN, ref)).toEqual({
+      org,
+      name: art?.name,
+      learnedAt: up?.tick,
+      event: up?.id,
+    });
     expect(caveBarred(w.truth, ref, sectSpaceKey(sect.seatPlace, "cave"))).toBe(false);
     expect(playerView(w, [], { heardSince: from }).self.cues).toContain("promoted");
 

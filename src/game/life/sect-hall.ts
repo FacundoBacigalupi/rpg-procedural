@@ -36,6 +36,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ART_KNOWN,
   BODY_STATE,
   type BodyPlanDef,
   CULTIVATION_STATE,
@@ -72,6 +73,7 @@ import {
   type SchemaDef,
   SECT,
   SECT_MEMBER,
+  SECT_SCHOOL,
   SECT_STIPEND_EVENT,
   SELF_IMAGES,
   type SectRank,
@@ -232,6 +234,7 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
     ],
     writes: [
       SECT_HALL.name,
+      ART_KNOWN.name,
       ENTITY.name,
       PERSON.name,
       GENOME.name,
@@ -357,6 +360,13 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             }),
             setComponent(LOCATION, key, { hex: seatHex, space: hallKey }),
           );
+          // Los internos y el maestro ya saben la técnica de ataque de la escuela (novel3-technique-school).
+          const art = truth.get(SECT_SCHOOL, org)?.art;
+          if (art && MEMBER_RANK[slot.rank] !== "outer") {
+            changes.push(
+              setComponent(ART_KNOWN, key, { org, name: art.name, learnedAt: ctx.now, event }),
+            );
+          }
           if (o.language) {
             const name = nameNewborn(o.language, {
               rng: rng.fork("name"),

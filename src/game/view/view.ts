@@ -12,6 +12,7 @@
 
 import { type AgentId, compareStrings, type EntityRef } from "../../core/index.ts";
 import {
+  type ArtGist,
   type Attire,
   type BelievedOutcome,
   type Channel,
@@ -483,6 +484,7 @@ export type EffectView =
       readonly fight?: FightGist;
       readonly finished?: boolean;
       readonly declined?: boolean;
+      readonly art?: ArtGist;
     }
   | {
       readonly kind: "spare";
@@ -1134,6 +1136,7 @@ function effectView(
         ...(e.fight ? { fight: e.fight } : {}),
         ...(e.finished ? { finished: true } : {}),
         ...(e.declined ? { declined: true } : {}),
+        ...(e.art ? { art: e.art } : {}),
       };
     case "spare":
       return { kind: "spare", ...target(e.target) };

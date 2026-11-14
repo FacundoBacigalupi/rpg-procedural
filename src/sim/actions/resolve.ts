@@ -547,6 +547,8 @@ export type VerbEffect =
       readonly finished?: boolean;
       /** Le propuso practicar y el otro no quiso (la pone `game`, novel3-spar-act): no hubo golpe. */
       readonly declined?: boolean;
+      /** Lanzó su técnica de ataque (la pone `game`, novel3-technique-act): cómo salió. */
+      readonly art?: ArtGist;
     }
   | {
       /** Perdonar a quien se rindió: dejarlo ir. */
@@ -809,6 +811,17 @@ export type VerbEffect =
       /** El trabajo o el oficio que nombró, en sus palabras. */
       readonly what: string | null;
     };
+
+/**
+ * Cómo salió una técnica de ataque para quien la lanzó (novel3-technique-act): `unknown` si no sabe
+ * ninguna, `no_qi` si no le alcanzaba para empezarla.
+ */
+export interface ArtGist {
+  readonly name?: string;
+  readonly outcome: "unknown" | "no_qi" | "faded" | "missed" | "hit";
+  /** El qi se le volvió contra los meridianos. */
+  readonly backlash: boolean;
+}
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
 export type FightSide = "standing" | "down" | "fled" | "yielded";
