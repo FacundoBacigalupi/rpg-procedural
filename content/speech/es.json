@@ -606,6 +606,16 @@
     "formal": ["Acepto el duelo a muerte."]
   },
   {
+    "id": "challenge.taken",
+    "lines": ["Así me gusta. Nos vemos donde dijimos.", "Bien. Que no se te haga tarde."],
+    "formal": ["Me alegra que aceptes. Sea según lo dicho."]
+  },
+  {
+    "id": "challenge.scorned",
+    "lines": ["Ya sabía que no te ibas a animar.", "Como quieras. Todos lo oyeron."],
+    "formal": ["Lo tomo como una negativa."]
+  },
+  {
     "id": "challenge.refuse",
     "lines": ["No acepto. Buscate otro.", "No tengo nada que probarte."],
     "formal": ["Declino el desafío."]

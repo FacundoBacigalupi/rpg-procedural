@@ -169,6 +169,11 @@ export interface ReplyInput {
    */
   readonly challenge?: { readonly response: ChallengeResponse };
   /**
+   * Cómo contestó quien habla el desafío que le hizo el oyente (novel3-challenge-npc): aceptarlo o
+   * rechazarlo, dicho a quien lo retó. Sin esto un sí o un no es de un trato.
+   */
+  readonly challengeAnswer?: ChallengeResponse;
+  /**
    * Cómo pesó el oyente el rumor que le pasan (information §3, `hearRumor`): ya hecho por quien
    * lo cablea porque necesita el estado y el sorteo. Sin esto el rumor no tiene respaldo (nada
    * que el oyente pueda ubicar en un hecho real) y lo toma como charla.
@@ -398,6 +403,8 @@ function decideBody(i: ReplyInput, at: number): Reply {
       }
       return say("introduce", { name: i.nameOf(i.listener) });
     case "challenge":
+      // Lo reta de vuelta quien fue retado por él: es aceptar.
+      if (i.challengeAnswer === "accept") return say("challenge.taken");
       if (!i.challenge) return say("challenge.ignore");
       if (i.challenge.response === "accept") return say(`challenge.accept.${a.rule}`);
       return say("challenge.refuse");
@@ -623,6 +630,8 @@ function decideBody(i: ReplyInput, at: number): Reply {
       return say("other");
     }
     case "accept": {
+      if (i.challengeAnswer === "accept") return say("challenge.taken");
+      if (i.challengeAnswer === "refuse") return say("challenge.scorned");
       if (!i.open) return say("answer.nothing");
       if (i.reproach || holdsGrudge(i.feel, temper.reactivity)) return say("answer.nothing");
       // Entre la contraoferta y el sí pudo cambiar lo que cada uno tiene a mano.
@@ -639,6 +648,7 @@ function decideBody(i: ReplyInput, at: number): Reply {
       return { ...say("accept.thanks"), deal: i.open };
     }
     case "refuse":
+      if (i.challengeAnswer === "refuse") return say("challenge.scorned");
       return say(i.open ? "refuse.ack" : "answer.nothing");
     case "argue":
       // Pesar la razón contra lo que le importa al oyente es del cableado (`persuade`); hasta

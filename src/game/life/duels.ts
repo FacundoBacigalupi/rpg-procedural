@@ -16,14 +16,26 @@
 // hecho (`combat.duel_grudge`, que la aldea lee como agresión del vencedor), más cuanto más
 // reactivo es.
 
-import { type AgentId, compareStrings, type Event, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  compareStrings,
+  type EntityRef,
+  type Event,
+  type Tick,
+} from "../../core/index.ts";
 import {
   adjustFace,
   BODY_STATE,
+  type Candidate,
+  CHALLENGE_COOLDOWN_DAYS,
   CHALLENGE_EVENT,
+  CHALLENGES_SENT,
   DUEL,
   DUEL_DAYS,
+  DUEL_OFFER,
+  DUEL_OFFER_HOURS,
   type Duel,
+  type DuelOffer,
   type DuelRule,
   deleteComponent,
   duelFace,
@@ -38,6 +50,7 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   SECT_MEMBER,
+  STAKES_RISK,
   type StateChange,
   setComponent,
   standardize,
@@ -144,8 +157,56 @@ function rankGap(truth: ReadonlyWorldTruth, a: AgentId, b: AgentId): number {
 
 export const DUELS_PROCESS = "life.duels";
 
+/** Opt-in de `decideProcess`: los discípulos retan a quien les tiene rencor (novel3-challenge-npc). */
+export interface ChallengeCandidateOptions {
+  /** Rencor desde el que se le ocurre retarlo. */
+  readonly minResentment: number;
+  /** Rencor desde el que lo reta a muerte (en la plataforma); por debajo, hasta rendirse. */
+  readonly deathResentment: number;
+  /** Peso del ánimo (como `speakActs.weight`). */
+  readonly weight: number;
+  readonly chance: number;
+  readonly dayTicks: number;
+}
+
+/**
+ * Las candidatas `speak` con acto `challenge` de un discípulo (puro). Solo contra alguien de su
+ * misma secta (lo sabe: la secta se conoce adentro), sin un duelo pactado vivo de ninguno de los
+ * dos, ni un desafío propio a la misma persona en los últimos `CHALLENGE_COOLDOWN_DAYS` días.
+ */
+export function challengeCandidates(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  people: readonly { readonly id: AgentId; readonly resentment: number }[],
+  now: Tick,
+  o: ChallengeCandidateOptions,
+): Candidate[] {
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine || truth.has(DUEL, me)) return [];
+  const sent = truth.get(CHALLENGES_SENT, me) ?? {};
+  const out: Candidate[] = [];
+  for (const p of [...people].sort((a, b) => compareStrings(a.id, b.id))) {
+    if (p.resentment < o.minResentment) continue;
+    if (truth.get(SECT_MEMBER, p.id)?.org !== mine.org || truth.has(DUEL, p.id)) continue;
+    const last = sent[p.id];
+    if (last !== undefined && now - last < CHALLENGE_COOLDOWN_DAYS * o.dayTicks) continue;
+    out.push({
+      id: `speak:${p.id}+challenge`,
+      verb: "speak",
+      target: p.id as unknown as EntityRef,
+      contributes: { social: 0.2 },
+      chance: o.chance,
+      loss: STAKES_RISK.none.loss,
+      mood: Math.round(o.weight * p.resentment * 1e6) / 1e6,
+      act: { kind: "challenge", rule: p.resentment >= o.deathResentment ? "death" : "yield" },
+    });
+  }
+  return out;
+}
+
 export function duelsProcess(o: {
   readonly dayTicks: number;
+  readonly hourTicks: number;
   /** Con qué se lee el temperamento de la familia del muerto (sin esto, la base). */
   readonly traits?: readonly Trait[];
 }): ProcessDef {
@@ -165,12 +226,16 @@ export function duelsProcess(o: {
       BODY_STATE.name,
       SECT_MEMBER.name,
       INNATE.name,
+      DUEL_OFFER.name,
+      CHALLENGES_SENT.name,
     ],
-    writes: [DUEL.name, FACE.name],
+    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name],
     run(ctx) {
       const set = new Map<AgentId, Duel>();
       const closed = new Set<AgentId>();
       const faces = new Map<AgentId, Face>();
+      const offers = new Map<AgentId, DuelOffer | null>();
+      const sent = new Map<AgentId, Readonly<Record<string, Tick>>>();
       const events: EventDraft[] = [];
       for (const e of ctx.recent) {
         if (e.kind === "combat.fight") {
@@ -239,14 +304,76 @@ export function duelsProcess(o: {
           challenged?: AgentId;
           rule?: DuelRule;
           response?: string;
+          refuseFace?: number;
         } | null;
-        if (!d || d.response !== "accept" || !d.challenger || !d.challenged || !d.rule) continue;
+        if (!d?.challenger || !d.challenged || !d.rule) continue;
+        // Cuándo retó a quién (para no retar a cada rato al mismo).
+        sent.set(d.challenger, {
+          ...(sent.get(d.challenger) ?? ctx.truth.get(CHALLENGES_SENT, d.challenger)),
+          [d.challenged]: e.tick,
+        });
+        if (d.response === "pending") {
+          offers.set(d.challenged, {
+            from: d.challenger,
+            rule: d.rule,
+            at: e.tick,
+            until: e.tick + DUEL_OFFER_HOURS * o.hourTicks,
+            refuseFace: d.refuseFace ?? 0,
+            event: e.id,
+            place: e.place,
+          });
+          continue;
+        }
+        if (ctx.truth.get(DUEL_OFFER, d.challenged)?.from === d.challenger) {
+          offers.set(d.challenged, null);
+        }
+        if (d.response !== "accept") continue;
         const until = e.tick + DUEL_DAYS * o.dayTicks;
         const base = { rule: d.rule, challenger: d.challenger, at: e.tick, until, event: e.id };
         set.set(d.challenger, { ...base, with: d.challenged });
         set.set(d.challenged, { ...base, with: d.challenger });
       }
+      // El desafío al personaje que se le pasó sin respuesta: delante de otros, como rechazarlo.
+      for (const id of [...ctx.truth.ids(DUEL_OFFER)].sort(compareStrings) as AgentId[]) {
+        const offer = ctx.truth.get(DUEL_OFFER, id);
+        if (!offer || offers.has(id) || ctx.now <= offer.until) continue;
+        offers.set(id, null);
+        if (offer.refuseFace > 0) {
+          faces.set(
+            id,
+            adjustFace(faces.get(id) ?? ctx.truth.get(FACE, id), -offer.refuseFace, ctx.now),
+          );
+          faces.set(
+            offer.from,
+            adjustFace(
+              faces.get(offer.from) ?? ctx.truth.get(FACE, offer.from),
+              offer.refuseFace / 2,
+              ctx.now,
+            ),
+          );
+        }
+        events.push({
+          kind: CHALLENGE_EVENT,
+          actors: [offer.from, id],
+          place: offer.place,
+          data: {
+            challenger: offer.from,
+            challenged: id,
+            rule: offer.rule,
+            response: "ignored",
+            refuseFace: offer.refuseFace,
+          },
+          emissions: {},
+          causes: [{ kind: "event", event: offer.event }],
+        });
+      }
       const changes: StateChange[] = [];
+      for (const [id, offer] of [...offers].sort(([a], [b]) => compareStrings(a, b))) {
+        changes.push(offer ? setComponent(DUEL_OFFER, id, offer) : deleteComponent(DUEL_OFFER, id));
+      }
+      for (const [id, s] of [...sent].sort(([a], [b]) => compareStrings(a, b))) {
+        changes.push(setComponent(CHALLENGES_SENT, id, s));
+      }
       for (const id of [...ctx.truth.ids(DUEL)].sort(compareStrings) as AgentId[]) {
         const d = ctx.truth.get(DUEL, id);
         if (!d || set.has(id)) continue;

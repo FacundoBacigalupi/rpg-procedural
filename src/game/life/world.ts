@@ -1631,7 +1631,13 @@ export function lifeWorld(
           ...(parts.cultivation ? { duels: { skills: parts.skills } } : {}),
         }),
         ...(parts.cultivation
-          ? [duelsProcess({ dayTicks: parts.clock.day, traits: parts.traits })]
+          ? [
+              duelsProcess({
+                dayTicks: parts.clock.day,
+                hourTicks: Math.round(parts.clock.day / 24),
+                traits: parts.traits,
+              }),
+            ]
           : []),
         ...(economicBatch ? [converseProjectionProcess()] : []),
         ...(economicBatch
@@ -2785,6 +2791,18 @@ export function lifeWorld(
           ...(parts.takeBelieved ? { takeBelieved: parts.takeBelieved } : {}),
           ...(parts.errands ? { errands: parts.errands } : {}),
           ...(parts.speakActs ? { speakActs: parts.speakActs } : {}),
+          // Los discípulos se retan por rencor (novel3-challenge-npc).
+          ...(parts.cultivation
+            ? {
+                challenges: {
+                  minResentment: 0.5,
+                  deathResentment: 0.8,
+                  weight: 0.5,
+                  chance: 0.8,
+                  dayTicks: parts.clock.day,
+                },
+              }
+            : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),

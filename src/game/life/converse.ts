@@ -43,6 +43,7 @@ import {
   beliefConfidenceAt,
   believed,
   CHALLENGE_EVENT,
+  type ChallengeResponse,
   type ChallengeVerdict,
   type ConceptDef,
   CREDIT,
@@ -57,6 +58,8 @@ import {
   type Deed,
   type DetectionInput,
   type DimensionDef,
+  DUEL,
+  DUEL_OFFER,
   daysInRank,
   decideReply,
   deedsBy,
@@ -256,6 +259,8 @@ export function withDeclared(
       case "greet":
       case "farewell":
         return { kind: declared.kind, ...form };
+      case "challenge":
+        return { kind: "challenge", rule: declared.rule, ...form };
       case "ask":
         return { kind: "ask", about: known(declared.about), ...form };
       case "request":
@@ -1518,8 +1523,19 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         act.kind === "mission" && o.missions && ctx.ledger
           ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now)
           : null;
+      // El desafío que este oyente le hizo a quien le habla y que espera respuesta (novel3-challenge-npc):
+      // un sí, un no, o retarlo de vuelta (que es aceptar).
+      const offer = o.duels ? truth.get(DUEL_OFFER, speaker) : undefined;
+      const offered = offer && offer.from === me && ctx.now <= offer.until ? offer : undefined;
+      const challengeAnswer: ChallengeResponse | undefined = offered
+        ? act.kind === "accept" || act.kind === "challenge"
+          ? "accept"
+          : act.kind === "refuse"
+            ? "refuse"
+            : undefined
+        : undefined;
       const challenge =
-        act.kind === "challenge" && o.duels
+        act.kind === "challenge" && o.duels && !challengeAnswer
           ? challengeOf(
               truth,
               o.duels.skills,
@@ -1529,12 +1545,41 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               z,
             )
           : undefined;
+      // Al personaje no se le contesta por él (novel3-challenge-npc): el desafío queda esperando lo que
+      // diga, con la cara que le costaría no aceptarlo; `life.duels` se lo anota.
+      if (challenge && act.kind === "challenge" && truth.has(PLAYER, me)) {
+        // Ya se lo dijo y sigue esperando: repetirlo no abre otro.
+        const open = truth.get(DUEL_OFFER, me);
+        if (open && open.from === speaker && ctx.now <= open.until) return { changes: [clear] };
+        const pact = truth.get(DUEL, me);
+        if (pact && pact.with === speaker && ctx.now <= pact.until) return { changes: [clear] };
+        return {
+          changes: [clear],
+          events: [
+            {
+              kind: CHALLENGE_EVENT,
+              actors: [speaker, me],
+              place: o.placeOf(truth, me),
+              data: {
+                challenger: speaker,
+                challenged: me,
+                rule: act.rule,
+                response: "pending",
+                refuseFace: challenge.refuseFace,
+              },
+              emissions: { sight: 0.3, sound: 0.6 },
+              causes: [{ kind: "state", entity: me, key: PENDING.name }],
+            },
+          ],
+        };
+      }
       const reply = decideReply(
         {
           act,
           speaker,
           listener: me,
           ...(challenge ? { challenge: { response: challenge.response } } : {}),
+          ...(challengeAnswer ? { challengeAnswer } : {}),
           feel,
           ...(hearsayVerdict ? { hearsay: { verdict: hearsayVerdict } } : {}),
           ...(source ? { source } : {}),
@@ -1801,22 +1846,40 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         : undefined;
       // El desafío contestado (novel3-challenge-ask): si lo acepta, `life.duels` anota el duelo a los dos.
       const challengeEvent: EventDraft | undefined =
-        challenge && act.kind === "challenge"
+        offered && challengeAnswer
           ? {
               kind: CHALLENGE_EVENT,
-              actors: [speaker, me],
+              actors: [me, speaker],
               place: o.placeOf(truth, me),
               data: {
-                challenger: speaker,
-                challenged: me,
-                rule: act.rule,
-                response: challenge.response,
-                refuseFace: challenge.response === "refuse" ? challenge.refuseFace : 0,
+                challenger: me,
+                challenged: speaker,
+                rule: offered.rule,
+                response: challengeAnswer,
+                refuseFace: challengeAnswer === "refuse" ? offered.refuseFace : 0,
               },
               emissions: { sight: 0.3, sound: 0.6 },
-              causes: [{ kind: "event", event: draftEvent(0) }],
+              causes: [
+                { kind: "event", event: draftEvent(0) },
+                { kind: "event", event: offered.event },
+              ],
             }
-          : undefined;
+          : challenge && act.kind === "challenge"
+            ? {
+                kind: CHALLENGE_EVENT,
+                actors: [speaker, me],
+                place: o.placeOf(truth, me),
+                data: {
+                  challenger: speaker,
+                  challenged: me,
+                  rule: act.rule,
+                  response: challenge.response,
+                  refuseFace: challenge.response === "refuse" ? challenge.refuseFace : 0,
+                },
+                emissions: { sight: 0.3, sound: 0.6 },
+                causes: [{ kind: "event", event: draftEvent(0) }],
+              }
+            : undefined;
       let rumorEvent: EventDraft | undefined;
       if (rumor) {
         const { heard, told } = rumor;
@@ -1875,16 +1938,24 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           : undefined;
       // La cara de quien oye: la falta de forma y la amenaza o el insulto que lo dejó mal parado.
       // Rechazar un desafío delante de otros (novel3-challenge-ask): el retado pierde, quien retó gana la mitad.
-      const refused = challenge?.response === "refuse" ? challenge.refuseFace : 0;
+      // Si es el personaje quien lo rechaza (su desafío), al revés: pierde él y gana este.
+      const refused =
+        challenge?.response === "refuse"
+          ? challenge.refuseFace
+          : challengeAnswer === "refuse" && offered
+            ? -offered.refuseFace / 2
+            : 0;
+      // Negativa cuando el personaje rechazó su desafío: la cara que gana este.
       const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0) + refused;
-      if (lostFace > 0) {
+      if (lostFace !== 0) {
         if (o.projectSharedEffects)
           conversationEffects.push({ kind: "face", actor: me, delta: -lostFace, at: ctx.now });
         else
           changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
       }
       // La de quien habló: sube si le cedieron; la vergüenza de la ofensa de forma baja abajo.
-      let speakerFace = (regard?.faceGain ?? 0) + refused / 2;
+      let speakerFace =
+        (regard?.faceGain ?? 0) + (refused > 0 ? refused / 2 : refused < 0 ? 2 * refused : 0);
       // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
       // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
       // cometió pierde cara si se la reprochan.

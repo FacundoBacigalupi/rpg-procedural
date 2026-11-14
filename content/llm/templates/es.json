@@ -1475,6 +1475,18 @@
     ]
   },
   {
+    "id": "self.challenge_received",
+    "lines": [
+      "Te retaron a duelo, con su regla; esperan tu respuesta: aceptarlo, o negarte delante de quien mire."
+    ]
+  },
+  {
+    "id": "self.challenge_ignored",
+    "lines": [
+      "Dejaste pasar el desafío sin contestar; los que lo oyeron lo toman como que te negaste."
+    ]
+  },
+  {
     "id": "self.duel_won",
     "lines": ["Ganaste el duelo según lo pactado; los que miraban lo van a contar."]
   },

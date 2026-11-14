@@ -875,6 +875,21 @@ export function playerView(
       cues.add("challenge_refused_public");
     }
   }
+  // Un desafío que le hicieron (novel3-challenge-npc): esperando su respuesta, aceptado, o dejado
+  // vencer sin contestar.
+  if (options.heardSince !== undefined) {
+    const events = w.log.all();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!e || e.tick < options.heardSince) break;
+      if (e.kind !== CHALLENGE_EVENT || e.actors[1] !== w.player) continue;
+      const d = e.data as { response?: unknown } | null;
+      if (d?.response === "pending") cues.add("challenge_received");
+      else if (d?.response === "accept") cues.add("challenge_accepted");
+      else if (d?.response === "ignored") cues.add("challenge_ignored");
+      break;
+    }
+  }
   // El duelo peleado (novel3-challenge-fight): ganado o perdido, con su cara.
   if (options.heardSince !== undefined) {
     const events = w.log.all();

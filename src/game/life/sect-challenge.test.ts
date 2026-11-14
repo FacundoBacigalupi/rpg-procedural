@@ -17,10 +17,13 @@ import {
   type ActionPlan,
   BODY_STATE,
   CHALLENGE_EVENT,
+  CHALLENGES_SENT,
   CULTIVATION_STATE,
   checkInvariants,
   DUEL,
   DUEL_DAYS,
+  DUEL_OFFER,
+  type DuelRule,
   FACE,
   INNATE,
   KNOWN_DEEDS,
@@ -33,7 +36,9 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { DUEL_GRUDGE_EVENT, DUEL_SETTLED_EVENT } from "./duels.ts";
+import { PLAN_STATE } from "./act.ts";
+import { NPC_DECISION } from "./decide.ts";
+import { challengeCandidates, DUEL_GRUDGE_EVENT, DUEL_SETTLED_EVENT } from "./duels.ts";
 import { Life } from "./life.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -328,5 +333,191 @@ describe("la plataforma de vida o muerte (novel3-challenge-platform)", () => {
       expect(d.duel.kept).toBe(!Object.values(d.outcomes).includes("dead"));
     }
     expect(grudges).toEqual([]);
+  });
+});
+
+describe("los discípulos retan (novel3-challenge-npc)", () => {
+  const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+  /** El jugador y un vecino, los dos de la secta, juntos con `witnesses` mirando. */
+  const setup = (witnesses: number) => {
+    const life = Life.create(3, content, {
+      cultivation: true,
+      sectSeatRegion: true,
+      npcVerbs: ["speak"],
+    });
+    const w = life.world;
+    const me = life.player;
+    const org = w.truth.ids(SECT)[0] as EntityRef;
+    const [rival, third, ...rest] = w.truth
+      .ids(PERSON)
+      .map((id) => id as AgentId)
+      .filter((id) => id !== me && w.truth.get(BODY_STATE, id)?.death === null)
+      .filter((id) => life.now - (w.truth.get(PERSON, id)?.born ?? life.now) > 18 * 365 * DAY)
+      .sort();
+    if (!rival || !third) throw new Error("sin vecinos");
+    for (const id of [me, rival, third]) {
+      w.truth.set(SECT_MEMBER, id, { org, rank: "outer", since: life.now });
+    }
+    const here = w.truth.get(LOCATION, me);
+    if (!here) throw new Error("sin lugar");
+    const others = rest.slice(0, witnesses);
+    // Juntos en el lugar (las rutinas los mueven; se vuelve a llamar antes de cada intento).
+    const gather = () => {
+      for (const id of [me, rival, third, ...others]) w.truth.set(LOCATION, id, here);
+    };
+    gather();
+    for (const id of [me, rival, third, ...others]) {
+      const body = w.truth.get(BODY_STATE, id);
+      if (body) {
+        w.truth.set(BODY_STATE, id, { ...body, sleepDebt: 0, fatigue: 0, activity: "rest" });
+      }
+    }
+    return { life, w, me, rival, third, org, gather };
+  };
+
+  /** Que `who` decida retar a `to` ahora (lo que elegiría con rencor). */
+  const decideChallenge = (
+    s: ReturnType<typeof setup>,
+    who: AgentId,
+    to: AgentId,
+    rule: DuelRule,
+  ) => {
+    s.w.truth.set(NPC_DECISION, who, {
+      at: s.life.now,
+      id: `speak:${to}+challenge`,
+      verb: "speak",
+      target: to,
+      act: { kind: "challenge", rule },
+      utility: 1,
+      options: 2,
+    });
+  };
+
+  /** Lo decide cada hora hasta que el desafío llega (hablar puede fallar: titubea, no se oye). */
+  const challengeNow = (s: ReturnType<typeof setup>, who: AgentId, to: AgentId, rule: DuelRule) => {
+    for (let i = 0; i < 8; i++) {
+      s.gather();
+      decideChallenge(s, who, to, rule);
+      s.life.advanceTo(s.life.now + 3600);
+      if (challengesTo(s, to).length > 0) {
+        // Ya lo dijo: pasa a otra cosa (que no vuelva a decirlo en el test).
+        const plan = s.w.truth.get(PLAN_STATE, who);
+        if (plan) s.w.truth.set(PLAN_STATE, who, { ...plan, done: true });
+        s.w.truth.set(NPC_DECISION, who, {
+          at: s.life.now - 2 * DAY,
+          id: "rest",
+          verb: "rest",
+          utility: 0,
+          options: 1,
+        });
+        return;
+      }
+    }
+  };
+
+  const challengesTo = (s: ReturnType<typeof setup>, to: AgentId) =>
+    s.w.log.all().filter((e) => e.kind === CHALLENGE_EVENT && e.actors[1] === to);
+
+  it("con rencor contra uno de su secta se le ocurre retarlo; no a otro, ni con duelo vivo, ni seguido", () => {
+    const s = setup(0);
+    const o = {
+      minResentment: 0.5,
+      deathResentment: 0.8,
+      weight: 0.5,
+      chance: 0.8,
+      dayTicks: DAY,
+    };
+    const people = [
+      { id: s.rival, resentment: 0.9 },
+      { id: s.third, resentment: 0.6 },
+    ];
+    const c = challengeCandidates(s.w.truth, s.me, people, s.life.now, o);
+    expect(c.map((x) => x.act)).toEqual([
+      { kind: "challenge", rule: s.rival < s.third ? "death" : "yield" },
+      { kind: "challenge", rule: s.rival < s.third ? "yield" : "death" },
+    ]);
+    expect(
+      challengeCandidates(s.w.truth, s.me, [{ id: s.rival, resentment: 0.3 }], s.life.now, o),
+    ).toEqual([]);
+    s.w.truth.set(SECT_MEMBER, s.third, {
+      org: "org:otra" as EntityRef,
+      rank: "outer",
+      since: s.life.now,
+    });
+    s.w.truth.set(CHALLENGES_SENT, s.me, { [s.rival]: s.life.now - DAY });
+    expect(challengeCandidates(s.w.truth, s.me, people, s.life.now, o)).toEqual([]);
+    s.w.truth.set(CHALLENGES_SENT, s.me, { [s.rival]: s.life.now - 8 * DAY });
+    expect(challengeCandidates(s.w.truth, s.me, people, s.life.now, o)).toHaveLength(1);
+  });
+
+  it("al personaje lo retan y queda esperando; «acepto» deja el duelo anotado", () => {
+    const s = setup(2);
+    challengeNow(s, s.rival, s.me, "yield");
+    const [pending] = challengesTo(s, s.me);
+    expect(pending?.data).toMatchObject({
+      challenger: s.rival,
+      rule: "yield",
+      response: "pending",
+    });
+    expect(s.w.truth.get(DUEL_OFFER, s.me)).toMatchObject({ from: s.rival, rule: "yield" });
+    expect(s.w.truth.get(DUEL, s.me)).toBeUndefined();
+    expect(s.w.truth.get(CHALLENGES_SENT, s.rival)?.[s.me]).toBe(pending?.tick);
+    s.life.turn(say(s.me, s.rival, "Acepto"), 1);
+    s.life.advanceTo(s.life.now + 900);
+    expect(s.w.truth.get(DUEL, s.me)).toMatchObject({ with: s.rival, rule: "yield" });
+    expect(s.w.truth.get(DUEL, s.rival)).toMatchObject({ with: s.me, challenger: s.rival });
+    expect(s.w.truth.get(DUEL_OFFER, s.me)).toBeUndefined();
+    expect(checkInvariants({ truth: s.w.truth, log: s.w.log })).toEqual([]);
+  });
+
+  it("negarse delante de otros le cuesta cara al personaje", () => {
+    const s = setup(3);
+    challengeNow(s, s.rival, s.me, "death");
+    const offer = s.w.truth.get(DUEL_OFFER, s.me);
+    expect(offer?.refuseFace).toBeGreaterThan(0);
+    const before = {
+      me: s.w.truth.get(FACE, s.me)?.value,
+      rival: s.w.truth.get(FACE, s.rival)?.value,
+    };
+    s.life.turn(say(s.me, s.rival, "No acepto"), 1);
+    s.life.advanceTo(s.life.now + 900);
+    const answer = challengesTo(s, s.me).at(-1);
+    expect(answer?.data).toMatchObject({
+      challenger: s.rival,
+      challenged: s.me,
+      response: "refuse",
+    });
+    expect(s.w.truth.get(DUEL, s.me)).toBeUndefined();
+    expect(s.w.truth.get(DUEL_OFFER, s.me)).toBeUndefined();
+    expect(s.w.truth.get(FACE, s.me)?.value ?? 0).toBeLessThan(before.me ?? 0.5);
+    expect(s.w.truth.get(FACE, s.rival)?.value ?? 0).toBeGreaterThan(before.rival ?? 0.5);
+  });
+
+  it("dejarlo vencer sin contestar, delante de otros, es como negarse", () => {
+    const s = setup(3);
+    challengeNow(s, s.rival, s.me, "yield");
+    const offer = s.w.truth.get(DUEL_OFFER, s.me);
+    if (!offer) throw new Error("sin desafío");
+    const before = s.w.truth.get(FACE, s.me)?.value;
+    s.life.advanceTo(offer.until + 3600);
+    expect(s.w.truth.get(DUEL_OFFER, s.me)).toBeUndefined();
+    const ignored = challengesTo(s, s.me).find(
+      (e) => (e.data as { response?: string }).response === "ignored",
+    );
+    expect(ignored?.causes).toEqual([{ kind: "event", event: offer.event }]);
+    expect(s.w.truth.get(FACE, s.me)?.value ?? 0).toBeLessThan(before ?? 0.5);
+  });
+
+  it("entre vecinos el retado pesa el desafío al momento, y es determinista", () => {
+    const run = () => {
+      const s = setup(1);
+      challengeNow(s, s.rival, s.third, "yield");
+      return challengesTo(s, s.third).map((e) => e.data);
+    };
+    const a = run();
+    expect(a).toHaveLength(1);
+    expect(["accept", "refuse"]).toContain((a[0] as { response: string }).response);
+    expect(run()).toEqual(a);
   });
 });

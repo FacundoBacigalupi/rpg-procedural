@@ -32,6 +32,7 @@ import {
   beliefConfidenceAt,
   believed,
   type Candidate,
+  CHALLENGES_SENT,
   calibratedMeaningPressure,
   capabilitiesOf,
   closeness,
@@ -40,6 +41,7 @@ import {
   DEFICIENCY_EFFECTS,
   DEVELOPMENT,
   type DimensionDef,
+  DUEL,
   decideByUtility,
   drivesFor,
   EMOTIONS,
@@ -93,6 +95,7 @@ import {
   relationship,
   revengeGoals,
   type SchemaDef,
+  SECT_MEMBER,
   SELF_IMAGES,
   SKILL_STATE,
   type SkillCatalog,
@@ -132,6 +135,7 @@ import {
 } from "./cue-local.ts";
 import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { type ChallengeCandidateOptions, challengeCandidates } from "./duels.ts";
 import { type ErrandOptions, errandCandidates } from "./errands.ts";
 import { MAX_RAIN_WAITS } from "./forecast.ts";
 import { withGround } from "./ground.ts";
@@ -315,6 +319,8 @@ export interface DecideOptions {
    * familiaridad; la decisión conserva el acto (`npcVerbs` lo ejecuta). Apagado, no cambia.
    */
   readonly speakActs?: SpeakActsOptions;
+  /** Opt-in: un discípulo reta a duelo a otro de su secta al que le tiene rencor (novel3-challenge-npc). */
+  readonly challenges?: ChallengeCandidateOptions;
   /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
@@ -393,6 +399,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       ...(o.debtKnowledge || o.goalProgress || o.speakActs ? [DEBT_BOOK.name] : []),
+      ...(o.challenges ? [SECT_MEMBER.name, DUEL.name, CHALLENGES_SENT.name] : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
@@ -1101,6 +1108,17 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               want: requestWant(o.speakActs, drives.needs.hunger ?? 0, larder, o.goods ?? []),
               news,
             },
+          ),
+        );
+      }
+      if (o.challenges) {
+        social.push(
+          ...challengeCandidates(
+            truth,
+            me,
+            people.map((p) => ({ id: p.id, resentment: p.rel.dims.resentment ?? 0 })),
+            now,
+            o.challenges,
           ),
         );
       }

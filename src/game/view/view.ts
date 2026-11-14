@@ -149,6 +149,10 @@ export type SelfCue =
   | "challenge_accepted"
   /** Retó a alguien delante de otros y se negó: el otro perdió cara (novel3-challenge-ask). */
   | "challenge_refused_public"
+  /** Lo retaron a duelo y esperan que conteste (novel3-challenge-npc). */
+  | "challenge_received"
+  /** Lo retaron y dejó pasar el desafío sin contestar (novel3-challenge-npc). */
+  | "challenge_ignored"
   /** Peleó un duelo pactado y lo ganó, o lo perdió (novel3-challenge-fight). */
   | "duel_won"
   | "duel_lost"

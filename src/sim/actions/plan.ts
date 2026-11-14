@@ -17,6 +17,8 @@ import { PURPOSES, type Purpose } from "./purpose.ts";
  */
 export type SpeakAct =
   | { readonly kind: "greet" }
+  /** Retar a duelo con una regla (novel3-challenge-npc; `DuelRule` de dialogue). */
+  | { readonly kind: "challenge"; readonly rule: "yield" | "first_blood" | "death" }
   | { readonly kind: "farewell" }
   | { readonly kind: "ask"; readonly about: EntityRef | null }
   | { readonly kind: "request"; readonly what: string | null }
@@ -105,6 +107,7 @@ const entityRef = z.custom<EntityRef>(
 
 const SpeakActSchema: z.ZodType<SpeakAct> = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("greet") }),
+  z.strictObject({ kind: z.literal("challenge"), rule: z.enum(["yield", "first_blood", "death"]) }),
   z.strictObject({ kind: z.literal("farewell") }),
   z.strictObject({ kind: z.literal("ask"), about: entityRef.nullable() }),
   z.strictObject({ kind: z.literal("request"), what: z.string().max(500).nullable() }),

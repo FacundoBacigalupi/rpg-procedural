@@ -5,7 +5,7 @@
 //
 // Puro: recibe lo que el retado cree y siente; los números son de acá, sin calibrar.
 
-import type { AgentId, EventId, Rng, Tick } from "../../core/index.ts";
+import type { AgentId, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 import { faceStakes } from "./threats.ts";
 
@@ -55,6 +55,9 @@ export interface ChallengeInput {
 }
 
 export type ChallengeResponse = "accept" | "refuse";
+
+/** Cómo quedó un desafío en el evento: además, esperando al personaje o vencido sin respuesta. */
+export type ChallengeOutcome = ChallengeResponse | "pending" | "ignored";
 
 export interface ChallengeVerdict {
   readonly response: ChallengeResponse;
@@ -162,6 +165,33 @@ export const DUEL_DAYS = 1;
 export function duelWith(d: Duel | undefined, other: AgentId, now: Tick): d is Duel {
   return d !== undefined && d.with === other && now <= d.until;
 }
+
+/**
+ * Un desafío que espera la respuesta del personaje (novel3-challenge-npc): la simulación no decide
+ * por el jugador; queda anotado en él hasta que conteste (acepta o rechaza hablándole a quien lo
+ * retó) o se le pase el plazo, que delante de otros cuesta lo mismo que rechazarlo.
+ */
+export interface DuelOffer {
+  readonly from: AgentId;
+  readonly rule: DuelRule;
+  readonly at: Tick;
+  readonly until: Tick;
+  /** La cara que le cuesta no aceptarlo (0 si lo retaron a solas). */
+  readonly refuseFace: number;
+  readonly event: EventId;
+  readonly place: PlaceRef;
+}
+
+export const DUEL_OFFER = table<DuelOffer>("combat.duel_offer");
+
+/** Horas que espera un desafío al personaje antes de darse por rechazado (calibración abierta). */
+export const DUEL_OFFER_HOURS = 2;
+
+/** Cuándo retó por última vez a cada uno (por id): para no retar a cada rato al mismo. */
+export const CHALLENGES_SENT = table<Readonly<Record<string, Tick>>>("combat.challenges_sent");
+
+/** Días entre un desafío y el siguiente al mismo (calibración abierta). */
+export const CHALLENGE_COOLDOWN_DAYS = 7;
 
 /** Lo que el retado cree de cada uno para pelear: su nivel (0-1) y los umbrales cruzados. */
 export interface DuelStanding {
