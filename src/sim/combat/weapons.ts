@@ -19,9 +19,22 @@ export const WeaponDef = z.strictObject({
   sharpness: z.number().min(0).max(1),
   /** Cuál prefiere quien lleva varias (más alto, primero). */
   rank: z.number().int().min(0),
+  /** Lo que se ve del objeto (`ITEM_LOOK`) cuando una armería lo hace. */
+  material: z.string().min(1),
+  size: z.enum(["small", "medium", "large"]),
+  /**
+   * Si una secta la guarda en su armería y la canjea (novel3-weapons-sect): cuántos puntos de
+   * contribución cuesta. Sin esto, no es arma de secta (un cuchillo, un hacha).
+   */
+  points: z.number().int().positive().optional(),
 });
 export type WeaponDef = z.infer<typeof WeaponDef>;
 export const WEAPONS = defineContent("weapons", WeaponDef);
+
+/** Las armas de la armería de una escuela: las de secta que no son de práctica (filo o punta). */
+export function sectWeapons(weapons: readonly WeaponDef[]): readonly WeaponDef[] {
+  return weapons.filter((w) => w.points !== undefined && w.wound !== "blunt");
+}
 
 /** El arma de la pelea desde su definición y el desgaste del objeto. */
 export function fighterWeapon(def: WeaponDef, wear: number): FighterWeapon {

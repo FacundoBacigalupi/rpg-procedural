@@ -6,7 +6,10 @@
     "mass": 2,
     "wound": "puncture",
     "sharpness": 0.7,
-    "rank": 7
+    "rank": 7,
+    "material": "iron",
+    "size": "large",
+    "points": 40
   },
   {
     "id": "sword",
@@ -15,7 +18,10 @@
     "mass": 1.2,
     "wound": "cut",
     "sharpness": 0.8,
-    "rank": 6
+    "rank": 6,
+    "material": "iron",
+    "size": "medium",
+    "points": 40
   },
   {
     "id": "saber",
@@ -24,7 +30,10 @@
     "mass": 1.3,
     "wound": "cut",
     "sharpness": 0.85,
-    "rank": 5
+    "rank": 5,
+    "material": "iron",
+    "size": "medium",
+    "points": 40
   },
   {
     "id": "stick",
@@ -33,7 +42,10 @@
     "mass": 1.2,
     "wound": "blunt",
     "sharpness": 0,
-    "rank": 4
+    "rank": 4,
+    "material": "wood",
+    "size": "large",
+    "points": 10
   },
   {
     "id": "axe",
@@ -42,7 +54,9 @@
     "mass": 1.5,
     "wound": "cut",
     "sharpness": 0.5,
-    "rank": 3
+    "rank": 3,
+    "material": "iron",
+    "size": "medium"
   },
   {
     "id": "sickle",
@@ -51,7 +65,9 @@
     "mass": 0.5,
     "wound": "cut",
     "sharpness": 0.6,
-    "rank": 2
+    "rank": 2,
+    "material": "iron",
+    "size": "medium"
   },
   {
     "id": "knife",
@@ -60,6 +76,8 @@
     "mass": 0.25,
     "wound": "cut",
     "sharpness": 0.7,
-    "rank": 1
+    "rank": 1,
+    "material": "iron",
+    "size": "small"
   }
 ]

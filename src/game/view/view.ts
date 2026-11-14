@@ -109,6 +109,12 @@ export type SelfCue =
   | "pill_no_stock"
   /** Pidió una píldora y su aporte no alcanza. */
   | "pill_no_points"
+  /** La armería de la secta le dio un arma por puntos (novel3-weapons-sect). */
+  | "weapon_bought"
+  /** Pidió un arma y en la armería no queda (o no de esa forma). */
+  | "weapon_no_stock"
+  /** Pidió un arma y su aporte no alcanza. */
+  | "weapon_no_points"
   /** El pabellón de escrituras le dio el método del reino siguiente (`self.technique` lo nombra; novel2-method-pavilion). */
   | "method_given"
   /** Pidió el método siguiente sin estar en la cima de su reino: todavía no. */

@@ -33,7 +33,7 @@ cultivador pelea como un aldeano. La lista lleva la pelea a la novela ([combat.m
 - [ ] (novel3-weapons) Armas mínimas: palo, sable, espada y lanza como objetos con alcance, masa y filo (cortes y punciones en vez de solo contusos), que se gastan; la secta las da o se canjean (combat §6).
   - [x] (novel3-weapons-core) `runFight` acepta un arma opcional por peleador (alcance, masa, tipo de herida, filo, desgaste): el alcance propio reemplaza al del puño, la herida sale cortante o punzante, la fuerza crece con la masa y el filo, y el resultado trae el desgaste nuevo; sin arma, nada cambia.
   - [x] (novel3-weapons-wire) Catálogo de armas en `content/` por forma (palo, sable, espada, lanza, y cuchillo o hacha improvisados); la pelea usa el arma que cada uno tiene, la gasta en `ITEM_WEAR` y se rompe al llegar a 1; dato en el evento y narración.
-  - [ ] (novel3-weapons-sect) La secta da un arma a sus discípulos o la canjea por méritos.
+  - [x] (novel3-weapons-sect) La sede llega con su armería: el arma de la escuela (fija por seed y secta), en la mano de internos y maestro, y `ARMORY_SPARES` de repuesto en el salón, de la secta; el discípulo canjea puntos por una («pido una espada»), con negativas por existencias o puntos.
 - [ ] (novel3-beasts) Bestias del monte que pelean: armas naturales, instinto y huida; echarlas o cazarlas cerca de la sede como misión (combat §15), lo que destraba `novel2-missions-watch` con una amenaza real.
 - [ ] (novel3-challenge) Desafíos y duelos con cara en la secta: retar es un acto social, rechazar cuesta, y la plataforma de vida o muerte (combat §13).
 

@@ -49,6 +49,8 @@ import {
   founderGenome,
   GENOME,
   INNATE,
+  ITEM_HOLD,
+  ITEM_LOOK,
   type Language,
   LOCATION,
   type LocalMap,
@@ -97,6 +99,7 @@ import {
   upbringingSkills,
   villageCulture,
   villageReligion,
+  type WeaponDef,
 } from "../../sim/index.ts";
 import { PLAYER } from "./player.ts";
 
@@ -175,6 +178,30 @@ export interface SectHallOptions {
   readonly store?: SectStore;
   /** Con esto llegan con mente, cultura, habilidades y gustos (novel-sect-seat-hall-people-talk). */
   readonly mind?: SectHallMind;
+  /**
+   * Las armas que puede guardar una armería de secta (`sectWeapons`, novel3-weapons-sect): la
+   * escuela usa una, sus internos llegan con la suya en la mano y quedan `ARMORY_SPARES` de
+   * repuesto en el salón, de la secta. Sin esto, nadie llega armado.
+   */
+  readonly armory?: readonly WeaponDef[];
+}
+
+/** Las armas de repuesto que la secta guarda en el salón para canjear (calibración abierta). */
+export const ARMORY_SPARES = 4;
+
+/** El arma de la escuela de `org`: una de la armería, fija por seed y secta. */
+export function schoolWeapon(
+  armory: readonly WeaponDef[],
+  seed: number,
+  org: EntityRef,
+): WeaponDef | undefined {
+  if (armory.length === 0) return undefined;
+  const sorted = [...armory].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return sorted[
+    Rng.root(seed)
+      .fork("armory", org)
+      .int(0, sorted.length - 1)
+  ];
 }
 
 /** Lo que hace falta para darles la mente de un adulto de la siembra. */
@@ -245,6 +272,7 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
       SECT_MEMBER.name,
       LOCATION.name,
       PERSON_NAME.name,
+      ...(o.armory ? [ITEM_LOOK.name, ITEM_HOLD.name] : []),
       ...(o.mind
         ? [MIND.name, PERSON_CULTURE.name, SKILL_STATE.name, SELF_IMAGES.name, TASTES_OF.name]
         : []),
@@ -318,6 +346,22 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
         const people: { slot: number; person: AgentId }[] = [];
         const usedGiven = new Set<string>();
         const hallKey = sectSpaceKey(sect.seatPlace, "hall");
+        // La armería (novel3-weapons-sect): nace con la sede en carne, del mismo evento.
+        const weapon = o.armory ? schoolWeapon(o.armory, ctx.rng.seed, org) : undefined;
+        const forge = (holder: HolderRef): EntityRef => {
+          const item = ctx.newId("item");
+          if (!weapon) return item;
+          changes.push(
+            createEntity(item, event, ctx.now),
+            setComponent(ITEM_LOOK, item, {
+              shape: weapon.shape,
+              material: weapon.material,
+              size: weapon.size,
+            }),
+            setComponent(ITEM_HOLD, item, { possession: holder, rights: [] }),
+          );
+          return item;
+        };
         for (const slot of sect.slots) {
           const rng = Rng.root(ctx.rng.seed).fork("materialize", org, slot.slot);
           const id = ctx.newId("agent") as unknown as AgentId;
@@ -360,6 +404,8 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             }),
             setComponent(LOCATION, key, { hex: seatHex, space: hallKey }),
           );
+          // Los internos y el maestro llegan con el arma de la escuela en la mano.
+          if (weapon && MEMBER_RANK[slot.rank] !== "outer") forge(id as unknown as HolderRef);
           // Los internos y el maestro ya saben la técnica de ataque de la escuela (novel3-technique-school).
           const art = truth.get(SECT_SCHOOL, org)?.art;
           if (art && MEMBER_RANK[slot.rank] !== "outer") {
@@ -387,6 +433,11 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
             );
           people.push({ slot: slot.slot, person: id });
         }
+        // Las de repuesto quedan en el salón, de la secta, para canjear.
+        for (let k = 0; weapon && k < ARMORY_SPARES; k++) {
+          const spare = forge(org as unknown as HolderRef);
+          changes.push(setComponent(LOCATION, spare, { hex: seatHex, space: hallKey }));
+        }
         // Lo que la secta tenía guardado para ellos pasa con ellos (simulation §6, paso 4).
         const hall: SectHall = { at: ctx.now, house, people };
         const grams =
@@ -397,7 +448,12 @@ export function sectHallProcess(o: SectHallOptions): ProcessDef {
           kind: SECT_HALL_EVENT,
           actors: people.map((x) => x.person),
           place: seatRef(sect.seatPlace),
-          data: { org, people: people.length, ...(grams > 0 ? { stored: grams } : {}) },
+          data: {
+            org,
+            people: people.length,
+            ...(grams > 0 ? { stored: grams } : {}),
+            ...(weapon ? { weapon: weapon.shape } : {}),
+          },
           emissions: {},
           causes: [
             { kind: "event", event: sect.originEventId },

@@ -79,6 +79,7 @@ import {
   type SpeechLine,
   type StageDef,
   type StatusDef,
+  sectWeapons,
   skyObserverOf,
   sunAt,
   type TanRule,
@@ -2576,6 +2577,8 @@ export function lifeWorld(
                       })),
                     }
                   : {}),
+                // La armería canjea armas por puntos (novel3-weapons-sect).
+                ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
               }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
@@ -2593,6 +2596,8 @@ export function lifeWorld(
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
                     sectHallProcess({
                       map: parts.map,
+                      // La sede llega con su armería (novel3-weapons-sect).
+                      ...(parts.weapons?.length ? { armory: sectWeapons(parts.weapons) } : {}),
                       yearTicks: parts.clock.year,
                       dayTicks: parts.clock.day,
                       ...(() => {

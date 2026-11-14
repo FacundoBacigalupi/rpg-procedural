@@ -1334,6 +1334,21 @@
     ]
   },
   {
+    "id": "self.weapon_bought",
+    "lines": [
+      "El encargado descuenta tus puntos en el libro y te alcanza un arma de la armería del salón.",
+      "Te anotan el canje y te dan un arma de las que la secta guarda en el salón."
+    ]
+  },
+  {
+    "id": "self.weapon_no_stock",
+    "lines": ["El encargado mira los soportes del salón: de esas no queda ninguna para canjear."]
+  },
+  {
+    "id": "self.weapon_no_points",
+    "lines": ["El encargado repasa tus cuentas: tu aporte no alcanza para un arma."]
+  },
+  {
     "id": "self.pill_no_stock",
     "lines": [
       "El encargado sacude el frasco vacío: de esas no queda ninguna hasta la próxima entrega.",

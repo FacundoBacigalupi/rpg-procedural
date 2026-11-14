@@ -55,6 +55,13 @@ describe("la gramática y el acto de habla declarado", () => {
     expect(parseCommand("pido una píldora de fundamento")).toMatchObject({
       plan: { verb: "redeem", args: [{ role: "what", text: "píldora de fundamento" }] },
     });
+    // La armería (novel3-weapons-sect).
+    expect(parseCommand("pido una espada")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "espada" }] },
+    });
+    expect(parseCommand("canjeo mis puntos por un arma")).toMatchObject({
+      plan: { verb: "redeem", args: [{ role: "what", text: "arma" }] },
+    });
   });
 
   it("juntar hierbas espirituales las nombra (novel2-pills-herbs)", () => {
