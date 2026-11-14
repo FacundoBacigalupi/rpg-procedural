@@ -2,15 +2,25 @@
 // están en su hex y al aire libre (adentro no se ven), vivas o muertas; cómo se las nombra
 // (provisorio hasta `language`) y el perfil con que pelea cada una, del contenido del linaje.
 
-import type { AgentId, EntityRef } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  externalAccount,
+  type HolderRef,
+  type LedgerUnit,
+  ledgerUnit,
+} from "../../core/index.ts";
 import {
   BEAST,
   BODY_STATE,
+  CARCASS_SOURCE,
   ENTITY,
   type FighterBeast,
   type LineageDef,
   LOCATION,
+  PERSON,
   type ReadonlyWorldTruth,
+  type ResolveInput,
   type SpaceGraph,
 } from "../../sim/index.ts";
 
@@ -62,4 +72,48 @@ export function beastFighter(
   const fight = b ? lineages.find((l) => l.id === b.lineage)?.fight : undefined;
   if (!fight) return undefined;
   return { beast: { natural: fight.natural, shy: fight.shy }, skill: fight.skill };
+}
+
+/** Palabras que no nombran a ninguna: con solo esto sirve cualquier bestia muerta a la vista. */
+const VAGUE = new Set(["el", "la", "un", "una", "animal", "bicho", "cuerpo", "muerto", "muerta"]);
+
+const fold = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+/**
+ * Pura (novel3-beasts-fight-carcass): la bestia muerta a la vista que nombra `text` («carneo el
+ * lobo»; sin texto o con palabras vagas, la primera) y lo que deja su cuerpo (`LineageDef.carcass`
+ * por su masa), para la despensa del hogar de quien la carnea. Sin una así, nada.
+ */
+export function beastCarcassOf(
+  w: BeastSight,
+  text: string | undefined,
+  lineages: readonly LineageDef[],
+): NonNullable<ResolveInput["slaughterTarget"]> | undefined {
+  const words = fold(text ?? "")
+    .split(/[^a-zñ]+/)
+    .filter((x) => x !== "" && !VAGUE.has(x));
+  for (const b of beastsInSight(w)) {
+    if (!b.dead) continue;
+    const said = (BEAST_WORDS[b.lineage] ?? []).flatMap((n) => fold(n).split(" "));
+    if (words.length > 0 && !words.some((x) => said.includes(x))) continue;
+    const def = lineages.find((l) => l.id === b.lineage);
+    const c = def?.carcass;
+    if (!def || !c) continue;
+    const yields: { unit: LedgerUnit; grams: number }[] = [];
+    for (const [good, share] of [
+      [c.meat, c.meatShare],
+      [c.hide, c.hideShare],
+    ] as const) {
+      const grams = Math.round(def.bodyMass * 1000 * share);
+      if (good !== undefined && grams > 0) yields.push({ unit: ledgerUnit(`good:${good}`), grams });
+    }
+    const holder = (w.truth.get(PERSON, w.player)?.household ?? w.player) as unknown as HolderRef;
+    return {
+      animal: b.ref as never,
+      holder,
+      source: externalAccount(CARCASS_SOURCE),
+      yields,
+    };
+  }
+  return undefined;
 }

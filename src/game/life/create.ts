@@ -1739,9 +1739,21 @@ export function ledgerConfigOf(
     ),
   ];
   // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
-  const carcass = livestockCarcass
-    ? carcassUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))
-    : [];
+  const carcass = [
+    ...new Set([
+      ...(livestockCarcass
+        ? carcassUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))
+        : []),
+      // Lo que deja el lobo que bajó del monte de la sede (novel3-beasts-fight-carcass).
+      ...(cultivation
+        ? content
+            .all(LINEAGES)
+            .flatMap((l) => [l.carcass?.meat, l.carcass?.hide])
+            .filter((g) => g !== undefined)
+            .map((g) => ledgerUnit(`good:${g}`))
+        : []),
+    ]),
+  ].sort();
   // Lo que pone el ganado (livestock-yield): huevos, ya comida.
   const laid = livestockYield
     ? yieldUnits(livestockOf(content, { livestockDairy, livestockSheep, livestockCow }))

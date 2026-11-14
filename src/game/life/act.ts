@@ -200,6 +200,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { castAtTarget } from "./art.ts";
+import { beastCarcassOf } from "./beasts.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
@@ -763,6 +764,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
+      // La bestia carneada termina (novel3-beasts-fight-carcass).
+      ...(o.fightBeasts ? [ENTITY.name] : []),
       // La ordeñada a mano ya no tiene leche pendiente (livestock-milk-hand); `LACTATING` ya está.
       // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
       ...(o.slaughter?.gift === true || o.slaughter?.steal === true || o.slaughter?.sell === true
@@ -1815,9 +1818,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ? milkTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
         : undefined,
     slaughterTarget:
-      o.slaughter && node.verb === "slaughter"
-        ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
-        : undefined,
+      node.verb !== "slaughter"
+        ? undefined
+        : ((o.slaughter
+            ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
+            : undefined) ??
+          // El lobo muerto a la vista se carnea igual (novel3-beasts-fight-carcass).
+          (o.fightBeasts
+            ? beastCarcassOf(
+                { truth, player: me, spaces: o.spaces },
+                textArg(node, "what"),
+                o.fightBeasts,
+              )
+            : undefined)),
     consumables:
       (o.consumables || o.pillGoods) && node.verb === "consume"
         ? new Set([
@@ -1932,7 +1945,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...giftChanges(truth, animalSale));
   } else if (eff.kind === "milk" && eff.done && eff.animal !== null && o.slaughter?.milk === true) {
     changes.push(...milkChanges(truth, eff.animal as AnimalId));
-  } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
+  } else if (
+    eff.kind === "slaughter" &&
+    eff.done &&
+    eff.animal !== null &&
+    (o.slaughter || o.fightBeasts)
+  ) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
     changes.push(deleteComponent(HEARTH, eff.hearth as EntityRef));

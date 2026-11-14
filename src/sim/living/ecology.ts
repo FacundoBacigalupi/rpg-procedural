@@ -49,6 +49,18 @@ export const LineageDef = z.strictObject({
       skill: z.number().min(0).max(1),
     })
     .optional(),
+  /**
+   * Qué deja el cuerpo de un individuo muerto (novel3-beasts-fight-carcass), como el ganado: el
+   * bien de la carne y el de la piel, con la parte de la masa viva que es cada uno.
+   */
+  carcass: z
+    .strictObject({
+      meat: contentId.optional(),
+      meatShare: z.number().min(0).max(1).default(0),
+      hide: contentId.optional(),
+      hideShare: z.number().min(0).max(1).default(0),
+    })
+    .optional(),
 });
 export type LineageDef = z.infer<typeof LineageDef>;
 export const LINEAGES = defineContent("lineages", LineageDef, (l) =>

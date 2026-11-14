@@ -43,7 +43,8 @@
       "natural": { "reach": 0.45, "mass": 1.2, "wound": "puncture", "sharpness": 0.6 },
       "shy": 0.5,
       "skill": 0.45
-    }
+    },
+    "carcass": { "meat": "venison", "meatShare": 0.4, "hide": "hide", "hideShare": 0.08 }
   },
   {
     "id": "fox",
