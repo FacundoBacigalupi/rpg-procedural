@@ -2,18 +2,23 @@
 // sentimiento de rival, puros y deterministas.
 
 import { describe, expect, it } from "vitest";
-import { type EventId, Rng } from "../../core/index.ts";
+import { type AgentId, type EntityRef, type EventId, Rng, type Tick } from "../../core/index.ts";
 import type { OrgTie } from "../org/index.ts";
 import {
   addGrievance,
+  afterAvenged,
+  afterReplyGiven,
+  afterReplyReceived,
   afterSectDuel,
   BELIEF_ERROR,
   chooseGrievanceResponse,
+  chooseReply,
   GRIEVANCE_RESENTMENT,
   grievanceUtilities,
   rivalSentiment,
   seededBelief,
   strengthScore,
+  wantedBy,
 } from "./rivalry.ts";
 
 describe("la fuerza creída de la otra secta (novel4-rival-sect-relation)", () => {
@@ -130,5 +135,76 @@ describe("la secta trata la ofensa (novel4-grievance-matter)", () => {
     expect(chooseGrievanceResponse(tie, "assault", 0.37)).toBe(
       chooseGrievanceResponse(tie, "assault", 0.37),
     );
+  });
+});
+
+describe("la ofensa se cobra (novel4-grievance-act)", () => {
+  const tieWith = (fear: number, resentment: number, trust = 0.1): OrgTie => ({
+    formal: ["rival"],
+    sentiment: { trust, respect: 0.4, fear, resentment },
+    believedStrength: { elders: 1, disciples: 3, topStage: 1 },
+    grievances: [],
+    originEventId: "event:1" as EventId,
+    history: ["event:1" as EventId],
+  });
+
+  it("repara la que teme; se niega la que guarda rencor y no teme", () => {
+    expect(chooseReply(tieWith(0.9, 0.1, 0.5), "killing", 0.5)).toBe("pay");
+    expect(chooseReply(tieWith(0.05, 0.9), "theft", 0.5)).toBe("refuse");
+  });
+
+  it("reparar enfría a la ofendida y le cuesta cara a la otra; negarse la calienta", () => {
+    const ours = tieWith(0.2, 0.5);
+    const paid = afterReplyReceived(ours, "assault", "pay");
+    expect(paid.sentiment.resentment).toBeCloseTo(0.5 - GRIEVANCE_RESENTMENT.assault);
+    expect(paid.sentiment.trust).toBeGreaterThan(ours.sentiment.trust);
+    const refused = afterReplyReceived(ours, "assault", "refuse");
+    expect(refused.sentiment.resentment).toBeGreaterThan(0.5);
+    expect(refused.sentiment.trust).toBeLessThan(ours.sentiment.trust);
+    expect(afterReplyGiven(ours).sentiment.resentment).toBeGreaterThan(0.5);
+    const avenged = afterAvenged(ours, "killing", "event:9" as EventId);
+    expect(avenged.sentiment.resentment).toBeCloseTo(0.5 - GRIEVANCE_RESENTMENT.killing);
+    expect(avenged.history).toContain("event:9");
+  });
+
+  it("buscados: solo las represalias abiertas, una por ofensor", () => {
+    const base = {
+      against: "org:2" as EntityRef,
+      kind: "theft" as const,
+      victim: "agent:3" as AgentId,
+      at: 0 as Tick,
+    };
+    const w = wantedBy({
+      entries: [
+        {
+          ...base,
+          deed: "event:4" as EventId,
+          by: "agent:1" as AgentId,
+          response: { choice: "retaliate", at: 1 as Tick },
+        },
+        {
+          ...base,
+          deed: "event:5" as EventId,
+          by: "agent:1" as AgentId,
+          response: { choice: "retaliate", at: 1 as Tick },
+        },
+        {
+          ...base,
+          deed: "event:6" as EventId,
+          by: "agent:2" as AgentId,
+          response: { choice: "demand", at: 1 as Tick },
+        },
+        {
+          ...base,
+          deed: "event:7" as EventId,
+          by: "agent:5" as AgentId,
+          response: { choice: "retaliate", at: 1 as Tick },
+          outcome: { result: "avenged", at: 2 as Tick },
+        },
+        { ...base, deed: "event:8" as EventId, by: "agent:6" as AgentId },
+      ],
+    });
+    expect([...w.keys()]).toEqual(["agent:1"]);
+    expect(w.get("agent:1" as AgentId)?.deed).toBe("event:4");
   });
 });

@@ -9,10 +9,12 @@ import {
   BODY_STATE,
   checkInvariants,
   ENTITY,
+  ENVOY_DAYS,
   GRIEVANCE_RESENTMENT,
   KNOWN_DEEDS,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
+  ORG_GRIEVANCE_REPLY_EVENT,
   ORG_RELATION,
   orgTie,
   PERSON,
@@ -110,6 +112,48 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
     expect(entry?.response?.choice).toBe((matter.data as { response?: string }).response);
     expect(["demand", "retaliate", "forget"]).toContain(entry?.response?.choice);
     expect(run().t.get(SECT_GRIEVANCES, a)).toEqual(t.get(SECT_GRIEVANCES, a));
+    expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
+  });
+
+  it("la exigencia vuelve después de ir y venir: la otra repara o se niega, y las dos lo sienten (novel4-grievance-act)", () => {
+    const { l, t, a, b, by, victim, event, knower } = setup();
+    // Ya guardada y tratada: lo que sabe `knower` no la vuelve a abrir.
+    t.deleteRaw(KNOWN_DEEDS.name, knower);
+    const ours = orgTie(t.get(ORG_RELATION, a), b);
+    const theirs = orgTie(t.get(ORG_RELATION, b), a);
+    if (!ours || !theirs) throw new Error("sin relación");
+    const asked = l.now;
+    t.set(SECT_GRIEVANCES, a, {
+      entries: [
+        {
+          deed: event,
+          against: b,
+          kind: "killing",
+          by,
+          victim,
+          at: asked,
+          response: { choice: "demand", at: asked },
+        },
+      ],
+    });
+    l.advanceTo(asked + (ENVOY_DAYS - 2) * DAY);
+    expect(t.get(SECT_GRIEVANCES, a)?.entries[0]?.outcome).toBeUndefined();
+    l.advanceTo(asked + (ENVOY_DAYS + 1) * DAY);
+    const entry = t.get(SECT_GRIEVANCES, a)?.entries[0];
+    const replies = l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT);
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.causes).toContainEqual({ kind: "event", event });
+    const reply = (replies[0]?.data as { reply?: string } | undefined)?.reply;
+    const after = orgTie(t.get(ORG_RELATION, a), b);
+    const otherAfter = orgTie(t.get(ORG_RELATION, b), a);
+    if (reply === "pay") {
+      expect(entry?.outcome?.result).toBe("paid");
+      expect(after?.sentiment.resentment ?? 1).toBeLessThan(ours.sentiment.resentment);
+      expect(otherAfter?.sentiment.resentment ?? 0).toBeGreaterThan(theirs.sentiment.resentment);
+    } else {
+      expect(entry?.outcome?.result).toBe("refused");
+      expect(after?.sentiment.resentment ?? 0).toBeGreaterThan(ours.sentiment.resentment);
+    }
     expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
   });
 
