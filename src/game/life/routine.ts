@@ -21,6 +21,7 @@ import {
   type PlanetClock,
   Rng,
   type Seed,
+  type Tick,
 } from "../../core/index.ts";
 import {
   type ActionDef,
@@ -74,6 +75,8 @@ import {
   SECT,
   SECT_LORE,
   SECT_MEMBER,
+  SECT_MISSION,
+  SECT_TOURNAMENT,
   SOIL,
   SOIL_DAYS,
   type SpaceGraph,
@@ -194,7 +197,7 @@ export interface RoutineOptions {
    * vuelve a su casa a la hora de dormir ni va al campo: solo recibe lo chico, como quien espera
    * (comer en casa, beber donde hay agua o del odre).
    */
-  readonly onDuty?: (truth: ReadonlyWorldTruth, me: AgentId) => boolean;
+  readonly onDuty?: (truth: ReadonlyWorldTruth, me: AgentId, now: Tick) => boolean;
   /**
    * Opt-in (novel-sect-seat-hall-people-keep): quien vive en una sede duerme y come en su casa de
    * ahí (`home`) y pasa las horas de trabajo meditando en `work` (la hora la resuelve
@@ -488,6 +491,9 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       ...(o.draft ? draftReads(o.draft) : []),
       ...(o.seatOf ? [SECT_MEMBER.name, SECT.name, PLACE.name, DUEL.name] : []),
+      ...(o.onDuty
+        ? [SECT_MISSION.name, SECT_TOURNAMENT.name, SECT_MEMBER.name, SECT.name, PLACE.name]
+        : []),
     ],
     writes: [
       LOCATION.name,
@@ -517,7 +523,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           plan !== undefined &&
           !plan.done &&
           onlyWaits(plan.plan)) ||
-        (!truth.has(PLAYER, me) && o.onDuty?.(truth, me) === true);
+        (!truth.has(PLAYER, me) && o.onDuty?.(truth, me, ctx.now) === true);
       if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly && !delegated) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};

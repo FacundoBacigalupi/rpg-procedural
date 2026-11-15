@@ -3,11 +3,14 @@ import type { EntityRef, EventId } from "../../core/index.ts";
 import type { OrgTie } from "../org/index.ts";
 import {
   acceptsTournament,
+  delegateLeg,
   nextHost,
   TOURNAMENT_EVERY_DAYS,
   TOURNAMENT_LATE_DAYS,
   TOURNAMENT_MAX_FEAR,
   TOURNAMENT_MAX_RESENTMENT,
+  TOURNAMENT_RETURN_DAYS,
+  TOURNAMENT_SETOFF_DAYS,
   type TournamentRecord,
   tournamentDue,
   tournamentKeeper,
@@ -61,5 +64,15 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     expect(nextHost(undefined, { id: A, founded: 10 }, { id: B, founded: 10 })).toBe(A);
     expect(nextHost(rec({ host: B }), { id: A, founded: 50 }, { id: B, founded: 10 })).toBe(A);
     expect(tournamentKeeper(B, A)).toEqual([A, B]);
+  });
+
+  it("el delegado va antes del día, se queda mientras está convocado y vuelve al cerrarse", () => {
+    const at = 100 * DAY;
+    expect(delegateLeg(rec({ at }), at - TOURNAMENT_SETOFF_DAYS * DAY - 1, DAY)).toBeUndefined();
+    expect(delegateLeg(rec({ at }), at - TOURNAMENT_SETOFF_DAYS * DAY, DAY)).toBe("host");
+    expect(delegateLeg(rec({ at }), at + 5 * DAY, DAY)).toBe("host");
+    const held = rec({ at, status: "held", closed: at });
+    expect(delegateLeg(held, at + DAY, DAY)).toBe("home");
+    expect(delegateLeg(held, at + TOURNAMENT_RETURN_DAYS * DAY, DAY)).toBeUndefined();
   });
 });

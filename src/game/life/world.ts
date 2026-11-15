@@ -253,7 +253,7 @@ import { sectGrievanceProcess, sectGrievanceSpokenProcess } from "./sect-grievan
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
-import { sectTournamentProcess } from "./sect-tournament.ts";
+import { sectTournamentProcess, tournamentDuty } from "./sect-tournament.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sectWatchProcess, watchDestination, watchPosts } from "./sect-watch.ts";
 import { sleepProcess } from "./sleep.ts";
@@ -2619,7 +2619,13 @@ export function lifeWorld(
               // La exigencia contestada de palabra al enviado (novel4-grievance-envoy-speak).
               sectGrievanceSpokenProcess(),
               // Las sectas rivales convocan su torneo (novel4-tournament-call).
-              sectTournamentProcess({ dayTicks: parts.clock.day }),
+              // Con viajes de NPC, la visitante manda a los suyos (novel4-tournament-delegation).
+              sectTournamentProcess({
+                dayTicks: parts.clock.day,
+                ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
+                  ? { delegations: { player } }
+                  : {}),
+              }),
               // Con viajes de NPC, la secta manda a uno de guardia al puesto (novel4-watch-npc).
               ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
                 ? [
@@ -2844,7 +2850,15 @@ export function lifeWorld(
           ...(parts.cultivation &&
           parts.npcJourneyDays !== undefined &&
           parts.npcVerbs?.includes("move") === true
-            ? { envoys: { weight: 3 }, watches: { weight: 3 } }
+            ? {
+                envoys: { weight: 3 },
+                watches: { weight: 3 },
+                tournaments: {
+                  weight: 3,
+                  dayTicks: parts.clock.day,
+                  home: { map: parts.map, spaces: parts.spaces },
+                },
+              }
             : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
@@ -3162,13 +3176,18 @@ export function lifeWorld(
             : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
-          // El guardia de la secta no vuelve a dormir a casa mientras cumple (novel4-watch-npc).
+          // El guardia de la secta y el delegado al torneo no vuelven a dormir a casa mientras
+          // cumplen (novel4-watch-npc, novel4-tournament-delegation).
           ...(parts.cultivation &&
           parts.npcJourneyDays !== undefined &&
           parts.npcVerbs?.includes("move") === true
             ? {
-                onDuty: (t: ReadonlyWorldTruth, me: AgentId) =>
-                  watchDestination(t, me) !== undefined,
+                onDuty: (t: ReadonlyWorldTruth, me: AgentId, now: Tick) =>
+                  watchDestination(t, me) !== undefined ||
+                  tournamentDuty(t, me, now, parts.clock.day, {
+                    map: parts.map,
+                    spaces: parts.spaces,
+                  }) !== undefined,
               }
             : {}),
           ...(parts.npcFieldWatering === true ? { fieldWatering: true } : {}),

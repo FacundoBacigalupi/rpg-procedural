@@ -7,7 +7,7 @@
 //
 // Puro: sin IO. Lo convoca y lo vence `life.sect_tournament`.
 
-import type { EntityRef, EventId, Tick } from "../../core/index.ts";
+import type { AgentId, EntityRef, EventId, Tick } from "../../core/index.ts";
 import type { OrgTie } from "../org/index.ts";
 import { table } from "../world/index.ts";
 
@@ -16,10 +16,16 @@ export const ORG_TOURNAMENT_LAPSED_EVENT = "org.tournament_lapsed";
 
 /** Cada cuántos días, desde el último, se puede convocar otro (sin calibrar). */
 export const TOURNAMENT_EVERY_DAYS = 180;
-/** Cuántos días de aviso: lo que tarda la visitante en llegar (sin calibrar). */
-export const TOURNAMENT_NOTICE_DAYS = 15;
+/** Cuántos días de aviso: lo que tarda la visitante en llegar de sede a sede a pie (sin calibrar). */
+export const TOURNAMENT_NOTICE_DAYS = 45;
 /** Cuántos días después del convocado se pierde si no se hizo. */
 export const TOURNAMENT_LATE_DAYS = 2;
+/** Cuántos manda la visitante (novel4-tournament-delegation): un anciano primero, si hay. */
+export const TOURNAMENT_DELEGATES = 3;
+/** Cuántos días antes del torneo sale la delegación: apenas la nombran (el aviso es el viaje). */
+export const TOURNAMENT_SETOFF_DAYS = TOURNAMENT_NOTICE_DAYS;
+/** Cuántos días después del cierre la delegación sigue volviendo (el mismo viaje); pasado eso, ya no es delegación. */
+export const TOURNAMENT_RETURN_DAYS = TOURNAMENT_NOTICE_DAYS;
 /** Con este rencor o más, la secta no se mide en torneo (sin calibrar). */
 export const TOURNAMENT_MAX_RESENTMENT = 0.6;
 /** Con este miedo o más, no se expone (sin calibrar). */
@@ -40,6 +46,8 @@ export interface TournamentRecord {
   readonly closed?: Tick;
   /** El evento que lo cerró (hecho o perdido). */
   readonly closedBy?: EventId;
+  /** Los que manda la visitante de cuerpo (novel4-tournament-delegation). */
+  readonly delegates?: readonly AgentId[];
 }
 
 /**
@@ -93,4 +101,20 @@ export function nextHost(
   if (prev) return prev.host === a.id ? b.id : a.id;
   if (a.founded !== b.founded) return a.founded < b.founded ? a.id : b.id;
   return a.id < b.id ? a.id : b.id;
+}
+
+/**
+ * Qué le toca a un delegado (puro, novel4-tournament-delegation): con el torneo convocado, desde
+ * `TOURNAMENT_SETOFF_DAYS` antes, estar en la sede que lo pone (`host`); cerrado, hasta
+ * `TOURNAMENT_RETURN_DAYS` después, volver a la suya (`home`). Fuera de eso, nada.
+ */
+export function delegateLeg(
+  rec: TournamentRecord,
+  now: Tick,
+  dayTicks: number,
+): "host" | "home" | undefined {
+  if (rec.status === "called") {
+    return now >= rec.at - TOURNAMENT_SETOFF_DAYS * dayTicks ? "host" : undefined;
+  }
+  return now < (rec.closed ?? rec.at) + TOURNAMENT_RETURN_DAYS * dayTicks ? "home" : undefined;
 }

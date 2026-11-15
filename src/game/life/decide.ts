@@ -100,6 +100,7 @@ import {
   SECT_GRIEVANCES,
   SECT_MEMBER,
   SECT_MISSION,
+  SECT_TOURNAMENT,
   SELF_IMAGES,
   SKILL_STATE,
   type SkillCatalog,
@@ -154,6 +155,7 @@ import {
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
 import { envoyDestination } from "./sect-grievance.ts";
+import { TOURNAMENT_STAY_SECONDS, type TournamentHome, tournamentDuty } from "./sect-tournament.ts";
 import { watchDestination } from "./sect-watch.ts";
 import { requestWant, type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
 import { stageBoldness } from "./stages.ts";
@@ -338,6 +340,16 @@ export interface DecideOptions {
    */
   readonly watches?: { readonly weight: number };
   /**
+   * Opt-in (novel4-tournament-delegation): el delegado de su secta al torneo va a la sede que lo pone,
+   * espera ahí (`wait:` de `TOURNAMENT_STAY_SECONDS`) mientras siga convocado y, cerrado, vuelve.
+   */
+  readonly tournaments?: {
+    readonly weight: number;
+    readonly dayTicks: number;
+    /** Con qué se ve que el delegado ya volvió (`tournamentDuty`). */
+    readonly home?: TournamentHome;
+  };
+  /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
    * que ese conocido tiene efectivo; `life.pawn_decide` la ejecuta. Apagado, no cambia.
@@ -433,6 +445,9 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         : []),
       ...(o.envoys ? [SECT_MISSION.name, SECT.name, LOCATION.name] : []),
       ...(o.watches ? [SECT_MISSION.name, SECT.name, LOCATION.name, PLACE.name] : []),
+      ...(o.tournaments
+        ? [SECT_TOURNAMENT.name, SECT_MEMBER.name, SECT.name, LOCATION.name, PLACE.name]
+        : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
@@ -1241,6 +1256,32 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                 chance: 1,
                 loss: STAKES_RISK.none.loss,
                 mood: o.watches.weight,
+              },
+        );
+      }
+      // La delegación al torneo (opt-in `tournaments`): a la sede que lo pone, quedarse y volver.
+      const duty = o.tournaments
+        ? tournamentDuty(truth, me, now, o.tournaments.dayTicks, o.tournaments.home)
+        : undefined;
+      if (o.tournaments && duty) {
+        catalogCandidates.push(
+          duty.kind === "go"
+            ? {
+                id: `move:${duty.place}`,
+                verb: "move",
+                target: duty.place as unknown as EntityRef,
+                contributes: {},
+                chance: 0.9,
+                loss: STAKES_RISK.none.loss,
+                mood: o.tournaments.weight,
+              }
+            : {
+                id: `wait:${TOURNAMENT_STAY_SECONDS}s`,
+                verb: "wait",
+                contributes: {},
+                chance: 1,
+                loss: STAKES_RISK.none.loss,
+                mood: o.tournaments.weight,
               },
         );
       }
