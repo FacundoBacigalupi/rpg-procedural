@@ -30,10 +30,12 @@ import {
   INNATE,
   KNOWN_DEEDS,
   LOCATION,
+  ORG_GRIEVANCE_AVENGED_EVENT,
   ORG_RELATION,
   PERSON,
   PLACE,
   SECT,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
   sectSpaceKey,
   worstDeed,
@@ -493,6 +495,25 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
     expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, o)).toEqual([]);
     s.w.truth.set(ORG_RELATION, s.org, tie(0.2));
     expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO)).toEqual([]);
+    // Al que la secta salió a buscar (novel4-grievance-act) se lo reta con todo el rencor.
+    s.w.truth.set(SECT_GRIEVANCES, s.org, {
+      entries: [
+        {
+          deed: "event:1" as EventId,
+          against: other,
+          kind: "theft",
+          by: s.third,
+          victim: s.me,
+          at: s.life.now,
+          response: { choice: "retaliate", at: s.life.now },
+        },
+      ],
+    });
+    const wanted = challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO);
+    expect(wanted.map((x) => [x.target, x.act])).toEqual([
+      [s.third, { kind: "challenge", rule: "yield" }],
+    ]);
+    s.w.truth.deleteRaw(SECT_GRIEVANCES.name, s.org);
     s.w.truth.set(ORG_RELATION, s.org, tie(0.3, []));
     expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO)).toEqual([]);
     s.w.truth.set(ORG_RELATION, s.org, tie(0.3));
@@ -574,6 +595,21 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
         history: [],
       };
       s.w.truth.set(ORG_RELATION, s.org, { toward: { [other]: tie } });
+      // La secta de casa salió a buscar a `third` por una ofensa (novel4-grievance-act).
+      const deed = s.w.log.all()[0]?.id as EventId;
+      s.w.truth.set(SECT_GRIEVANCES, s.org, {
+        entries: [
+          {
+            deed,
+            against: other,
+            kind: "assault",
+            by: s.third,
+            victim: s.me,
+            at: s.life.now,
+            response: { choice: "retaliate", at: s.life.now },
+          },
+        ],
+      });
       challengeNow(s, s.rival, s.third, "yield");
       return s;
     };
@@ -613,6 +649,17 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
       const { loser } = settled.data as { loser: AgentId };
       const mine = s.w.truth.get(ORG_RELATION, s.org)?.toward[OTHER_ORG];
       expect(mine?.history).toContain(fought?.id);
+      // Si el buscado perdió, la represalia queda cumplida; si no, sigue abierta.
+      const entry = s.w.truth.get(SECT_GRIEVANCES, s.org)?.entries[0];
+      const avenged = s.w.log.all().filter((e) => e.kind === ORG_GRIEVANCE_AVENGED_EVENT);
+      if (loser === s.third) {
+        expect(entry?.outcome?.result).toBe("avenged");
+        expect(avenged).toHaveLength(1);
+        expect(avenged[0]?.causes).toContainEqual({ kind: "event", event: fought?.id });
+      } else {
+        expect(entry?.outcome).toBeUndefined();
+        expect(avenged).toEqual([]);
+      }
       if (loser === s.rival) {
         expect(mine?.sentiment.respect).toBeGreaterThan(0.4);
         expect(mine?.sentiment.resentment).toBeGreaterThan(0.3);

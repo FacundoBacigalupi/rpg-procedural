@@ -96,6 +96,7 @@ import {
   relationship,
   revengeGoals,
   type SchemaDef,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
   SELF_IMAGES,
   SKILL_STATE,
@@ -407,7 +408,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             CHALLENGES_SENT.name,
             ...(o.challenges.rivalWeight === undefined
               ? []
-              : [ORG_RELATION.name, LOCATION.name, ENTITY.name, BODY_STATE.name]),
+              : [
+                  ORG_RELATION.name,
+                  SECT_GRIEVANCES.name,
+                  LOCATION.name,
+                  ENTITY.name,
+                  BODY_STATE.name,
+                ]),
           ]
         : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),

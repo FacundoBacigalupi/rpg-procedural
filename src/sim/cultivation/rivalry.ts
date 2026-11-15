@@ -201,7 +201,11 @@ export interface SectGrievanceEntry {
   readonly victim: AgentId;
   readonly at: Tick;
   readonly response?: { readonly choice: GrievanceResponse; readonly at: Tick };
+  /** Cómo terminó (novel4-grievance-act): pagada, negada, vengada u olvidada. */
+  readonly outcome?: { readonly result: GrievanceOutcome; readonly at: Tick };
 }
+
+export type GrievanceOutcome = "paid" | "refused" | "avenged" | "forgotten";
 
 export interface SectGrievances {
   readonly entries: readonly SectGrievanceEntry[];
@@ -258,4 +262,105 @@ export function chooseGrievanceResponse(
     if (roll < acc) return RESPONSES[i] as GrievanceResponse;
   }
   return RESPONSES[RESPONSES.length - 1] as GrievanceResponse;
+}
+
+export const ORG_GRIEVANCE_REPLY_EVENT = "org.grievance_reply";
+export const ORG_GRIEVANCE_AVENGED_EVENT = "org.grievance_avenged";
+
+/** Cuántos días tarda el enviado en llevar la exigencia y volver con la respuesta (sin calibrar). */
+export const ENVOY_DAYS = 10;
+
+/** Lo que la otra contesta a una exigencia: reparar (disculpa y compensación) o negarse. */
+export type GrievanceReply = "pay" | "refuse";
+
+/** Cuánto le cuesta a la que repara (cara ante la otra) y cuánto se enfría o calienta la ofendida. */
+export const REPLY_FACE_COST = 0.03;
+export const REPLY_TRUST = 0.05;
+export const REFUSAL_RESENTMENT = 0.05;
+
+/** Una ofensa abierta: ya tratada, sin terminar. */
+export const openGrievance = (e: SectGrievanceEntry): boolean =>
+  e.response !== undefined && e.outcome === undefined;
+
+/**
+ * Lo que vale cada respuesta para la que recibe la exigencia, con lo que ella siente por la que
+ * exige (`tie` es su lazo hacia la otra): repara si la teme, le cree y la ofensa pesa; se niega con
+ * rencor y sin miedo.
+ */
+export function replyUtilities(
+  tie: OrgTie,
+  kind: GrievanceKind,
+): Readonly<Record<GrievanceReply, number>> {
+  const w = GRIEVANCE_WEIGHT[kind];
+  const { fear, resentment, trust } = tie.sentiment;
+  return {
+    pay: round3(0.1 + 0.6 * fear + 0.3 * trust + 0.3 * w - 0.5 * resentment),
+    refuse: round3(0.3 + 0.5 * resentment - 0.4 * fear),
+  };
+}
+
+/** La respuesta a la exigencia, con softmax y una tirada `roll` en [0, 1). */
+export function chooseReply(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  roll: number,
+  temperature = GRIEVANCE_TEMPERATURE,
+): GrievanceReply {
+  const u = replyUtilities(tie, kind);
+  const top = Math.max(u.pay, u.refuse);
+  const pay = exp((u.pay - top) / temperature);
+  const refuse = exp((u.refuse - top) / temperature);
+  return roll < pay / (pay + refuse) ? "pay" : "refuse";
+}
+
+const withSentiment = (tie: OrgTie, s: Partial<OrgSentiment>): OrgTie => ({
+  ...tie,
+  sentiment: { ...tie.sentiment, ...s },
+});
+
+/**
+ * Lo que la respuesta deja en la ofendida (`tie` hacia la otra): si repara, el rencor que trajo la
+ * ofensa se va y le cree un poco más; si se niega, más rencor y menos confianza.
+ */
+export function afterReplyReceived(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  reply: GrievanceReply,
+): OrgTie {
+  const { resentment, trust } = tie.sentiment;
+  return reply === "pay"
+    ? withSentiment(tie, {
+        resentment: clamp01(resentment - GRIEVANCE_RESENTMENT[kind]),
+        trust: clamp01(trust + REPLY_TRUST),
+      })
+    : withSentiment(tie, {
+        resentment: clamp01(resentment + REFUSAL_RESENTMENT),
+        trust: clamp01(trust - REPLY_TRUST),
+      });
+}
+
+/** Lo que reparar le deja a la que reparó (`tie` hacia la ofendida): le guarda un poco de rencor. */
+export function afterReplyGiven(tie: OrgTie): OrgTie {
+  return withSentiment(tie, {
+    resentment: clamp01(tie.sentiment.resentment + REPLY_FACE_COST),
+  });
+}
+
+/** La venganza cumplida (`tie` de la ofendida hacia la otra): el rencor de la ofensa se va. */
+export function afterAvenged(tie: OrgTie, kind: GrievanceKind, event: EventId): OrgTie {
+  return {
+    ...withSentiment(tie, {
+      resentment: clamp01(tie.sentiment.resentment - GRIEVANCE_RESENTMENT[kind]),
+    }),
+    history: [...tie.history, event],
+  };
+}
+
+/** Los ofensores que la secta salió a buscar (represalias abiertas), con el hecho de cada uno. */
+export function wantedBy(g: SectGrievances | undefined): ReadonlyMap<AgentId, SectGrievanceEntry> {
+  const out = new Map<AgentId, SectGrievanceEntry>();
+  for (const e of g?.entries ?? []) {
+    if (openGrievance(e) && e.response?.choice === "retaliate" && !out.has(e.by)) out.set(e.by, e);
+  }
+  return out;
 }

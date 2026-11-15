@@ -7,8 +7,12 @@
 // Corre una vez por día: una secta se entera de lo que saben los suyos sin apuro. La ofensa queda
 // también como asunto (`SECT_GRIEVANCES`) y al día siguiente quien manda la trata
 // (novel4-grievance-matter): exigir reparación, devolverla u olvidarla, según lo que la secta siente
-// y cree de la otra (`chooseGrievanceResponse`); queda `org.grievance_matter`. Ejecutarlo viene con
-// novel4-grievance-act.
+// y cree de la otra (`chooseGrievanceResponse`); queda `org.grievance_matter`. Olvidar la cierra.
+//
+// Exigir (novel4-grievance-act): el enviado tarda `ENVOY_DAYS` en ir y volver; la otra repara o se
+// niega según lo que siente por la que exige (`chooseReply`), y eso vuelve a las dos relaciones
+// (`org.grievance_reply`). Devolverla sale a buscar al ofensor: los de la secta lo retan al
+// cruzarlo (`wantedBy` en `challengeCandidates`) y el duelo ganado la cierra (`life.duels`).
 
 import {
   type AgentId,
@@ -19,16 +23,23 @@ import {
 } from "../../core/index.ts";
 import {
   addGrievance,
+  afterReplyGiven,
+  afterReplyReceived,
   BODY_STATE,
   chooseGrievanceResponse,
+  chooseReply,
   ENTITY,
+  ENVOY_DAYS,
   type EventDraft,
   type GrievanceKind,
   KNOWN_DEEDS,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
+  ORG_GRIEVANCE_REPLY_EVENT,
   ORG_RELATION,
   type OrgRelations,
+  type OrgTie,
+  openGrievance,
   orgTie,
   type ProcessDef,
   type ReadonlyWorldTruth,
@@ -93,7 +104,10 @@ export function newGrievances(truth: ReadonlyWorldTruth): SectGrievance[] {
 }
 
 /** Escritor de `ORG_RELATION` y `SECT_GRIEVANCES`: las sectas guardan y tratan las ofensas que saben los suyos (cableado opt-in). */
-export function sectGrievanceProcess(): ProcessDef {
+export function sectGrievanceProcess(o: {
+  /** Cuántos ticks tiene un día (lo que tarda el enviado se cuenta en días). */
+  readonly dayTicks: number;
+}): ProcessDef {
   return {
     id: SECT_GRIEVANCE_PROCESS,
     system: "life",
@@ -125,10 +139,43 @@ export function sectGrievanceProcess(): ProcessDef {
       };
       const events: EventDraft[] = [];
       const seatOf = (org: EntityRef) => truth.get(SECT, org)?.seatPlace;
+      const relationOf = (org: EntityRef) => relations.get(org) ?? truth.get(ORG_RELATION, org);
+      const setTie = (org: EntityRef, toward: EntityRef, tie: OrgTie) => {
+        const had = relationOf(org);
+        if (had) relations.set(org, { toward: { ...had.toward, [toward]: tie } });
+      };
+      // Las exigencias que ya llegaron y volvieron: la otra repara o se niega (novel4-grievance-act).
+      for (const org of [...truth.ids(SECT_GRIEVANCES)].sort(compareStrings) as EntityRef[]) {
+        const entries = ledger(org);
+        entries.forEach((e, i) => {
+          if (!openGrievance(e) || e.response?.choice !== "demand") return;
+          if (ctx.now < e.response.at + ENVOY_DAYS * o.dayTicks) return;
+          const theirs = orgTie(relationOf(e.against), org);
+          const ours = orgTie(relationOf(org), e.against);
+          const seat = seatOf(e.against);
+          if (!theirs || !ours || seat === undefined) return;
+          const roll = ctx.rng.fork("grievance-reply", org, e.deed).float();
+          const reply = chooseReply(theirs, e.kind, roll);
+          setTie(org, e.against, afterReplyReceived(ours, e.kind, reply));
+          if (reply === "pay") setTie(e.against, org, afterReplyGiven(theirs));
+          entries[i] = {
+            ...e,
+            outcome: { result: reply === "pay" ? "paid" : "refused", at: ctx.now },
+          };
+          events.push({
+            kind: ORG_GRIEVANCE_REPLY_EVENT,
+            actors: [e.by, e.victim],
+            place: { kind: "place", place: seat as unknown as PlaceId },
+            data: { org, against: e.against, kind: e.kind, deed: e.deed, reply },
+            emissions: {},
+            causes: [{ kind: "event", event: e.deed }],
+          });
+        });
+      }
       // Lo guardado antes de hoy se trata hoy: quien manda elige la respuesta (novel4-grievance-matter).
       for (const org of [...truth.ids(SECT_GRIEVANCES)].sort(compareStrings) as EntityRef[]) {
         const seat = seatOf(org);
-        const had = truth.get(ORG_RELATION, org);
+        const had = relationOf(org);
         if (seat === undefined || !had) continue;
         const entries = ledger(org);
         entries.forEach((e, i) => {
@@ -137,7 +184,12 @@ export function sectGrievanceProcess(): ProcessDef {
           if (!tie) return;
           const roll = ctx.rng.fork("grievance-matter", org, e.deed).float();
           const choice = chooseGrievanceResponse(tie, e.kind, roll);
-          entries[i] = { ...e, response: { choice, at: ctx.now } };
+          // Olvidar termina el asunto ahí mismo; exigir y devolver quedan abiertos.
+          entries[i] = {
+            ...e,
+            response: { choice, at: ctx.now },
+            ...(choice === "forget" ? { outcome: { result: "forgotten", at: ctx.now } } : {}),
+          };
           events.push({
             kind: ORG_GRIEVANCE_MATTER_EVENT,
             actors: [e.by, e.victim],
@@ -149,7 +201,7 @@ export function sectGrievanceProcess(): ProcessDef {
         });
       }
       for (const g of newGrievances(truth)) {
-        const had = relations.get(g.org) ?? truth.get(ORG_RELATION, g.org);
+        const had = relationOf(g.org);
         const tie = orgTie(had, g.against);
         // La ofensa se guarda en la sede (sin sede no hay secta que la guarde).
         const seat = seatOf(g.org);

@@ -2598,7 +2598,7 @@ export function lifeWorld(
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
               }),
               // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
-              sectGrievanceProcess(),
+              sectGrievanceProcess({ dayTicks: parts.clock.day }),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
