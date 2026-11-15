@@ -189,6 +189,11 @@ export interface StrikeFightInput {
    * lleva la regla y si se respetó (nadie murió en uno que no era a muerte).
    */
   readonly duel?: DuelRule;
+  /**
+   * El anciano que mira el duelo en la plataforma cuando quien llama ya lo subió con ellos
+   * (novel4-duel-npc: el cambio de lugar todavía no está en `truth`); sin esto, `platformElder`.
+   */
+  readonly witness?: AgentId;
 }
 
 /** Con qué intención se pelea cada regla de duelo (combat §13). */
@@ -481,7 +486,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   const myStage = stageOf(i.me);
   const theirStage = stageOf(i.target);
   // Un duelo a muerte en la plataforma de la sede ante un anciano (novel3-challenge-platform).
-  const elder = i.duel === "death" ? platformElder(i.truth, i.me, i.target) : undefined;
+  const elder =
+    i.duel === "death" ? (i.witness ?? platformElder(i.truth, i.me, i.target)) : undefined;
   const speed = (stage: number) => refinementOf(stage).speed;
   const blur =
     speed(theirStage) >= speed(myStage) * BLUR_RATIO

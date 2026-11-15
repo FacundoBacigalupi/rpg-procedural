@@ -217,6 +217,8 @@ export function duelsProcess(o: {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
+    // Los duelos que pelean los discípulos salen de otro `perceive` (`life.sect_spar`, novel4-duel-npc).
+    perceiveCascade: { kinds: ["combat.fight"] },
     reads: [
       DUEL.name,
       FACE.name,
