@@ -44,6 +44,7 @@ import {
   TRACE,
 } from "../../sim/index.ts";
 import { settledIn } from "./credit.ts";
+import { DUEL_GRUDGE_EVENT } from "./duels.ts";
 import { ASCRIBED_GROUPS } from "./identity.ts";
 import { PURPOSE_READS, type ReaderContent, readWitnessed } from "./reading.ts";
 
@@ -119,7 +120,16 @@ export function offenseOf(e: Event): {
     };
     noticedBy?: readonly string[];
     creditors?: readonly string[];
+    duel?: { kept?: boolean };
   } | null;
+  // Un duelo pactado que se peleó según su regla no es una agresión (novel3-challenge-fight).
+  if (e.kind === "combat.fight" && data?.duel?.kept === true) return null;
+  // El familiar del muerto en la plataforma que no respeta el acuerdo (novel3-challenge-platform):
+  // lo sabe él, como una agresión del vencedor contra el muerto.
+  if (e.kind === DUEL_GRUDGE_EVENT) {
+    const kin = e.actors[2] as AgentId | undefined;
+    return second && kin ? { kind: "assault", by: first, victim: second, noticedBy: [kin] } : null;
+  }
   if (
     (e.kind === "combat.fight" || e.kind === "combat.finish" || e.kind === "combat.art") &&
     second

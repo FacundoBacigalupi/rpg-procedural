@@ -1,5 +1,6 @@
 export * from "./accusations.ts";
 export * from "./acts.ts";
+export * from "./challenge.ts";
 export * from "./disposition.ts";
 export * from "./form.ts";
 export * from "./knowledge.ts";

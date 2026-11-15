@@ -127,6 +127,11 @@ export interface FightInput {
    * el comportamiento es el de siempre (chances desde la verdad con ruido de vista y `breakAt`).
    */
   readonly reading?: boolean;
+  /**
+   * Cortar en la primera herida que sangra (un duelo a primera sangre, novel3-challenge-fight): la
+   * pelea termina al cerrar el pulso en que alguien sangró, con `end: "first_blood"`.
+   */
+  readonly stopAtBlood?: boolean;
 }
 
 /** Lo que de cada peleador no sale de su cuerpo ni de su carácter: sirve para retomar. */
@@ -167,7 +172,8 @@ export interface FightPause {
 
 export type FighterOutcome = "standing" | "down" | "dead" | "fled" | "yielded";
 
-export type FightEnd = "decided" | "separated";
+/** `first_blood`: se cortó en la primera herida que sangra (un duelo a primera sangre, combat §13). */
+export type FightEnd = "decided" | "separated" | "first_blood";
 
 export type FightLogKind =
   | "close"
@@ -442,6 +448,7 @@ export function runFight(input: FightInput): FightResult {
   let pulse = 0;
   let end: FightEnd = "decided";
   let paused: PauseReason | null = null;
+  let bled = false;
   let noticed: PauseReason | null = null;
   const control = input.control === undefined ? undefined : states.get(input.control);
   for (; hostile(); pulse++) {
@@ -562,6 +569,7 @@ export function runFight(input: FightInput): FightResult {
         rng.fork("injure"),
       );
       b.to.body = injury.body;
+      if (injury.wound.bleeding > 0) bled = true;
       b.to.caps = coreCaps(capabilitiesOf(b.to.plan, b.to.body), b.to.coreC);
       b.to.woundsTaken += 1;
       b.from.landed += 1;
@@ -656,6 +664,12 @@ export function runFight(input: FightInput): FightResult {
     // Quien terminó su hueco vuelve a guardia.
     for (const s of order) {
       if (s.phase === "recover" && s.until <= t + 1) s.phase = "ready";
+    }
+    // A primera sangre: corre la sangre y se separan (combat §13).
+    if (input.stopAtBlood === true && bled) {
+      end = "first_blood";
+      pulse++;
+      break;
     }
 
     // 4. Lo que nota quien maneja el jugador pide una decisión (combat §16): una herida que

@@ -42,6 +42,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { offenseOf } from "./deeds.ts";
+import { DUEL_GRUDGE_EVENT } from "./duels.ts";
 
 export const CONSCIENCE_PROCESS = "life.conscience";
 export const REMORSE_EVENT = "mind.remorse";
@@ -102,6 +103,8 @@ export function ownDeedOf(
   truth: ReadonlyWorldTruth,
   e: Event,
 ): { by: AgentId; deed: OwnDeed; fatal: boolean } | null {
+  // El rencor de la familia por un duelo respetado no es un hecho nuevo de quien ganó.
+  if (e.kind === DUEL_GRUDGE_EVENT) return null;
   const off = offenseOf(e);
   if (!off) return null;
   // Lo que se toma dentro de la casa es de la familia, no un robo (igual que la aldea).

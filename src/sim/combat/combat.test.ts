@@ -420,6 +420,37 @@ describe("armas (novel3-weapons-core)", () => {
   });
 });
 
+describe("a primera sangre (novel3-challenge-fight)", () => {
+  const sword: FighterWeapon = { reach: 1.4, mass: 1.2, wound: "cut", sharpness: 0.8, wear: 0 };
+  const duel = (seed: number, stop: boolean) =>
+    runFight({
+      fighters: [
+        fighter(A, "a", 0, { intent: "subdue", weapon: sword }),
+        fighter(B, "b", 1, { intent: "subdue", weapon: sword }),
+      ],
+      start: 0,
+      light: 1,
+      rng: Rng.root(seed),
+      cause,
+      ...(stop ? { stopAtBlood: true } : {}),
+    });
+
+  it("con filo, corta en la primera herida que sangra, antes que la pelea entera", () => {
+    let cut = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const r = duel(seed, true);
+      const full = duel(seed, false);
+      if (r.end !== "first_blood") continue;
+      cut++;
+      expect(r.seconds).toBeLessThanOrEqual(full.seconds);
+      const bleeding = r.fighters.some((f) => f.body.wounds.some((w) => w.bleeding > 0));
+      expect(bleeding).toBe(true);
+      expect(duel(seed, true)).toEqual(r);
+    }
+    expect(cut).toBeGreaterThan(0);
+  });
+});
+
 describe("bestias (novel3-beasts-core)", () => {
   const fangs: FighterBeast = {
     natural: { reach: 0.9, mass: 0.6, wound: "puncture", sharpness: 0.8 },
