@@ -1533,6 +1533,10 @@
     ]
   },
   {
+    "id": "self.mission_watch_seen",
+    "lines": ["Contás lo que viste en el camino: gente de la otra secta anduvo por ahí."]
+  },
+  {
     "id": "self.mission_hunt_done",
     "lines": [
       "De vuelta en la sede, la secta da por cumplida la caza de la bestia; los puntos quedan anotados a tu nombre."

@@ -903,6 +903,10 @@ export function playerView(
             e.kind === MISSION_LAPSED_EVENT,
         );
   if (missionEnd) {
+    const sighted = (missionEnd.data as { sighted?: unknown } | null)?.sighted;
+    if (missionEnd.kind === MISSION_DONE_EVENT && typeof sighted === "number" && sighted > 0) {
+      cues.add("mission_watch_seen");
+    }
     cues.add(
       missionEnd.kind === MISSION_DONE_EVENT
         ? (missionEnd.data as { kind?: unknown } | null)?.kind === "hunt"

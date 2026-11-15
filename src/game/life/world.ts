@@ -2604,6 +2604,8 @@ export function lifeWorld(
                   : {}),
                 // La armería canjea armas por puntos (novel3-weapons-sect).
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
+                // La guardia anota a los de la otra secta y se cuenta al cobrar (novel4-watch-report).
+                watch: { spaces: parts.spaces, map: parts.map },
               }),
               // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
               sectGrievanceProcess({

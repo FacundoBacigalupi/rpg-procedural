@@ -84,6 +84,11 @@ export interface SectMission {
    * cumplidas se cobra al volver a la sede.
    */
   readonly watched?: EventId;
+  /**
+   * Vigilar a otra secta (novel4-watch-report): los de ella que el guardia vio afuera en el puesto o
+   * al lado mientras estaba ahí (por id, ordenados); se cuentan al cobrar.
+   */
+  readonly sighted?: readonly AgentId[];
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;

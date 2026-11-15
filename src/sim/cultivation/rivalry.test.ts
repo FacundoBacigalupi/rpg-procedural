@@ -10,6 +10,7 @@ import {
   afterReplyGiven,
   afterReplyReceived,
   afterSectDuel,
+  afterWatchReport,
   BELIEF_ERROR,
   chooseGrievanceResponse,
   chooseReply,
@@ -23,6 +24,9 @@ import {
   seededBelief,
   strengthScore,
   threatens,
+  WATCH_CALM,
+  WATCH_FEAR_MAX,
+  WATCH_FEAR_PER_SIGHTED,
   WATCH_THREAT,
   wantedBy,
 } from "./rivalry.ts";
@@ -257,5 +261,35 @@ describe("la otra secta en guardia (novel4-watch-need)", () => {
     expect(threatens(tie(0.4, 0.2))).toBe(false);
     expect(threatens(tie(WATCH_THREAT, 0))).toBe(true);
     expect(threatens(tie(0, WATCH_THREAT + 0.1))).toBe(true);
+  });
+});
+
+describe("lo visto en la guardia se cuenta (novel4-watch-report)", () => {
+  const base = {
+    formal: [],
+    sentiment: { trust: 0.5, respect: 0.5, fear: 0.3, resentment: 0.6 },
+    believedStrength: { elders: 2, disciples: 1, topStage: 2 },
+    grievances: [],
+    originEventId: "event:1" as EventId,
+    history: [],
+  } as OrgTie;
+  it("los vistos suben el miedo con tope y son piso de los discípulos creídos; nadie, lo calma", () => {
+    const two = afterWatchReport(base, 2, "event:7" as EventId);
+    expect(two.sentiment.fear).toBeCloseTo(0.3 + 2 * WATCH_FEAR_PER_SIGHTED);
+    expect(two.believedStrength.disciples).toBe(2);
+    expect(two.history).toEqual(["event:7"]);
+    const many = afterWatchReport(base, 50, "event:7" as EventId);
+    expect(many.sentiment.fear).toBeCloseTo(0.3 + WATCH_FEAR_MAX);
+    expect(many.believedStrength.disciples).toBe(50);
+    const none = afterWatchReport(base, 0, "event:7" as EventId);
+    expect(none.sentiment.fear).toBeCloseTo(0.3 - WATCH_CALM);
+    expect(none.believedStrength).toEqual(base.believedStrength);
+    expect(
+      afterWatchReport(
+        { ...base, sentiment: { ...base.sentiment, fear: 0 } },
+        0,
+        "event:7" as EventId,
+      ).sentiment.fear,
+    ).toBe(0);
   });
 });
