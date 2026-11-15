@@ -117,6 +117,7 @@ import {
   RELATION_DIMS,
   RELIGIONS,
   type ReadonlyWorldTruth,
+  RIVAL_VISIT_LAG_DAYS,
   ROTTED,
   resolveTastes,
   SCHEMAS,
@@ -2317,6 +2318,13 @@ export function createLife(
           seat: rivalSeat,
           key: "rival",
           ...(schoolNames ? { school: schoolNames } : {}),
+          // También baja a buscar discípulos, unos días después de la primera (novel4-recruit-visit).
+          ...(sect?.sect.visitDay === undefined
+            ? {}
+            : {
+                visitDay:
+                  (sect.sect.visitDay + RIVAL_VISIT_LAG_DAYS) % Math.round(clock.year / clock.day),
+              }),
         })
       : undefined;
     if (rival && sect) {

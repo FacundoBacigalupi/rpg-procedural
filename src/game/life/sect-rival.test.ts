@@ -71,8 +71,8 @@ describe("la secta rival en la vida (novel4-rival-sect-seed)", () => {
     }
     const founded = l.world.log.all().filter((e) => e.kind === SECT_FOUNDED_EVENT);
     expect(founded.length).toBe(2);
-    // La rival no baja a la aldea todavía (novel4-recruit).
-    expect(b.visitDay).toBeUndefined();
+    // La rival también baja a la aldea, después de la primera (novel4-recruit-visit).
+    expect(b.visitDay).toBeDefined();
     const twin = Life.create(3, content, { cultivation: true, rivalSect: true });
     expect(twin.hash().total).toBe(l.hash().total);
   });

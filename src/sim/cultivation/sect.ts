@@ -285,6 +285,11 @@ export const SECT_VISIT_FROM_HOUR = 9;
 export const SECT_VISIT_HOURS = 8;
 /** Cuántos días después del pico de la cosecha baja (con los graneros llenos y los chicos libres). */
 export const SECT_VISIT_AFTER_HARVEST_DAYS = 15;
+/**
+ * Cuántos días después de la primera baja la rival (novel4-recruit-visit): las dos buscan a los
+ * mismos chicos en la misma temporada, sin cruzarse en la plaza.
+ */
+export const RIVAL_VISIT_LAG_DAYS = 3;
 
 /** Qué año (índice desde el comienzo) ya se anunció y cuál ya bajó, en la entidad de la secta. */
 export interface SectVisitState {

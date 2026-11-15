@@ -20,6 +20,11 @@
 //
 // La escuela (novel-cult-school): si la secta tiene, al aceptado le enseñan ahí la técnica de entrada
 // (`CULTIVATION_TECHNIQUE`, `cultivation.technique_taught`), que rinde al meditar y absorber.
+//
+// Dos sectas (novel4-recruit-visit): la rival baja unos días después. Su aviso deja la fecha en lo
+// que cada uno oyó de ella (`SECTS_HEARD`; `SECT_LORE` sigue siendo la primera que conoció). La
+// prueba se cuenta por secta y año; no se mide al que ya es de otra secta de antes, y el aceptado
+// que ya estaba citado por otra ese año no se suma: le queda la oferta (`SECT_TRIAL` aceptado).
 
 import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
@@ -42,6 +47,8 @@ import {
   SECT_TRIAL_EVENT,
   SECT_VISIT,
   SECT_VISIT_EVENT,
+  SECTS_HEARD,
+  type SectLore,
   type StateChange,
   sectLoreOf,
   setComponent,
@@ -89,10 +96,12 @@ export function sectVisitProcess(o: {
       SECT_TRIAL.name,
       SECT_MEMBER.name,
       SECT_SCHOOL.name,
+      SECTS_HEARD.name,
     ],
     writes: [
       SECT_VISIT.name,
       SECT_LORE.name,
+      SECTS_HEARD.name,
       SECT_TRIAL.name,
       SECT_MEMBER.name,
       CULTIVATION_TECHNIQUE.name,
@@ -122,10 +131,21 @@ export function sectVisitProcess(o: {
           for (const id of living(ctx.truth) as AgentId[]) {
             const p = ctx.truth.get(PERSON, id);
             if (!p || (ctx.now - p.born) / o.clock.year < HEARS_FROM_YEARS) continue;
-            const known =
-              ctx.truth.get(SECT_LORE, id) ??
-              sectLoreOf(ctx.rng.fork("lore", id), org, sect, ctx.now);
-            changes.push(setComponent(SECT_LORE, id, { ...known, visitAt: visit.start }));
+            const first = ctx.truth.get(SECT_LORE, id);
+            if (!first || first.org === org) {
+              const known = first ?? sectLoreOf(ctx.rng.fork("lore", id), org, sect, ctx.now);
+              changes.push(setComponent(SECT_LORE, id, { ...known, visitAt: visit.start }));
+              continue;
+            }
+            // De otra secta que no es la primera que conoció: en lo que oyó de las otras.
+            const heard = ctx.truth.get(SECTS_HEARD, id)?.toward ?? {};
+            const known: SectLore =
+              heard[org] ?? sectLoreOf(ctx.rng.fork("lore", id), org, sect, ctx.now);
+            changes.push(
+              setComponent(SECTS_HEARD, id, {
+                toward: { ...heard, [org]: { ...known, visitAt: visit.start } },
+              }),
+            );
           }
         }
         const inWindow = ctx.now >= visit.start && ctx.now < visit.end;
@@ -150,7 +170,12 @@ export function sectVisitProcess(o: {
             if (!p || !talent) continue;
             const age = (ctx.now - p.born) / o.clock.year;
             if (age < TRIAL_MIN_YEARS || age >= TRIAL_MAX_YEARS) continue;
-            if ((ctx.truth.get(SECT_TRIAL, id)?.year ?? -1) >= visit.year) continue;
+            const last = ctx.truth.get(SECT_TRIAL, id);
+            if (last?.org === org && last.year >= visit.year) continue;
+            // El que ya es de otra secta de antes no se mide; el citado este año, sí (la oferta).
+            const member = ctx.truth.get(SECT_MEMBER, id);
+            const summoned = member?.trialYear === visit.year;
+            if (member && member.org !== org && !summoned) continue;
             const atSquare = ctx.truth.get(LOCATION, id)?.space === VILLAGE_SQUARE;
             const brought =
               arriving &&
@@ -179,7 +204,7 @@ export function sectVisitProcess(o: {
                 { kind: "state", entity: id, key: TALENT.name },
               ],
             });
-            if (!accepted || ctx.truth.get(SECT_MEMBER, id)?.org === org) continue;
+            if (!accepted || member) continue;
             const reportBy = visit.end + SECT_REPORT_DAYS * o.clock.day;
             changes.push(
               setComponent(SECT_MEMBER, id, {

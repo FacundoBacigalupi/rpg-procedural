@@ -3,10 +3,12 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  BODY_STATE,
   CULTIVATION_TECHNIQUE,
   compassOf,
   LOCATION,
   PERSON,
+  RIVAL_VISIT_LAG_DAYS,
   SECT,
   SECT_ANNOUNCE_DAYS,
   SECT_HERALD_EVENT,
@@ -18,6 +20,7 @@ import {
   SECT_TRIAL,
   SECT_TRIAL_EVENT,
   SECT_VISIT_EVENT,
+  SECTS_HEARD,
   sectVisitDay,
   TALENT,
   TRIAL_MAX_YEARS,
@@ -233,5 +236,79 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
       .filter((e) => e.kind === SECT_JOINED_EVENT)
       .map((e) => e.actors[0]);
     expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("la rival baja unos días después: mide al ya citado y le deja la oferta (novel4-recruit-visit)", () => {
+    const life = Life.create(3, content, { cultivation: true, rivalSect: true });
+    const w = life.world;
+    const first = w.truth.get(SECT_LORE, w.player)?.org;
+    const rival = w.truth.ids(SECT).find((id) => id !== first);
+    const a = first ? w.truth.get(SECT, first) : undefined;
+    const b = rival ? w.truth.get(SECT, rival) : undefined;
+    if (!first || !rival || !a || !b) throw new Error("sin las dos sectas");
+    const yearDays = Math.round(w.clock.year / w.clock.day);
+    // La rival nace con su día, unos días después del de la primera.
+    expect(b.visitDay).toBe(((a.visitDay ?? 0) + RIVAL_VISIT_LAG_DAYS) % yearDays);
+    const offset = Math.round((w.map.lonDeg / 360) * w.clock.day);
+    const today = Math.floor((life.now + offset) / w.clock.day) % yearDays;
+    const dayA = (today + 2) % yearDays;
+    const dayB = (dayA + RIVAL_VISIT_LAG_DAYS) % yearDays;
+    w.truth.set(SECT, first, { ...a, visitDay: dayA });
+    w.truth.set(SECT, rival, { ...b, visitDay: dayB });
+    const visitA = upcomingVisit(life.now, dayA, w.clock, offset);
+    const visitB = upcomingVisit(life.now, dayB, w.clock, offset);
+    const me = w.truth.get(PERSON, w.player);
+    const talent = w.truth.get(TALENT, w.player);
+    if (!me || !talent) throw new Error("sin personaje");
+    const body = w.truth.get(BODY_STATE, w.player);
+    if (!body) throw new Error("sin cuerpo");
+    const toSquare = () => {
+      const at = w.truth.get(LOCATION, w.player);
+      if (!at) throw new Error("sin lugar");
+      w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    };
+    w.scheduler.advanceTo(visitA.start - 3600);
+    w.truth.set(PERSON, w.player, { ...me, born: life.now - 12 * w.clock.year });
+    w.truth.set(TALENT, w.player, {
+      ...talent,
+      innate: { ...talent.innate, spirit_root: 3.5, root_fire: 2 },
+    });
+    toSquare();
+    w.scheduler.advanceTo(visitA.start + 3 * 3600);
+    expect(w.truth.get(SECT_MEMBER, w.player)).toMatchObject({
+      org: first,
+      trialYear: visitA.year,
+    });
+    // El aviso de la rival: la fecha en lo que oyó de ella; la primera sigue siendo la que conoce.
+    // Comido entre una bajada y la otra (el test no cocina).
+    while (life.now < visitB.start - 3600) {
+      w.truth.set(BODY_STATE, w.player, { ...body, updatedAt: life.now });
+      w.scheduler.advanceTo(Math.min(visitB.start - 3600, life.now + 6 * 3600));
+    }
+    expect(w.truth.get(SECTS_HEARD, w.player)?.toward[rival]?.visitAt).toBe(visitB.start);
+    expect(w.truth.get(SECT_LORE, w.player)?.org).toBe(first);
+    toSquare();
+    w.scheduler.advanceTo(visitB.start + 3 * 3600);
+    const mine = w.log
+      .all()
+      .filter((e) => e.kind === SECT_TRIAL_EVENT && e.actors[0] === w.player)
+      .map((e) => (e.data as { org: string }).org);
+    expect(mine).toEqual([first, rival]);
+    // Aceptado también por la rival: no se suma, queda la oferta.
+    expect(w.truth.get(SECT_TRIAL, w.player)).toMatchObject({ org: rival, accepted: true });
+    expect(w.truth.get(SECT_MEMBER, w.player)?.org).toBe(first);
+    w.scheduler.advanceTo(visitB.end + 3600);
+    // Nadie se suma a las dos ni se mide dos veces en la misma secta el mismo año.
+    const joined = w.log
+      .all()
+      .filter((e) => e.kind === SECT_JOINED_EVENT)
+      .map((e) => e.actors[0]);
+    expect(new Set(joined).size).toBe(joined.length);
+    const trials = w.log
+      .all()
+      .filter((e) => e.kind === SECT_TRIAL_EVENT)
+      .map((e) => `${e.actors[0]}|${(e.data as { org: string }).org}`);
+    expect(new Set(trials).size).toBe(trials.length);
+    expect(trials.some((t) => t.endsWith(`|${rival}`))).toBe(true);
   });
 });
