@@ -904,7 +904,9 @@ export function playerView(
       missionEnd.kind === MISSION_DONE_EVENT
         ? (missionEnd.data as { kind?: unknown } | null)?.kind === "hunt"
           ? "mission_hunt_done"
-          : "mission_done"
+          : (missionEnd.data as { kind?: unknown } | null)?.kind === "envoy"
+            ? "mission_envoy_done"
+            : "mission_done"
         : missionEnd.kind === MISSION_PROGRESS_EVENT
           ? "mission_progress"
           : "mission_lapsed",

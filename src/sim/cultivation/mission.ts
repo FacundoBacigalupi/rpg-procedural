@@ -72,6 +72,11 @@ export interface SectMission {
    * a 1 si en esa pelea murió o huyó; si quedó caída y muere después, también cuenta.
    */
   readonly fight?: EventId;
+  /**
+   * Enviado (novel4-grievance-envoy-speak): la respuesta que le dio la otra secta de palabra; `done`
+   * pasa a 1 y se cobra al volver a la sede.
+   */
+  readonly reply?: EventId;
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -300,11 +305,11 @@ export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until
   Math.min(now + MISSION_DAYS[kind] * dayTicks, until ?? Number.POSITIVE_INFINITY);
 
 /**
- * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) no vence: espera
- * a que quien la tiene vuelva a la sede a cobrarla.
+ * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) y la de enviado
+ * contestada no vencen: esperan a que quien la tiene vuelva a la sede a cobrarla.
  */
 export const missionLapsed = (m: SectMission, now: Tick): boolean =>
-  now > m.due && !(m.kind === "hunt" && m.done >= 1);
+  now > m.due && !((m.kind === "hunt" || m.kind === "envoy") && m.done >= 1);
 
 /** Lo que cuenta de una pelea para la misión de cazar: la bestia murió o huyó. */
 export const HUNT_SETTLED: ReadonlySet<string> = new Set(["dead", "fled"]);
