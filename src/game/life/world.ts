@@ -253,7 +253,11 @@ import { sectGrievanceProcess, sectGrievanceSpokenProcess } from "./sect-grievan
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
-import { sectTournamentProcess, tournamentDuty } from "./sect-tournament.ts";
+import {
+  sectTournamentBoutsProcess,
+  sectTournamentProcess,
+  tournamentDuty,
+} from "./sect-tournament.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sectWatchProcess, watchDestination, watchPosts } from "./sect-watch.ts";
 import { sleepProcess } from "./sleep.ts";
@@ -2647,6 +2651,18 @@ export function lifeWorld(
                       dayTicks: parts.clock.day,
                       light: SECT_SPAR_LIGHT,
                       refined: true,
+                    }),
+                    // El día del torneo, los duelos en la plataforma (novel4-tournament-bouts).
+                    sectTournamentBoutsProcess({
+                      bodyPlans: parts.plans,
+                      skills: parts.skills,
+                      traits: parts.traits,
+                      dayTicks: parts.clock.day,
+                      light: SECT_SPAR_LIGHT,
+                      refined: true,
+                      clock: parts.clock,
+                      lonDeg: parts.map.lonDeg,
+                      player,
                     }),
                     // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),

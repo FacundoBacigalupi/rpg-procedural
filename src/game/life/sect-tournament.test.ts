@@ -11,6 +11,7 @@ import {
   LOCATION,
   ORG_RELATION,
   ORG_TOURNAMENT_CALLED_EVENT,
+  ORG_TOURNAMENT_HELD_EVENT,
   ORG_TOURNAMENT_LAPSED_EVENT,
   PERSON,
   PLACE,
@@ -23,6 +24,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE } from "./act.ts";
+import { DUEL_SETTLED_EVENT } from "./duels.ts";
 import { Life } from "./life.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { atSeat } from "./sect-grievance.ts";
@@ -122,7 +124,7 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     ).toHaveLength(0);
   });
 
-  it("la visitante manda a uno de cuerpo: va antes del día, se queda y vuelve al cerrarse", () => {
+  it("la visitante manda a uno de cuerpo: va, pelea en la plataforma y vuelve (delegation, bouts)", () => {
     const { l, t, a, b } = setup(0.1, true);
     const sa = t.get(SECT, a);
     const sb = t.get(SECT, b);
@@ -182,11 +184,70 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
       l.advanceTo(l.now + DAY);
       expect(atSeat(t, who, host)).toBe(true);
     }
-    // Hecho el torneo (lo cierra -bouts), vuelve.
-    const now = l.now;
-    t.set(SECT_TOURNAMENT, keeper, {
-      with: { [other]: { ...rec, status: "held", closed: now } },
+    // La gente de la sede de la casa no está materializada sin el personaje: uno de la aldea hecho
+    // discípulo interno de la que lo pone, en su sede el día del torneo.
+    const champ = (t.ids(PERSON) as AgentId[]).find(
+      (id) =>
+        id !== who &&
+        alive(id) &&
+        id !== l.player &&
+        t.get(LOCATION, id) !== undefined &&
+        l.now - (t.get(PERSON, id)?.born ?? l.now) > 20 * YEAR &&
+        l.now - (t.get(PERSON, id)?.born ?? l.now) < 40 * YEAR,
+    );
+    if (!champ) throw new Error("sin aldeanos");
+    t.set(SECT_MEMBER, champ, { org: host, rank: "inner", since: l.now });
+    const champBody = t.get(BODY_STATE, champ);
+    if (!champBody) throw new Error("sin cuerpo");
+    while (l.now < rec.at) {
+      fed();
+      l.advanceTo(Math.min(rec.at, l.now + DAY));
+    }
+    expect(atSeat(t, who, host)).toBe(true);
+    // El día del torneo pelea en la plataforma con el de la casa y el torneo queda hecho.
+    while (
+      t.get(SECT_TOURNAMENT, keeper)?.with[other]?.status === "called" &&
+      l.now < rec.at + TOURNAMENT_LATE_DAYS * DAY
+    ) {
+      fed();
+      t.set(BODY_STATE, champ, { ...champBody, updatedAt: l.now });
+      t.set(LOCATION, champ, { hex: seatHex(host) });
+      for (const table of [TRANSIT, NPC_JOURNEY, PLAN_STATE]) t.deleteRaw(table.name, champ);
+      l.advanceTo(l.now + 3600);
+    }
+    const held = l.world.log.all().find((e) => e.kind === ORG_TOURNAMENT_HELD_EVENT);
+    if (!held) throw new Error("sin torneo hecho");
+    expect(t.get(SECT_TOURNAMENT, keeper)?.with[other]).toMatchObject({
+      status: "held",
+      closedBy: held.id,
     });
+    const bouts = (held.data as { bouts: { host: AgentId; guest: AgentId; winner?: AgentId }[] })
+      .bouts;
+    expect(bouts).toHaveLength(1);
+    expect(bouts[0]).toMatchObject({ host: champ, guest: who });
+    const fight = l.world.log
+      .all()
+      .find(
+        (e) =>
+          e.kind === "combat.fight" &&
+          held.causes.some((c) => c.kind === "event" && c.event === e.id),
+      );
+    expect(fight?.actors).toEqual([champ, who]);
+    expect((fight?.data as { duel?: { rule?: string } } | undefined)?.duel?.rule).toBe("yield");
+    // `life.duels` lo cierra: el que ganó sale con cara y su secta pesa en la otra.
+    if (bouts[0]?.winner && fight) {
+      expect(
+        l.world.log
+          .all()
+          .some(
+            (e) =>
+              e.kind === DUEL_SETTLED_EVENT &&
+              e.causes.some((c) => c.kind === "event" && c.event === fight.id),
+          ),
+      ).toBe(true);
+    }
+    // Cerrado, vuelve.
+    const now = l.now;
     // Vuelve por el camino; el que vive en la aldea sigue de la sede a su casa.
     while (
       tournamentDuty(t, who, l.now, DAY, { map: l.world.map, spaces: l.world.spaces }) !==

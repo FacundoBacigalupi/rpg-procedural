@@ -13,6 +13,8 @@ import { table } from "../world/index.ts";
 
 export const ORG_TOURNAMENT_CALLED_EVENT = "org.tournament_called";
 export const ORG_TOURNAMENT_LAPSED_EVENT = "org.tournament_lapsed";
+/** Se hizo: los duelos en la plataforma de la que lo pone (novel4-tournament-bouts). */
+export const ORG_TOURNAMENT_HELD_EVENT = "org.tournament_held";
 
 /** Cada cuántos días, desde el último, se puede convocar otro (sin calibrar). */
 export const TOURNAMENT_EVERY_DAYS = 180;

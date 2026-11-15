@@ -8,6 +8,14 @@
 // a los que manda (`pickDelegates`: un anciano primero, después internos o ancianos libres, como el
 // enviado) y van en `delegates`. Desde unos días antes caminan a la sede que lo pone y se quedan ahí
 // mientras siga convocado; cerrado, vuelven (`tournamentDuty`, que leen `decide` y la rutina).
+//
+// Los duelos (novel4-tournament-bouts): el día del torneo, a `TOURNAMENT_HOUR`, los discípulos de la
+// que lo pone que están en su sede y los delegados de la visitante que llegaron se emparejan por
+// rango y etapa (`tournamentBouts`, el primero de una con el primero de la otra) y suben a la
+// plataforma con un anciano de la casa que mira (`tournamentJudge`); cada par pelea a rendirse
+// (`strikeFight`) y `life.duels` mueve la cara y lo que una secta siente por la otra. Se cierra
+// hecho (`org.tournament_held`, con quién ganó cada duelo). Sin pares, se espera al día siguiente
+// hasta que se pierde.
 
 import {
   type AgentId,
@@ -15,10 +23,13 @@ import {
   type EntityRef,
   type EventId,
   type PlaceId,
+  type PlanetClock,
 } from "../../core/index.ts";
 import {
   acceptsTournament,
   BODY_STATE,
+  CULTIVATION_STATE,
+  DUEL,
   delegateLeg,
   draftEvent,
   ENTITY,
@@ -26,33 +37,48 @@ import {
   houseKey,
   LOCATION,
   type LocalMap,
+  localHour,
   nextHost,
   ORG_RELATION,
   ORG_TOURNAMENT_CALLED_EVENT,
+  ORG_TOURNAMENT_HELD_EVENT,
   ORG_TOURNAMENT_LAPSED_EVENT,
   orgTie,
   PERSON,
   PLACE,
   type ProcessDef,
   patchOf,
+  RELATIONS,
   type ReadonlyWorldTruth,
   SECT,
   SECT_MEMBER,
   SECT_MISSION,
   SECT_TOURNAMENT,
   type SectTournaments,
+  SKILL_STATE,
   type SpaceGraph,
+  type StateChange,
+  sectSpaceKey,
   setComponent,
   TOURNAMENT_DELEGATES,
   TOURNAMENT_NOTICE_DAYS,
   type TournamentRecord,
+  TRIBULATION,
   tournamentDue,
   tournamentKeeper,
   tournamentLate,
+  YIELDED,
 } from "../../sim/index.ts";
+import { duelVictor } from "./duels.ts";
+import { canFight, DUEL_INTENT, exposeSkills, FIGHT_STATE, strikeFight } from "./fight.ts";
+import { PLAYER } from "./player.ts";
 import { atSeat, pickEnvoy } from "./sect-grievance.ts";
+import { DUEL_PLATFORM_EVENT, type SectSparOptions } from "./sect-spar.ts";
 
 export const SECT_TOURNAMENT_PROCESS = "life.sect_tournament";
+export const SECT_TOURNAMENT_BOUTS_PROCESS = "life.sect_tournament_bouts";
+/** La hora local de los duelos (de mañana: no choca con la práctica de la tarde). */
+export const TOURNAMENT_HOUR = 10;
 /** Lo que espera de una vez el delegado en la sede que pone el torneo (decide es diario). */
 export const TOURNAMENT_STAY_SECONDS = 8 * 3600;
 
@@ -146,6 +172,218 @@ function backHome(
   if (household === undefined) return false;
   const house = home.spaces.spaces.find((s) => s.key === houseKey(household));
   return house !== undefined && patchOf(home.map, house.hex).base === base;
+}
+
+const RANK_ORDER: Readonly<Record<string, number>> = { inner: 0, outer: 1 };
+
+/**
+ * Quiénes de `org` pelean en el torneo que pone `host` (puro, novel4-tournament-bouts): discípulos
+ * internos o externos (los ancianos miran), vivos, despiertos, en condiciones de pelear, en la sede
+ * de `host`, sin el Cielo encima ni duelo propio; no el personaje. De `only` si se da (la
+ * delegación). Primero los internos, después por etapa de mayor a menor y por id.
+ */
+export function tournamentFighters(
+  truth: ReadonlyWorldTruth,
+  org: EntityRef,
+  host: EntityRef,
+  player: AgentId,
+  only?: readonly AgentId[],
+): AgentId[] {
+  const ids = only ?? ([...truth.ids(SECT_MEMBER)] as AgentId[]);
+  const stage = (id: AgentId) => truth.get(CULTIVATION_STATE, id)?.stage ?? 0;
+  const rank = (id: AgentId) => RANK_ORDER[truth.get(SECT_MEMBER, id)?.rank ?? ""] ?? 9;
+  return ids
+    .filter((id) => {
+      const m = truth.get(SECT_MEMBER, id);
+      if (m?.org !== org || RANK_ORDER[m.rank] === undefined || id === player) return false;
+      if (truth.has(PLAYER, id) || truth.has(TRIBULATION, id) || truth.has(DUEL, id)) return false;
+      if (truth.get(BODY_STATE, id)?.activity === "sleep") return false;
+      return atSeat(truth, id, host) && canFight(truth, id);
+    })
+    .sort((a, b) => rank(a) - rank(b) || stage(b) - stage(a) || compareStrings(a, b));
+}
+
+/**
+ * Los duelos del torneo (puro, novel4-tournament-bouts): los de la que lo pone en su sede contra los
+ * delegados de la visitante que llegaron, el i-ésimo de uno con el i-ésimo del otro. Tantos como el
+ * lado más corto.
+ */
+export function tournamentBouts(
+  truth: ReadonlyWorldTruth,
+  rec: TournamentRecord,
+  guest: EntityRef,
+  player: AgentId,
+): { readonly host: AgentId; readonly guest: AgentId }[] {
+  const h = tournamentFighters(truth, rec.host, rec.host, player);
+  const g = tournamentFighters(truth, guest, rec.host, player, rec.delegates ?? []);
+  return g.slice(0, h.length).map((x, i) => ({ host: h[i] as AgentId, guest: x }));
+}
+
+/** El que mira desde la plataforma: un anciano o el maestro de la casa en su sede, despierto. */
+export function tournamentJudge(
+  truth: ReadonlyWorldTruth,
+  host: EntityRef,
+  player: AgentId,
+): AgentId | undefined {
+  return ([...truth.ids(SECT_MEMBER)].sort(compareStrings) as AgentId[]).find((id) => {
+    const m = truth.get(SECT_MEMBER, id);
+    if (m?.org !== host || (m.rank !== "elder" && m.rank !== "master") || id === player) {
+      return false;
+    }
+    if (truth.has(DUEL, id) || truth.get(BODY_STATE, id)?.activity === "sleep") return false;
+    return atSeat(truth, id, host) && canFight(truth, id);
+  });
+}
+
+/** Escritor de los duelos del torneo (cableado opt-in, con la región hasta la sede). */
+export function sectTournamentBoutsProcess(
+  o: SectSparOptions & {
+    readonly clock: PlanetClock;
+    readonly lonDeg: number;
+    readonly player: AgentId;
+  },
+): ProcessDef {
+  const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  return {
+    id: SECT_TOURNAMENT_BOUTS_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "hour", scene: "hour" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [
+      SECT.name,
+      SECT_TOURNAMENT.name,
+      SECT_MEMBER.name,
+      PLACE.name,
+      LOCATION.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      SKILL_STATE.name,
+      RELATIONS.name,
+      TRIBULATION.name,
+      DUEL.name,
+      FIGHT_STATE.name,
+      PLAYER.name,
+      CULTIVATION_STATE.name,
+    ],
+    // Un duelo puede dejar a uno rendido o la pelea pausada (`strikeFight`).
+    writes: [
+      BODY_STATE.name,
+      SKILL_STATE.name,
+      LOCATION.name,
+      YIELDED.name,
+      FIGHT_STATE.name,
+      SECT_TOURNAMENT.name,
+    ],
+    run(ctx) {
+      if (Math.floor(localHour(o.clock, ctx.now, o.lonDeg)) !== TOURNAMENT_HOUR) return {};
+      const truth = ctx.truth;
+      const sects = ([...truth.ids(SECT)] as EntityRef[]).sort(compareStrings);
+      const events: EventDraft[] = [];
+      const changes: StateChange[] = [];
+      const kept = new Map<EntityRef, SectTournaments>();
+      for (const [i, a] of sects.entries()) {
+        for (const b of sects.slice(i + 1)) {
+          const [keeper, other] = tournamentKeeper(a, b);
+          const rec = truth.get(SECT_TOURNAMENT, keeper)?.with[other];
+          if (rec?.status !== "called" || ctx.now < rec.at) continue;
+          if (tournamentLate(rec, ctx.now, o.clock.day)) continue;
+          const guest = rec.host === a ? b : a;
+          const seat = truth.get(SECT, rec.host)?.seatPlace;
+          const bouts = tournamentBouts(truth, rec, guest, o.player);
+          const first = bouts[0];
+          const at = first ? truth.get(LOCATION, first.host) : undefined;
+          if (seat === undefined || !first || !at) continue;
+          const judge = tournamentJudge(truth, rec.host, o.player);
+          const place = { kind: "place" as const, place: seat as unknown as PlaceId };
+          const arena = { hex: at.hex, space: sectSpaceKey(seat, "arena") };
+          const up = [...bouts.flatMap((x) => [x.host, x.guest]), ...(judge ? [judge] : [])];
+          for (const id of up) changes.push(setComponent(LOCATION, id, arena));
+          const platform = draftEvent(events.length);
+          events.push({
+            kind: DUEL_PLATFORM_EVENT,
+            actors: up,
+            place,
+            data: { rule: "yield", tournament: rec.called },
+            emissions: { sight: 0.6 },
+            causes: [{ kind: "event", event: rec.called }],
+          });
+          const fights: EventId[] = [];
+          const results: { host: AgentId; guest: AgentId; winner?: AgentId }[] = [];
+          for (const x of bouts) {
+            const mine = truth.get(BODY_STATE, x.host);
+            if (!mine) continue;
+            const f = strikeFight({
+              truth,
+              me: x.host,
+              myBody: mine,
+              target: x.guest,
+              plans,
+              skills: o.skills,
+              traits: o.traits,
+              intent: DUEL_INTENT.yield,
+              light: o.light,
+              ...(o.refined ? { refined: true } : {}),
+              duel: "yield",
+              ...(judge ? { witness: judge } : {}),
+              start: ctx.now,
+              rng: ctx.rng.fork("tournament", x.host, x.guest),
+              day: o.dayTicks,
+              cause: rec.called,
+              place,
+            });
+            changes.push(setComponent(BODY_STATE, x.host, f.myBody), ...f.changes);
+            if (f.exposure) {
+              changes.push(
+                setComponent(
+                  SKILL_STATE,
+                  x.host,
+                  exposeSkills(
+                    truth.get(SKILL_STATE, x.host),
+                    f.exposure,
+                    ctx.now + f.seconds,
+                    o.dayTicks,
+                  ),
+                ),
+              );
+            }
+            fights.push(draftEvent(events.length));
+            events.push(f.event);
+            const v = duelVictor(f.event);
+            results.push({ ...x, ...(v ? { winner: v.winner } : {}) });
+          }
+          const closedBy = draftEvent(events.length);
+          events.push({
+            kind: ORG_TOURNAMENT_HELD_EVENT,
+            actors: up,
+            place,
+            data: { host: rec.host, guest, at: rec.at, bouts: results },
+            emissions: { sight: 0.6 },
+            causes: [
+              { kind: "event", event: rec.called },
+              { kind: "event", event: platform },
+              ...fights.map((event) => ({ kind: "event" as const, event })),
+            ],
+          });
+          const had = kept.get(keeper) ?? truth.get(SECT_TOURNAMENT, keeper) ?? { with: {} };
+          kept.set(keeper, {
+            with: { ...had.with, [other]: { ...rec, status: "held", closed: ctx.now, closedBy } },
+          });
+        }
+      }
+      if (events.length === 0) return {};
+      return {
+        events,
+        changes: [
+          ...changes,
+          ...[...kept]
+            .sort(([x], [y]) => compareStrings(x, y))
+            .map(([id, t]) => setComponent(SECT_TOURNAMENT, id, t)),
+        ],
+      };
+    },
+  };
 }
 
 export function sectTournamentProcess(o: {
