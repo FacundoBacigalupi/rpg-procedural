@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 import { type EventId, Rng } from "../../core/index.ts";
 import type { OrgTie } from "../org/index.ts";
 import {
+  addGrievance,
   afterSectDuel,
   BELIEF_ERROR,
+  GRIEVANCE_RESENTMENT,
   rivalSentiment,
   seededBelief,
   strengthScore,
@@ -72,5 +74,26 @@ describe("el duelo entre sectas mueve la relación (novel4-sect-meet-face)", () 
     let w: OrgTie = { ...tie, sentiment: { ...tie.sentiment, respect: 0.01 } };
     for (let i = 0; i < 5; i++) w = afterSectDuel(w, "won", fight);
     expect(w.sentiment.respect).toBe(0);
+  });
+});
+
+describe("las ofensas entre sectas (novel4-grievance-record)", () => {
+  const tie: OrgTie = {
+    formal: ["rival"],
+    sentiment: { trust: 0.1, respect: 0.4, fear: 0.2, resentment: 0.3 },
+    believedStrength: { elders: 1, disciples: 3, topStage: 1 },
+    grievances: [],
+    originEventId: "event:1" as EventId,
+    history: ["event:1" as EventId],
+  };
+
+  it("la ofensa queda una sola vez y sube el rencor según su peso", () => {
+    const killed = addGrievance(tie, "event:7" as EventId, "killing");
+    expect(killed.grievances).toEqual(["event:7"]);
+    expect(killed.history).toEqual(["event:1", "event:7"]);
+    expect(killed.sentiment.resentment).toBeCloseTo(0.3 + GRIEVANCE_RESENTMENT.killing);
+    expect(addGrievance(killed, "event:7" as EventId, "killing")).toBe(killed);
+    const robbed = addGrievance(tie, "event:8" as EventId, "theft");
+    expect(robbed.sentiment.resentment).toBeLessThan(killed.sentiment.resentment);
   });
 });

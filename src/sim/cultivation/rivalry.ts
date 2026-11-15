@@ -153,3 +153,33 @@ export function afterSectDuel(tie: OrgTie, side: "won" | "lost", event: EventId)
       : { ...s, respect: clamp01(s.respect - SECT_DUEL_WINNER_RESPECT) };
   return { ...tie, sentiment, history: [...tie.history, event] };
 }
+
+export const ORG_GRIEVANCE_EVENT = "org.grievance";
+
+/** Lo que pesa cada ofensa en el rencor de la secta ofendida (sin calibrar). */
+export const GRIEVANCE_RESENTMENT = {
+  theft: 0.05,
+  assault: 0.08,
+  /** Una agresión que dejó muerto al de la secta. */
+  killing: 0.25,
+} as const;
+
+export type GrievanceKind = keyof typeof GRIEVANCE_RESENTMENT;
+
+/**
+ * La ofensa que la secta guarda contra otra (novel4-grievance-record, organizations §10): el hecho
+ * queda en `grievances` y en la historia, y el rencor sube según su peso. La misma ofensa no se
+ * cuenta dos veces.
+ */
+export function addGrievance(tie: OrgTie, event: EventId, kind: GrievanceKind): OrgTie {
+  if (tie.grievances.includes(event)) return tie;
+  return {
+    ...tie,
+    sentiment: {
+      ...tie.sentiment,
+      resentment: clamp01(tie.sentiment.resentment + GRIEVANCE_RESENTMENT[kind]),
+    },
+    grievances: [...tie.grievances, event],
+    history: [...tie.history, event],
+  };
+}

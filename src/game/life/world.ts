@@ -249,6 +249,7 @@ import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sectDutyProcess } from "./sect-duty.ts";
+import { sectGrievanceProcess } from "./sect-grievance.ts";
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
@@ -2596,6 +2597,8 @@ export function lifeWorld(
                 // La armería canjea armas por puntos (novel3-weapons-sect).
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
               }),
+              // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
+              sectGrievanceProcess(),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
