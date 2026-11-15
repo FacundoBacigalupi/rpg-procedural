@@ -13,6 +13,11 @@ export interface Look {
   readonly ageYears: number;
   /** Cómo viste, si se lo ve (social-structure §3): la marca de posición más legible. */
   readonly attire?: string;
+  /**
+   * El emblema que lleva (novel4-sect-meet-badge): la organización cuyo distintivo viste (la ropa
+   * de la secta). El valor es la organización; quien lo ve sabe de cuál es solo si la conoce.
+   */
+  readonly emblem?: string;
 }
 
 export type AgeBand = "child" | "youth" | "adult" | "elder";
@@ -37,6 +42,7 @@ export const LEGIBILITY = {
   presence: { sight: 0.001, sound: 0.3 },
   figure: { sight: 0.03 },
   attire: { sight: 0.05 },
+  emblem: { sight: 0.08 },
   identity: { sight: 0.1, sound: 8 },
   action: { sight: 0.02, sound: 0.6 },
   words: { sound: 2.5 },
@@ -51,6 +57,19 @@ function attireOf(look: Look): AttrEmission[] {
       value: look.attire,
       requires: "presence",
       signal: { sight: { intensity: BODY.sight, legibility: LEGIBILITY.attire.sight } },
+    },
+  ];
+}
+
+/** El emblema, si lleva: se lee como la ropa, un poco más de cerca. Va último: no corre las tiradas. */
+function emblemOf(look: Look): AttrEmission[] {
+  if (look.emblem === undefined) return [];
+  return [
+    {
+      key: "emblem",
+      value: look.emblem,
+      requires: "presence",
+      signal: { sight: { intensity: BODY.sight, legibility: LEGIBILITY.emblem.sight } },
     },
   ];
 }
@@ -89,7 +108,7 @@ export function presenceStimulus(person: {
       signal: { sight: { intensity: BODY.sight, legibility: LEGIBILITY.identity.sight } },
     },
   ];
-  attributes.push(...attireOf(person.look));
+  attributes.push(...attireOf(person.look), ...emblemOf(person.look));
   return {
     source: { entity: person.id },
     tick: person.tick,
@@ -205,6 +224,7 @@ export function actionStimulus(a: ActionSight): Stimulus {
       signal: { sound: { intensity: voice, legibility: LEGIBILITY.words.sound } },
     });
   }
+  attributes.push(...emblemOf(a.look));
   return {
     source: { event: a.event },
     tick: a.tick,

@@ -34,6 +34,14 @@ export interface SectMember {
 
 export const SECT_MEMBER = table<SectMember>("cultivation.sect_member");
 
+/**
+ * El emblema que viste un miembro (novel4-sect-meet-badge): la ropa de su secta, para `Look`.
+ * Quien no es de ninguna no lleva.
+ */
+export function emblemLook(member: SectMember | undefined): { emblem?: string } {
+  return member ? { emblem: member.org } : {};
+}
+
 /** La citación: lo que le dicen al aceptado de la sede, exacto, sobre lo que ya creía. */
 export function summonedLore(
   before: SectLore | undefined,

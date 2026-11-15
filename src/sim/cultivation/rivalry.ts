@@ -128,3 +128,28 @@ export function seedRivalry(
   add(o.b, o.a, tie(sb, sa, "b"));
   return event;
 }
+
+/** Cuánto mueve un duelo entre sectas lo que la del vencido siente por la del vencedor (sin calibrar). */
+export const SECT_DUEL_LOSER_RESPECT = 0.05;
+export const SECT_DUEL_LOSER_RESENTMENT = 0.06;
+/** Y cuánto baja el respeto de la del vencedor por la del vencido. */
+export const SECT_DUEL_WINNER_RESPECT = 0.03;
+
+/**
+ * Lo que un duelo entre discípulos de dos sectas le hace a la relación de una hacia la otra
+ * (novel4-sect-meet-face, organizations §14): la del vencido respeta más y guarda más rencor a la
+ * del vencedor; la del vencedor la respeta un poco menos. La cara de un discípulo es la de su secta.
+ * El duelo queda en la historia de la relación.
+ */
+export function afterSectDuel(tie: OrgTie, side: "won" | "lost", event: EventId): OrgTie {
+  const s = tie.sentiment;
+  const sentiment: OrgSentiment =
+    side === "lost"
+      ? {
+          ...s,
+          respect: clamp01(s.respect + SECT_DUEL_LOSER_RESPECT),
+          resentment: clamp01(s.resentment + SECT_DUEL_LOSER_RESENTMENT),
+        }
+      : { ...s, respect: clamp01(s.respect - SECT_DUEL_WINNER_RESPECT) };
+  return { ...tie, sentiment, history: [...tie.history, event] };
+}

@@ -80,6 +80,7 @@ import {
   mergeCandidates,
   modifyCandidates,
   moodFrom,
+  ORG_RELATION,
   otherBeliefFrom,
   PERSON,
   PERSON_SUBSTANCE,
@@ -399,7 +400,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       ...(o.debtKnowledge || o.goalProgress || o.speakActs ? [DEBT_BOOK.name] : []),
-      ...(o.challenges ? [SECT_MEMBER.name, DUEL.name, CHALLENGES_SENT.name] : []),
+      ...(o.challenges
+        ? [
+            SECT_MEMBER.name,
+            DUEL.name,
+            CHALLENGES_SENT.name,
+            ...(o.challenges.rivalWeight === undefined
+              ? []
+              : [ORG_RELATION.name, LOCATION.name, ENTITY.name, BODY_STATE.name]),
+          ]
+        : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure

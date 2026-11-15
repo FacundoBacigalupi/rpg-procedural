@@ -8,10 +8,15 @@
 // dos vinieron y pueden pelear, suben a la plataforma (`arena`) con un anciano de la secta que
 // también vino, y pelean el duelo con su regla en vez de practicar (`strikeFight` con `duel`);
 // `life.duels` lo cierra como el del personaje. Uno a muerte sin anciano que mire no se pelea.
+//
+// Entre sectas (novel4-sect-meet-fight): no hay plataforma ni anciano de los dos, así que un
+// desafío aceptado entre discípulos de sectas distintas se pelea ahí mismo, donde se cruzaron, si
+// los dos siguen ahí y pueden pelear (`rivalDuels`). El personaje no entra: su pelea la abre él.
 import { type AgentId, compareStrings, type Event } from "../../core/index.ts";
 import {
   BODY_STATE,
   type BodyPlanDef,
+  CHALLENGE_EVENT,
   CULTIVATION_STATE,
   DUEL,
   type DuelRule,
@@ -39,6 +44,7 @@ import {
   sparWilling,
   strikeFight,
 } from "./fight.ts";
+import { PLAYER } from "./player.ts";
 
 export const SECT_SPAR_PROCESS = "life.sect_spar";
 /** Una hora de práctica de la rutina delegada en la sede (novel3-spar-npc). */
@@ -90,6 +96,44 @@ export function duelWitness(
   });
 }
 
+/**
+ * Los desafíos aceptados entre discípulos de sectas distintas que se pelean ahora (puro): de los
+ * eventos `combat.challenge` con respuesta `accept`, los dos vivos en el mismo lugar, ninguno el
+ * personaje, de sectas distintas, y en condiciones de pelear. En orden de los eventos; cada uno
+ * pelea una sola vez por paso.
+ */
+export function rivalDuels(
+  truth: ReadonlyWorldTruth,
+  recent: readonly Event[],
+): { challenger: AgentId; challenged: AgentId; rule: DuelRule; event: Event }[] {
+  const out: { challenger: AgentId; challenged: AgentId; rule: DuelRule; event: Event }[] = [];
+  const busy = new Set<AgentId>();
+  for (const e of recent) {
+    if (e.kind !== CHALLENGE_EVENT) continue;
+    const d = e.data as {
+      challenger?: AgentId;
+      challenged?: AgentId;
+      rule?: DuelRule;
+      response?: string;
+    } | null;
+    if (d?.response !== "accept" || !d.challenger || !d.challenged || !d.rule) continue;
+    const a = d.challenger;
+    const b = d.challenged;
+    if (busy.has(a) || busy.has(b) || truth.has(PLAYER, a) || truth.has(PLAYER, b)) continue;
+    const ma = truth.get(SECT_MEMBER, a)?.org;
+    const mb = truth.get(SECT_MEMBER, b)?.org;
+    if (ma === undefined || mb === undefined || ma === mb) continue;
+    const la = truth.get(LOCATION, a);
+    const lb = truth.get(LOCATION, b);
+    if (!la || !lb || la.hex !== lb.hex || la.space !== lb.space) continue;
+    if (!canFight(truth, a) || !canFight(truth, b)) continue;
+    busy.add(a);
+    busy.add(b);
+    out.push({ challenger: a, challenged: b, rule: d.rule, event: e });
+  }
+  return out;
+}
+
 /** Escritor de los cuerpos y las habilidades de quienes practican en la sede (cableado opt-in). */
 export function sectSparProcess(o: SectSparOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
@@ -110,6 +154,7 @@ export function sectSparProcess(o: SectSparOptions): ProcessDef {
       SECT.name,
       SECT_MEMBER.name,
       FIGHT_STATE.name,
+      PLAYER.name,
       ...(o.refined ? [CULTIVATION_STATE.name] : []),
     ],
     // Un duelo puede dejar a uno rendido o la pelea pausada (`strikeFight`).
@@ -213,6 +258,13 @@ export function sectSparProcess(o: SectSparOptions): ProcessDef {
           ],
         });
         fight({ who: a, event }, b, { rule: d.rule, ...(witness ? { witness } : {}) });
+      }
+      // Los desafíos aceptados entre sectas se pelean donde se cruzaron (novel4-sect-meet-fight).
+      for (const r of rivalDuels(truth, ctx.recent)) {
+        if (dueled.has(r.challenger) || dueled.has(r.challenged)) continue;
+        dueled.add(r.challenger);
+        dueled.add(r.challenged);
+        fight({ who: r.challenger, event: r.event }, r.challenged, { rule: r.rule });
       }
       for (const key of [...spots.keys()].sort()) {
         const here = [...(spots.get(key) ?? [])]

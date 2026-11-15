@@ -246,7 +246,10 @@ export function lossLived(e: Event, who: AgentId, dead: AgentId, closeness: numb
 
 /** Qué tan bien vio un testigo: la confianza de lo que leyó, abajo si no supo ni quién ni qué fue. */
 export function perceptClarity(p: Percept): number {
-  const read = PERCEPT_KEYS.flatMap((k) => (p.fields[k] ? [p.fields[k].confidence] : []));
+  // El emblema no cuenta: es un distintivo, no cuán bien se vio lo que pasó.
+  const read = PERCEPT_KEYS.flatMap((k) =>
+    k !== "emblem" && p.fields[k] ? [p.fields[k].confidence] : [],
+  );
   if (read.length === 0) return 0;
   const mean = read.reduce((a, b) => a + b, 0) / read.length;
   const detail = p.detail === "identified" ? 1 : p.detail === "clear" ? 0.75 : 0.4;

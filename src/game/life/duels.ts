@@ -25,6 +25,7 @@ import {
 } from "../../core/index.ts";
 import {
   adjustFace,
+  afterSectDuel,
   BODY_STATE,
   type Candidate,
   CHALLENGE_COOLDOWN_DAYS,
@@ -44,8 +45,12 @@ import {
   FACE,
   type Face,
   INNATE,
+  isRival,
   isSectArena,
   LOCATION,
+  ORG_RELATION,
+  type OrgRelations,
+  orgTie,
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
@@ -167,12 +172,20 @@ export interface ChallengeCandidateOptions {
   readonly weight: number;
   readonly chance: number;
   readonly dayTicks: number;
+  /**
+   * Cuánto pesa el rencor de su secta hacia una rival (`ORG_RELATION`) al cruzarse con uno de ella
+   * (novel4-sect-meet-challenge): se suma al propio. Sin esto, solo se reta adentro de la secta.
+   */
+  readonly rivalWeight?: number;
 }
 
 /**
- * Las candidatas `speak` con acto `challenge` de un discípulo (puro). Solo contra alguien de su
- * misma secta (lo sabe: la secta se conoce adentro), sin un duelo pactado vivo de ninguno de los
- * dos, ni un desafío propio a la misma persona en los últimos `CHALLENGE_COOLDOWN_DAYS` días.
+ * Las candidatas `speak` con acto `challenge` de un discípulo (puro). Contra alguien de su misma
+ * secta (lo sabe: la secta se conoce adentro) o, con `rivalWeight`, contra uno de una secta que la
+ * suya tiene por rival y que está ahí delante (lo reconoce por el emblema): el rencor de la secta
+ * se suma al propio y el desafío es solo a rendirse (no hay plataforma ni anciano de los dos). Sin
+ * un duelo pactado vivo de ninguno de los dos, ni un desafío propio a la misma persona en los
+ * últimos `CHALLENGE_COOLDOWN_DAYS` días.
  */
 export function challengeCandidates(
   truth: ReadonlyWorldTruth,
@@ -184,22 +197,50 @@ export function challengeCandidates(
   const mine = truth.get(SECT_MEMBER, me);
   if (!mine || truth.has(DUEL, me)) return [];
   const sent = truth.get(CHALLENGES_SENT, me) ?? {};
+  const own = new Map(people.map((p) => [p.id, p.resentment]));
+  const rivals = o.rivalWeight === undefined ? new Map<AgentId, number>() : rivalsHere(truth, me);
+  const ids = [...new Set<AgentId>([...own.keys(), ...rivals.keys()])].sort(compareStrings);
   const out: Candidate[] = [];
-  for (const p of [...people].sort((a, b) => compareStrings(a.id, b.id))) {
-    if (p.resentment < o.minResentment) continue;
-    if (truth.get(SECT_MEMBER, p.id)?.org !== mine.org || truth.has(DUEL, p.id)) continue;
-    const last = sent[p.id];
+  for (const id of ids) {
+    const other = truth.get(SECT_MEMBER, id)?.org;
+    const sect = rivals.get(id);
+    if (other !== mine.org && sect === undefined) continue;
+    const resentment = Math.min(1, (own.get(id) ?? 0) + (o.rivalWeight ?? 0) * (sect ?? 0));
+    if (resentment < o.minResentment || truth.has(DUEL, id)) continue;
+    const last = sent[id];
     if (last !== undefined && now - last < CHALLENGE_COOLDOWN_DAYS * o.dayTicks) continue;
+    const rule = sect === undefined && resentment >= o.deathResentment ? "death" : "yield";
     out.push({
-      id: `speak:${p.id}+challenge`,
+      id: `speak:${id}+challenge`,
       verb: "speak",
-      target: p.id as unknown as EntityRef,
+      target: id as unknown as EntityRef,
       contributes: { social: 0.2 },
       chance: o.chance,
       loss: STAKES_RISK.none.loss,
-      mood: Math.round(o.weight * p.resentment * 1e6) / 1e6,
-      act: { kind: "challenge", rule: p.resentment >= o.deathResentment ? "death" : "yield" },
+      mood: Math.round(o.weight * resentment * 1e6) / 1e6,
+      act: { kind: "challenge", rule },
     });
+  }
+  return out;
+}
+
+/**
+ * Los de una secta rival de la de `me` que están vivos en su mismo lugar, con el rencor que la
+ * secta de `me` le guarda a la de cada uno (`ORG_RELATION`).
+ */
+function rivalsHere(truth: ReadonlyWorldTruth, me: AgentId): Map<AgentId, number> {
+  const out = new Map<AgentId, number>();
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine) return out;
+  const relations = truth.get(ORG_RELATION, mine.org);
+  for (const id of truth.ids(SECT_MEMBER) as AgentId[]) {
+    if (id === me) continue;
+    const org = truth.get(SECT_MEMBER, id)?.org;
+    if (org === undefined || org === mine.org || !isRival(relations, org)) continue;
+    if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    if ((truth.get(BODY_STATE, id)?.death ?? null) !== null) continue;
+    if (!sameSpot(truth, id, me)) continue;
+    out.set(id, orgTie(relations, org)?.sentiment.resentment ?? 0);
   }
   return out;
 }
@@ -230,14 +271,16 @@ export function duelsProcess(o: {
       INNATE.name,
       DUEL_OFFER.name,
       CHALLENGES_SENT.name,
+      ORG_RELATION.name,
     ],
-    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name],
+    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name, ORG_RELATION.name],
     run(ctx) {
       const set = new Map<AgentId, Duel>();
       const closed = new Set<AgentId>();
       const faces = new Map<AgentId, Face>();
       const offers = new Map<AgentId, DuelOffer | null>();
       const sent = new Map<AgentId, Readonly<Record<string, Tick>>>();
+      const relations = new Map<string, OrgRelations>();
       const events: EventDraft[] = [];
       for (const e of ctx.recent) {
         if (e.kind === "combat.fight") {
@@ -275,6 +318,23 @@ export function duelsProcess(o: {
             emissions: {},
             causes: [{ kind: "event", event: e.id }],
           });
+          // Entre sectas, la cara es la de la secta (novel4-sect-meet-face): mueve lo que cada una
+          // siente por la otra.
+          const wo = ctx.truth.get(SECT_MEMBER, v.winner)?.org;
+          const lo = ctx.truth.get(SECT_MEMBER, v.loser)?.org;
+          if (wo !== undefined && lo !== undefined && wo !== lo) {
+            for (const [from, to, side] of [
+              [wo, lo, "won"],
+              [lo, wo, "lost"],
+            ] as const) {
+              const had = relations.get(from) ?? ctx.truth.get(ORG_RELATION, from);
+              const tie = orgTie(had, to);
+              if (!had || !tie) continue;
+              relations.set(from, {
+                toward: { ...had.toward, [to]: afterSectDuel(tie, side, e.id) },
+              });
+            }
+          }
           // La familia del muerto en la plataforma puede no respetar el acuerdo.
           const home = ctx.truth.get(PERSON, v.loser)?.household;
           if (rule !== "death" || !d?.duel?.platform || d.outcomes?.[v.loser] !== "dead") continue;
@@ -386,6 +446,9 @@ export function duelsProcess(o: {
       }
       for (const [id, f] of [...faces].sort(([a], [b]) => compareStrings(a, b))) {
         changes.push(setComponent(FACE, id, f));
+      }
+      for (const [id, r] of [...relations].sort(([a], [b]) => compareStrings(a, b))) {
+        changes.push(setComponent(ORG_RELATION, id as EntityRef, r));
       }
       if (changes.length === 0 && events.length === 0) return {};
       return { changes, ...(events.length > 0 ? { events } : {}) };

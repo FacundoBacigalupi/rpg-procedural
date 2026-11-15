@@ -164,6 +164,22 @@ describe("detección", () => {
     expect(p?.fields.figure?.value).toEqual({ sex: "male", age: "adult" });
   });
 
+  it("el emblema se ve de cerca y no corre las tiradas de antes (novel4-sect-meet-badge)", () => {
+    const see = (l: typeof look & { emblem?: string }) =>
+      perceive(
+        presenceStimulus({ id: ZHAO, at: { hex: 0, space: "p" }, look: l, tick: 5 }),
+        [observer(WEN, "p", { familiar: new Map(), acuity: { sight: 5, sound: 1 } })],
+        medium(plaza, 1),
+        Rng.root(1),
+      )[0];
+    const plain = see(look);
+    const badged = see({ ...look, emblem: "org-7" });
+    expect(plain?.fields.emblem).toBeUndefined();
+    expect(badged?.fields.emblem?.value).toBe("org-7");
+    expect(badged?.fields.figure).toEqual(plain?.fields.figure);
+    expect(badged?.fields.identity).toEqual(plain?.fields.identity);
+  });
+
   it("una pared de piedra: no se ve nada del otro lado", () => {
     const g: SpaceGraph = {
       spaces: [room("a", { area: 16 }), room("b", { area: 16 })],

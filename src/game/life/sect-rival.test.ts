@@ -13,6 +13,7 @@ import {
   LOCATION,
   ORG_RELATION,
   ORG_RIVALRY_EVENT,
+  type Percept,
   PLACE,
   PLACE_NAME,
   PLACE_QI,
@@ -26,7 +27,7 @@ import {
   WILDS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { knownEntities } from "./known.ts";
+import { emblemWordsOf, featuresOfPercept, knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
 import { SECT_HALL } from "./sect-hall.ts";
 
@@ -199,5 +200,39 @@ describe("lo que la aldea oyó de la otra secta (novel4-rival-sect-lore)", () =>
     const k = knownEntities(l.world).find((x) => x.ref === rival.seatPlace);
     expect(k?.names).toContain("la otra secta");
     expect(k?.names).not.toContain("la secta");
+  });
+});
+
+describe("el emblema a la vista (novel4-sect-meet-badge)", () => {
+  const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+  it("se nombra por lo que el personaje sabe: la suya, la que baja, la otra, una que no conoce", () => {
+    const l = Life.create(3, content, { cultivation: true, rivalSect: true });
+    const t = l.world.truth;
+    const [a, b] = t.ids(SECT) as EntityRef[];
+    if (!a || !b) throw new Error("sin sectas");
+    t.deleteRaw(SECT_LORE.name, l.player);
+    t.deleteRaw(SECTS_HEARD.name, l.player);
+    const naming = emblemWordsOf(l.world);
+    expect(naming(a)).toEqual(["con un emblema que no conozco"]);
+    expect(naming(b)).toEqual(["con un emblema que no conozco"]);
+    const someone = (t.ids(SECTS_HEARD) as EntityRef[])[0] as EntityRef;
+    const lore = t.get(SECTS_HEARD, someone)?.toward[b];
+    if (!lore) throw new Error("nadie la oyó");
+    t.set(SECTS_HEARD, l.player, { toward: { [b]: lore } });
+    expect(emblemWordsOf(l.world)(b)).toContain("de la otra secta");
+    t.set(SECT_MEMBER, l.player, { org: a, rank: "outer", since: l.now });
+    expect(emblemWordsOf(l.world)(a)).toContain("de mi secta");
+  });
+
+  it("los rasgos del percept suman el emblema", () => {
+    const p = {
+      fields: {
+        figure: { value: { sex: "male", age: "adult" }, confidence: 1 },
+        emblem: { value: "org-1", confidence: 1 },
+      },
+    } as unknown as Percept;
+    expect(featuresOfPercept(p, () => ["de la otra secta"])).toContain("de la otra secta");
+    expect(featuresOfPercept(p)).not.toContain("de la otra secta");
   });
 });
