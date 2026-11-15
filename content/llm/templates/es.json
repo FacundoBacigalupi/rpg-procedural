@@ -1491,6 +1491,10 @@
     "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
   },
   {
+    "id": "self.mission_watch_rival",
+    "lines": ["Te tocó una misión: hacer guardia en el camino que lleva a la otra secta."]
+  },
+  {
     "id": "self.mission_hunt",
     "lines": ["Te tocó una misión: cazar o echar a la bestia que bajó del monte."]
   },

@@ -16,6 +16,7 @@ import {
   missionLapsed,
   missionLeft,
   pickMission,
+  rivalWatchNeeds,
   type SectMission,
   watchNeeds,
 } from "./mission.ts";
@@ -141,5 +142,32 @@ describe("llevar la exigencia (novel4-grievance-envoy-mission)", () => {
     expect(pickMission(org, "inner", all, out)).toMatchObject({ kind: "envoy", deed: "event:9" });
     // Un externo no representa a la secta: le toca otra cosa o nada.
     expect(pickMission(org, "outer", needs, [])).toBeUndefined();
+  });
+});
+
+describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
+  it("la más cercana primero; una guardia por secta, aparte de las bandas", () => {
+    const a = "org:5" as EntityRef;
+    const b = "org:3" as EntityRef;
+    const needs = rivalWatchNeeds([
+      { against: a, hex: 8, distance: 2 },
+      { against: b, hex: 6, distance: 2 },
+      { against: "org:9" as EntityRef, hex: 4, distance: 1 },
+    ]);
+    expect(needs.map((n) => (n.kind === "watch" ? n.against : ""))).toEqual(["org:9", b, a]);
+    const one = rivalWatchNeeds([{ against: a, hex: 8, distance: 2 }]);
+    const offer = pickMission(org, "inner", one, []);
+    expect(offer).toMatchObject({ org, kind: "watch", against: a, hex: 8 });
+    expect(offer && "band" in offer).toBe(false);
+    // Ya hay quien vigila hacia esa secta: no se da otra; vigilar una banda no la tapa.
+    expect(pickMission(org, "inner", one, [taken({ kind: "watch", against: a })])).toBeUndefined();
+    expect(pickMission(org, "inner", one, [taken({ kind: "watch", band: "b" })])).toMatchObject({
+      against: a,
+    });
+    // Y la guardia hacia la secta no tapa la de la banda.
+    const band = watchNeeds([{ band: "b", hex: 4, distance: 1 }]);
+    expect(pickMission(org, "inner", band, [taken({ kind: "watch", against: a })])).toMatchObject({
+      band: "b",
+    });
   });
 });

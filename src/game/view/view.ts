@@ -138,6 +138,8 @@ export type SelfCue =
   | "rank_refused"
   | "mission_herbs"
   | "mission_watch"
+  /** Le tocó vigilar el camino hacia la otra secta (novel4-watch-need). */
+  | "mission_watch_rival"
   /** Le tocó cazar a la bestia que bajó (novel3-beasts-mission-ask). */
   | "mission_hunt"
   | "mission_envoy"

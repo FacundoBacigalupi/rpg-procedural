@@ -254,6 +254,7 @@ import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./se
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
+import { watchPosts } from "./sect-watch.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
   ASLEEP,
@@ -1626,7 +1627,14 @@ export function lifeWorld(
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
           ...(parts.cultivation?.pills && parts.cultivation.herbs
-            ? { missions: { pills: parts.cultivation.pills, herbs: parts.cultivation.herbs } }
+            ? {
+                missions: {
+                  pills: parts.cultivation.pills,
+                  herbs: parts.cultivation.herbs,
+                  // Vigilar el camino hacia la secta que la tiene en guardia (novel4-watch-need).
+                  watchPost: watchPosts(parts.map),
+                },
+              }
             : {}),
           // Con cultivo, los desafíos a duelo se pesan y se anotan (novel3-challenge-ask).
           ...(parts.cultivation ? { duels: { skills: parts.skills } } : {}),

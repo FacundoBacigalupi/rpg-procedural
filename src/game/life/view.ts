@@ -878,14 +878,17 @@ export function playerView(
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
+    const against = (mission.data as { against?: unknown } | null)?.against;
     cues.add(
-      kind === "watch"
-        ? "mission_watch"
-        : kind === "hunt"
-          ? "mission_hunt"
-          : kind === "envoy"
-            ? "mission_envoy"
-            : "mission_herbs",
+      kind === "watch" && against !== undefined
+        ? "mission_watch_rival"
+        : kind === "watch"
+          ? "mission_watch"
+          : kind === "hunt"
+            ? "mission_hunt"
+            : kind === "envoy"
+              ? "mission_envoy"
+              : "mission_herbs",
     );
   }
   const missionEnd =

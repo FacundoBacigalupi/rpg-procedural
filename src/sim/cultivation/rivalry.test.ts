@@ -22,6 +22,8 @@ import {
   rivalSentiment,
   seededBelief,
   strengthScore,
+  threatens,
+  WATCH_THREAT,
   wantedBy,
 } from "./rivalry.ts";
 
@@ -244,5 +246,16 @@ describe("quién lleva la exigencia (novel4-grievance-envoy-mission)", () => {
     expect(
       envoyWanted({ ...e, outcome: { result: "paid", at: 11 as Tick } }, 12 as Tick, day),
     ).toBe(false);
+  });
+});
+
+describe("la otra secta en guardia (novel4-watch-need)", () => {
+  const tie = (resentment: number, fear: number) =>
+    ({ sentiment: { trust: 0.5, respect: 0.5, fear, resentment } }) as unknown as OrgTie;
+  it("por rencor o por miedo desde el umbral; sin lazo, no", () => {
+    expect(threatens(undefined)).toBe(false);
+    expect(threatens(tie(0.4, 0.2))).toBe(false);
+    expect(threatens(tie(WATCH_THREAT, 0))).toBe(true);
+    expect(threatens(tie(0, WATCH_THREAT + 0.1))).toBe(true);
   });
 });

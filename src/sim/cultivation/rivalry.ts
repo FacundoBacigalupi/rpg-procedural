@@ -405,3 +405,15 @@ export const REPARATION_PENALTY: Readonly<Record<GrievanceKind, number>> = {
   assault: 20,
   killing: 50,
 };
+
+/**
+ * Desde cuánto rencor o miedo la otra secta es una amenaza que se vigila (novel4-watch-need). Las
+ * semillas quedan por debajo (rencor 0,1-0,4); lo suben las ofensas y los duelos perdidos. Sin calibrar.
+ */
+export const WATCH_THREAT = 0.5;
+
+/** Si la secta tiene a la otra en guardia: el rencor o el miedo que le tiene llega a `WATCH_THREAT`. */
+export function threatens(tie: OrgTie | undefined): boolean {
+  if (!tie) return false;
+  return Math.max(tie.sentiment.resentment, tie.sentiment.fear) >= WATCH_THREAT;
+}

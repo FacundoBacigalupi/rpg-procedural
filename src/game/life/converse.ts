@@ -152,6 +152,7 @@ import {
   recollect,
   relationship,
   respondToOffense,
+  rivalWatchNeeds,
   rumorAsKnown,
   type ScheduleRequest,
   SECRETS,
@@ -216,6 +217,7 @@ import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { PLAYER } from "./player.ts";
 import { rentsOf } from "./rents.ts";
 import { SECT_HALL, treasuryAccount } from "./sect-hall.ts";
+import { rivalThreats, type WatchPostOf } from "./sect-watch.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
@@ -390,7 +392,15 @@ export interface ConverseOptions {
    * Las misiones de la secta (novel2-missions-ask): con qué píldoras y hierbas mide el anciano lo que
    * le falta al alquimista. Sin esto, nadie da misiones.
    */
-  readonly missions?: { readonly pills: readonly PillDef[]; readonly herbs: readonly HerbDef[] };
+  readonly missions?: {
+    readonly pills: readonly PillDef[];
+    readonly herbs: readonly HerbDef[];
+    /**
+     * Opt-in (novel4-watch-need): el puesto de guardia hacia cada secta (`watchPosts`). Con esto, la
+     * secta que tiene a otra en guardia da la misión de vigilar ese camino.
+     */
+    readonly watchPost?: WatchPostOf;
+  };
   /**
    * Los desafíos a duelo (novel3-challenge-ask): con esto el retado los pesa; sin esto, no los toma
    * en serio. El catálogo de habilidades da el oficio de pelear de cada uno.
@@ -1624,7 +1634,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(mission
             ? {
                 mission: mission.offer
-                  ? { given: mission.offer.kind }
+                  ? {
+                      given:
+                        mission.offer.kind === "watch" && mission.offer.against !== undefined
+                          ? "watch_rival"
+                          : mission.offer.kind,
+                    }
                   : { refused: mission.refused ?? "none" },
               }
             : {}),
@@ -2376,12 +2391,15 @@ function missionOf(
   const demands: EnvoySighting[] = (truth.get(SECT_GRIEVANCES, mine.org)?.entries ?? [])
     .filter((e) => envoyWanted(e, now, dayTicks))
     .map((e) => ({ against: e.against, deed: e.deed, at: e.response?.at ?? e.at }));
+  // El camino hacia la secta que la tiene en guardia (novel4-watch-need).
+  const threats = defs.watchPost ? rivalThreats(truth, mine.org, defs.watchPost) : [];
   const offer = pickMission(
     mine.org,
     theirs.rank,
     [
       ...huntNeeds(beasts, now),
       ...envoyNeeds(demands),
+      ...rivalWatchNeeds(threats),
       ...herbNeeds(defs.pills, { alive, pills, herbs }),
     ],
     assigned,
