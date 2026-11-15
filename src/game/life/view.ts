@@ -1066,20 +1066,30 @@ export function playerView(
       ? undefined
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_TRIAL_EVENT);
   if (trial) {
-    const d = (trial.data ?? {}) as { accepted?: boolean; elements?: readonly string[] };
+    const d = (trial.data ?? {}) as {
+      org?: string;
+      accepted?: boolean;
+      elements?: readonly string[];
+    };
+    const mine = w.truth.get(SECT_MEMBER, w.player)?.org;
     cues.add(
       d.accepted
-        ? "trial_accepted"
+        ? mine !== undefined && mine !== d.org
+          ? "trial_offer"
+          : "trial_accepted"
         : (d.elements?.length ?? 0) > 0
           ? "trial_rejected"
           : "trial_dark",
     );
   }
-  if (
-    options.heardSince !== undefined &&
-    lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT)
-  ) {
-    cues.add("sect_joined");
+  const joined =
+    options.heardSince === undefined
+      ? undefined
+      : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === SECT_JOINED_EVENT);
+  if (joined) {
+    cues.add(
+      (joined.data as { from?: string } | undefined)?.from ? "sect_switched" : "sect_joined",
+    );
   }
   // La marcha de varios días (novel-sect-seat-trek): salió, llegó o se rindió en este turno.
   const trek =

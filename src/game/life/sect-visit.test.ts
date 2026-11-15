@@ -10,6 +10,7 @@ import {
   ORG_RELATION,
   offeredRank,
   PERSON,
+  PLACE,
   RIVAL_VISIT_LAG_DAYS,
   SECT,
   SECT_ANNOUNCE_DAYS,
@@ -34,6 +35,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { living } from "./living.ts";
+import { pendingOffer } from "./sect-visit.ts";
 import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -241,8 +243,12 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it("la rival baja unos días después: mide al ya citado, se lo disputa y le deja la oferta (novel4-recruit-visit, novel4-recruit-choice)", () => {
-    const life = Life.create(3, content, { cultivation: true, rivalSect: true });
+  it("la rival baja unos días después: mide al ya citado, se lo disputa y le deja la oferta; el personaje se cambia yendo a su sede (novel4-recruit-visit, novel4-recruit-choice, novel4-recruit-player)", () => {
+    const life = Life.create(3, content, {
+      cultivation: true,
+      rivalSect: true,
+      sectSeatRegion: true,
+    });
     const w = life.world;
     const first = w.truth.get(SECT_LORE, w.player)?.org;
     const rival = w.truth.ids(SECT).find((id) => id !== first);
@@ -362,5 +368,33 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
       .map((e) => `${e.actors[0]}|${(e.data as { org: string }).org}`);
     expect(new Set(trials).size).toBe(trials.length);
     expect(trials.some((t) => t.endsWith(`|${rival}`))).toBe(true);
+    // El personaje (novel4-recruit-player): sabe de la oferta y, mientras no vaya, sigue en la primera.
+    expect(playerView(w, [], { heardSince: visitB.start }).self.cues).toContain("trial_offer");
+    expect(pendingOffer(w.truth, w.player, life.now)).toMatchObject({ org: rival, from: first });
+    expect(w.truth.get(SECT_MEMBER, w.player)?.org).toBe(first);
+    // Se presenta en la sede de la rival antes de la fecha: lo anotan con el rango ofrecido.
+    const seatHex = w.truth.get(PLACE, b.seatPlace)?.hexes[0];
+    const at = w.truth.get(LOCATION, w.player);
+    if (seatHex === undefined || !at) throw new Error("sin sede");
+    const before = life.now;
+    w.truth.set(BODY_STATE, w.player, { ...body, updatedAt: life.now });
+    w.truth.set(LOCATION, w.player, { ...at, hex: seatHex });
+    w.scheduler.advanceTo(life.now + 2 * 3600);
+    expect(w.truth.get(SECT_MEMBER, w.player)).toMatchObject({ org: rival, rank: offer?.rank });
+    const switched = w.log
+      .all()
+      .find((e) => e.kind === SECT_JOINED_EVENT && e.actors[0] === w.player && e.tick >= before);
+    expect(switched?.data).toMatchObject({ org: rival, from: first });
+    const lost = w.log.all().find((e) => e.kind === SECT_POACHED_EVENT && e.actors[0] === w.player);
+    expect(lost?.causes).toEqual([{ kind: "event", event: switched?.id }]);
+    expect(w.truth.get(ORG_RELATION, first)?.toward[rival]?.grievances).toContain(lost?.id);
+    expect(w.truth.get(SECT_LORE, w.player)?.org).toBe(rival);
+    expect(pendingOffer(w.truth, w.player, life.now)).toBeUndefined();
+    expect(playerView(w, [], { heardSince: before }).self.cues).toContain("sect_switched");
+    // Una sola vez.
+    w.scheduler.advanceTo(life.now + 3 * 3600);
+    expect(
+      w.log.all().filter((e) => e.kind === SECT_JOINED_EVENT && e.actors[0] === w.player),
+    ).toHaveLength(2);
   });
 });

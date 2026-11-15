@@ -1723,6 +1723,20 @@
     ]
   },
   {
+    "id": "self.trial_offer",
+    "lines": [
+      "La piedra se enciende también para estos. Saben que la otra secta ya te citó, y aun así te ofrecen un lugar: si te presentás en su sede antes de la fecha, te anotan.",
+      "Te miden y te quieren, aunque ya tengas citación de la otra. Te dicen dónde queda su sede: si subís allá a tiempo, sos de ellos."
+    ]
+  },
+  {
+    "id": "self.sect_switched",
+    "lines": [
+      "Te presentás en la puerta con la oferta que te dejaron. Revisan, asienten, y te anotan entre los suyos: la otra secta te esperará en vano.",
+      "Llegaste a la sede de los que te ofrecieron lugar. Te anotan: ahora sos de ellos, y la secta que te había citado se queda sin vos."
+    ]
+  },
+  {
     "id": "self.sect_joined",
     "lines": [
       "Te anotan entre los suyos: discípulo de afuera. Te dicen hacia dónde queda la sede, cuántas jornadas a pie, y que tenés un mes para presentarte.",

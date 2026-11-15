@@ -75,12 +75,16 @@ export type SelfCue =
   | "sect_here"
   /** Lo midieron con la piedra y lo aceptan (`cultivation.sect_trial`, novel-cult-sect-trial). */
   | "trial_accepted"
+  /** La otra secta también lo acepta, ya citado por una: le dejan la oferta (novel4-recruit-player). */
+  | "trial_offer"
   /** La piedra brilló poco: una raíz que la secta no quiere. */
   | "trial_rejected"
   /** La piedra no brilló: sin raíz, según ella. */
   | "trial_dark"
   /** Quedó discípulo externo: le dicen dónde queda la sede y que tiene un mes para subir. */
   | "sect_joined"
+  /** Se presentó en la sede de la otra con su oferta y lo anotaron ahí (novel4-recruit-player). */
+  | "sect_switched"
   /** Los de la secta le enseñaron su técnica de entrada (`self.technique` la nombra). */
   | "technique_taught"
   /** Salió de marcha hacia un lugar a días de camino (`life.trek`, novel-sect-seat-trek). */

@@ -31,7 +31,11 @@
 // (`chooseOffer`: el rango, después la sede más cerca); si se cambia, queda de la segunda con su
 // citación y su técnica (`cultivation.sect_joined` con `from`), lo que creía de la primera pasa a
 // `SECTS_HEARD`, y la primera guarda la ofensa a la otra (`org.sect_poached`, `afterPoached`). El
-// personaje no elige acá (novel4-recruit-player): le queda la oferta.
+// personaje no elige acá: le queda la oferta.
+//
+// El personaje elige (novel4-recruit-player): con la oferta de la otra, se queda en la que lo citó
+// salvo que se presente en la sede de la otra antes de la fecha de la citación (`atSeat`, hasta
+// `reportBy`); ahí lo anotan con el rango ofrecido, como al NPC que se cambia.
 
 import {
   type AgentId,
@@ -48,6 +52,7 @@ import {
   draftEvent,
   type EventDraft,
   LOCATION,
+  type MemberRank,
   ORG_RELATION,
   type OrgRelations,
   offeredRank,
@@ -85,6 +90,7 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { living } from "./living.ts";
+import { atSeat } from "./sect-grievance.ts";
 
 export const SECT_VISIT_PROCESS = "life.cultivation.sect_visit";
 
@@ -245,85 +251,34 @@ export function sectVisitProcess(o: {
               if (choice === "stay") continue;
             }
             const reportBy = visit.end + SECT_REPORT_DAYS * o.clock.day;
-            changes.push(
-              setComponent(SECT_MEMBER, id, {
-                org,
-                rank,
-                since: ctx.now,
-                trialYear: visit.year,
-                reportBy,
-              }),
-              ...joinLore(
-                ctx.truth,
-                id,
-                org,
-                summonedLore(loreOf(ctx.truth, id, org), org, sect, ctx.now),
-              ),
-            );
-            const joined = draftEvent(events.length);
-            events.push({
-              kind: SECT_JOINED_EVENT,
-              actors: [id],
+            joinSect(ctx.truth, changes, events, relations, {
+              id,
+              org,
+              rank,
+              now: ctx.now,
+              trialYear: visit.year,
+              reportBy,
               place: o.village,
-              data: {
-                org,
-                rank,
-                reportBy,
-                seat: sect.seatPlace,
-                ...(member ? { from: member.org } : {}),
-              },
-              emissions: { sight: 0.3 },
-              causes: [
-                { kind: "state", entity: id, key: SECT_TRIAL.name },
-                { kind: "state", entity: org, key: SECT.name },
-                ...(member ? [{ kind: "state" as const, entity: id, key: SECT_MEMBER.name }] : []),
-              ],
-            });
-            // La que lo había citado se queda sin él y guarda la ofensa a la otra.
-            if (member) {
-              const poached = draftEvent(events.length);
-              events.push({
-                kind: SECT_POACHED_EVENT,
-                actors: [id],
-                place: o.village,
-                data: { from: member.org, to: org, rank },
-                emissions: {},
-                causes: [{ kind: "event", event: joined }],
-              });
-              const had = relations.get(member.org) ?? ctx.truth.get(ORG_RELATION, member.org);
-              const tie = orgTie(had, org);
-              if (had && tie) {
-                relations.set(member.org, {
-                  toward: { ...had.toward, [org]: afterPoached(tie, poached) },
-                });
-              }
-            }
-            // La técnica de entrada (novel-cult-school): se la enseñan ahí mismo, antes de irse.
-            const school = ctx.truth.get(SECT_SCHOOL, org);
-            if (!school) continue;
-            changes.push(
-              setComponent(CULTIVATION_TECHNIQUE, id, {
-                org,
-                name: school.technique.name,
-                factor: school.technique.factor,
-                learnedAt: ctx.now,
-                realm: 0,
-              }),
-            );
-            events.push({
-              kind: TECHNIQUE_TAUGHT_EVENT,
-              actors: [id],
-              place: o.village,
-              data: { org, technique: school.technique.name },
-              emissions: {},
-              causes: [
-                { kind: "state", entity: id, key: SECT_MEMBER.name },
-                { kind: "state", entity: org, key: SECT_SCHOOL.name },
-              ],
+              from: member?.org,
             });
           }
         }
         if (next !== state) changes.push(setComponent(SECT_VISIT, org, next));
+      }
+      // El personaje con la oferta de la otra que se presenta en su sede antes de la fecha.
+      const offer = o.player === undefined ? undefined : pendingOffer(ctx.truth, o.player, ctx.now);
+      if (o.player !== undefined && offer && atSeat(ctx.truth, o.player, offer.org)) {
+        const seat = ctx.truth.get(SECT, offer.org)?.seatPlace;
+        joinSect(ctx.truth, changes, events, relations, {
+          id: o.player,
+          org: offer.org,
+          rank: offer.rank,
+          now: ctx.now,
+          trialYear: offer.year,
+          reportBy: offer.reportBy,
+          place: (seat as PlaceRef | undefined) ?? o.village,
+          from: offer.from,
+        });
       }
       for (const [id, r] of [...relations].sort(([x], [y]) => compareStrings(x, y))) {
         changes.push(setComponent(ORG_RELATION, id, r));
@@ -331,6 +286,126 @@ export function sectVisitProcess(o: {
       return changes.length === 0 ? {} : { changes, events };
     },
   };
+}
+
+/**
+ * La oferta que le queda a `who` (novel4-recruit-player): la otra lo aceptó este año mientras ya
+ * estaba citado por una, y todavía no venció la fecha de presentarse. Sin oferta, undefined.
+ */
+export function pendingOffer(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  now: number,
+):
+  | {
+      readonly org: EntityRef;
+      readonly from: EntityRef;
+      readonly rank: MemberRank;
+      readonly year: number;
+      readonly reportBy: number;
+    }
+  | undefined {
+  const trial = truth.get(SECT_TRIAL, who);
+  const member = truth.get(SECT_MEMBER, who);
+  if (!trial?.accepted || !member || member.org === trial.org) return undefined;
+  if (member.trialYear !== trial.year || member.reportBy === undefined) return undefined;
+  if (now > member.reportBy) return undefined;
+  return {
+    org: trial.org,
+    from: member.org,
+    rank: trial.rank ?? "outer",
+    year: trial.year,
+    reportBy: member.reportBy,
+  };
+}
+
+/**
+ * Sumar a `id` a la secta `org` (novel-cult-sect-join-member y novel4-recruit-choice): miembro con
+ * su citación, lo que creía de la otra entre lo que oyó, `cultivation.sect_joined` (con `from` si se
+ * cambia, y entonces `org.sect_poached` y la ofensa de la que lo perdió) y la técnica de entrada.
+ */
+function joinSect(
+  truth: ReadonlyWorldTruth,
+  changes: StateChange[],
+  events: EventDraft[],
+  relations: Map<EntityRef, OrgRelations>,
+  j: {
+    readonly id: AgentId;
+    readonly org: EntityRef;
+    readonly rank: MemberRank;
+    readonly now: number;
+    readonly trialYear: number;
+    readonly reportBy: number;
+    readonly place: PlaceRef;
+    readonly from: EntityRef | undefined;
+  },
+): void {
+  const { id, org, rank, from } = j;
+  const sect = truth.get(SECT, org);
+  if (!sect) return;
+  changes.push(
+    setComponent(SECT_MEMBER, id, {
+      org,
+      rank,
+      since: j.now,
+      trialYear: j.trialYear,
+      reportBy: j.reportBy,
+    }),
+    ...joinLore(truth, id, org, summonedLore(loreOf(truth, id, org), org, sect, j.now)),
+  );
+  const joined = draftEvent(events.length);
+  events.push({
+    kind: SECT_JOINED_EVENT,
+    actors: [id],
+    place: j.place,
+    data: { org, rank, reportBy: j.reportBy, seat: sect.seatPlace, ...(from ? { from } : {}) },
+    emissions: { sight: 0.3 },
+    causes: [
+      { kind: "state", entity: id, key: SECT_TRIAL.name },
+      { kind: "state", entity: org, key: SECT.name },
+      ...(from ? [{ kind: "state" as const, entity: id, key: SECT_MEMBER.name }] : []),
+    ],
+  });
+  // La que lo había citado se queda sin él y guarda la ofensa a la otra.
+  if (from) {
+    const poached = draftEvent(events.length);
+    events.push({
+      kind: SECT_POACHED_EVENT,
+      actors: [id],
+      place: j.place,
+      data: { from, to: org, rank },
+      emissions: {},
+      causes: [{ kind: "event", event: joined }],
+    });
+    const had = relations.get(from) ?? truth.get(ORG_RELATION, from);
+    const tie = orgTie(had, org);
+    if (had && tie) {
+      relations.set(from, { toward: { ...had.toward, [org]: afterPoached(tie, poached) } });
+    }
+  }
+  // La técnica de entrada (novel-cult-school): se la enseñan ahí mismo, antes de irse.
+  const school = truth.get(SECT_SCHOOL, org);
+  if (!school) return;
+  changes.push(
+    setComponent(CULTIVATION_TECHNIQUE, id, {
+      org,
+      name: school.technique.name,
+      factor: school.technique.factor,
+      learnedAt: j.now,
+      realm: 0,
+    }),
+  );
+  events.push({
+    kind: TECHNIQUE_TAUGHT_EVENT,
+    actors: [id],
+    place: j.place,
+    data: { org, technique: school.technique.name },
+    emissions: {},
+    causes: [
+      { kind: "state", entity: id, key: SECT_MEMBER.name },
+      { kind: "state", entity: org, key: SECT_SCHOOL.name },
+    ],
+  });
 }
 
 /** Lo que `who` cree de la secta `org`: la primera que conoció o una de las que oyó. */
