@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, type EntityRef, loadContent } from "../../core/index.ts";
 import {
   BODY_STATE,
+  CULTIVATION_STATE,
   checkInvariants,
   ENTITY,
   LOCATION,
@@ -31,7 +32,7 @@ import { DUEL_SETTLED_EVENT } from "./duels.ts";
 import { Life } from "./life.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { atSeat } from "./sect-grievance.ts";
-import { tournamentDuty } from "./sect-tournament.ts";
+import { tournamentDuty, tournamentFighters } from "./sect-tournament.ts";
 import { TRANSIT } from "./transit-state.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -127,7 +128,7 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     ).toHaveLength(0);
   });
 
-  it("la visitante manda a uno de cuerpo: va, pelea en la plataforma, deja premio y vuelve (delegation, bouts, prize)", () => {
+  it("la visitante manda a uno de cuerpo: va, pelea en la plataforma, deja premio y vuelve (delegation, bouts, prize, player)", () => {
     const { l, t, a, b } = setup(0.1, true);
     const sa = t.get(SECT, a);
     const sb = t.get(SECT, b);
@@ -161,7 +162,13 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     home();
     const body0 = t.get(BODY_STATE, who);
     if (!body0) throw new Error("sin cuerpo");
-    const fed = () => t.set(BODY_STATE, who, { ...body0, updatedAt: l.now });
+    // El personaje (que pelea por la casa más abajo) también come.
+    const playerBody = t.get(BODY_STATE, l.player);
+    if (!playerBody) throw new Error("sin cuerpo");
+    const fed = () => {
+      t.set(BODY_STATE, who, { ...body0, updatedAt: l.now });
+      t.set(BODY_STATE, l.player, { ...playerBody, updatedAt: l.now });
+    };
     fed();
     l.advanceTo(l.now + DAY);
     const called = l.world.log.all().find((e) => e.kind === ORG_TOURNAMENT_CALLED_EVENT);
@@ -187,33 +194,28 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
       l.advanceTo(l.now + DAY);
       expect(atSeat(t, who, host)).toBe(true);
     }
-    // La gente de la sede de la casa no está materializada sin el personaje: uno de la aldea hecho
-    // discípulo interno de la que lo pone, en su sede el día del torneo.
-    const champ = (t.ids(PERSON) as AgentId[]).find(
-      (id) =>
-        id !== who &&
-        alive(id) &&
-        id !== l.player &&
-        t.get(LOCATION, id) !== undefined &&
-        l.now - (t.get(PERSON, id)?.born ?? l.now) > 20 * YEAR &&
-        l.now - (t.get(PERSON, id)?.born ?? l.now) < 40 * YEAR,
-    );
-    if (!champ) throw new Error("sin aldeanos");
+    // La gente de la sede de la casa no está materializada sin el personaje: él, hecho discípulo
+    // interno de la que lo pone, en su sede el día del torneo; ahí está su gente y él se anota
+    // (novel4-tournament-player). Con el umbral más alto de los de la casa, pelea él.
+    const champ = l.player;
     t.set(SECT_MEMBER, champ, { org: host, rank: "inner", since: l.now });
-    const champBody = t.get(BODY_STATE, champ);
-    if (!champBody) throw new Error("sin cuerpo");
     while (l.now < rec.at) {
       fed();
       l.advanceTo(Math.min(rec.at, l.now + DAY));
     }
     expect(atSeat(t, who, host)).toBe(true);
+    t.set(LOCATION, champ, { hex: seatHex(host) });
+    t.set(CULTIVATION_STATE, champ, {
+      ...(t.get(CULTIVATION_STATE, champ) ?? { sensitivity: 1, hours: 0 }),
+      stage: 6,
+    });
+    expect(tournamentFighters(t, host, host)[0]).toBe(champ);
     // El día del torneo pelea en la plataforma con el de la casa y el torneo queda hecho.
     while (
       t.get(SECT_TOURNAMENT, keeper)?.with[other]?.status === "called" &&
       l.now < rec.at + TOURNAMENT_LATE_DAYS * DAY
     ) {
       fed();
-      t.set(BODY_STATE, champ, { ...champBody, updatedAt: l.now });
       t.set(LOCATION, champ, { hex: seatHex(host) });
       for (const table of [TRANSIT, NPC_JOURNEY, PLAN_STATE]) t.deleteRaw(table.name, champ);
       l.advanceTo(l.now + 3600);

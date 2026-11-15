@@ -83,7 +83,6 @@ import {
 } from "../../sim/index.ts";
 import { duelVictor } from "./duels.ts";
 import { canFight, DUEL_INTENT, exposeSkills, FIGHT_STATE, strikeFight } from "./fight.ts";
-import { PLAYER } from "./player.ts";
 import { atSeat, pickEnvoy } from "./sect-grievance.ts";
 import { DUEL_PLATFORM_EVENT, type SectSparOptions } from "./sect-spar.ts";
 
@@ -192,14 +191,14 @@ const RANK_ORDER: Readonly<Record<string, number>> = { inner: 0, outer: 1 };
 /**
  * Quiénes de `org` pelean en el torneo que pone `host` (puro, novel4-tournament-bouts): discípulos
  * internos o externos (los ancianos miran), vivos, despiertos, en condiciones de pelear, en la sede
- * de `host`, sin el Cielo encima ni duelo propio; no el personaje. De `only` si se da (la
- * delegación). Primero los internos, después por etapa de mayor a menor y por id.
+ * de `host`, sin el Cielo encima ni duelo propio. El personaje también, si está ahí ese día
+ * (novel4-tournament-player). De `only` si se da (la delegación). Primero los internos, después por
+ * etapa de mayor a menor y por id.
  */
 export function tournamentFighters(
   truth: ReadonlyWorldTruth,
   org: EntityRef,
   host: EntityRef,
-  player: AgentId,
   only?: readonly AgentId[],
 ): AgentId[] {
   const ids = only ?? ([...truth.ids(SECT_MEMBER)] as AgentId[]);
@@ -208,8 +207,8 @@ export function tournamentFighters(
   return ids
     .filter((id) => {
       const m = truth.get(SECT_MEMBER, id);
-      if (m?.org !== org || RANK_ORDER[m.rank] === undefined || id === player) return false;
-      if (truth.has(PLAYER, id) || truth.has(TRIBULATION, id) || truth.has(DUEL, id)) return false;
+      if (m?.org !== org || RANK_ORDER[m.rank] === undefined) return false;
+      if (truth.has(TRIBULATION, id) || truth.has(DUEL, id)) return false;
       if (truth.get(BODY_STATE, id)?.activity === "sleep") return false;
       return atSeat(truth, id, host) && canFight(truth, id);
     })
@@ -218,8 +217,8 @@ export function tournamentFighters(
 
 /**
  * Los duelos del torneo (puro, novel4-tournament-bouts): los de la que lo pone en su sede contra los
- * delegados de la visitante que llegaron, el i-ésimo de uno con el i-ésimo del otro. Tantos como el
- * lado más corto.
+ * delegados de la visitante que llegaron (y el personaje, si es de ella y está ahí: no hace falta
+ * que lo nombren), el i-ésimo de uno con el i-ésimo del otro. Tantos como el lado más corto.
  */
 export function tournamentBouts(
   truth: ReadonlyWorldTruth,
@@ -227,8 +226,14 @@ export function tournamentBouts(
   guest: EntityRef,
   player: AgentId,
 ): { readonly host: AgentId; readonly guest: AgentId }[] {
-  const h = tournamentFighters(truth, rec.host, rec.host, player);
-  const g = tournamentFighters(truth, guest, rec.host, player, rec.delegates ?? []);
+  const h = tournamentFighters(truth, rec.host, rec.host);
+  const sent = rec.delegates ?? [];
+  const g = tournamentFighters(
+    truth,
+    guest,
+    rec.host,
+    sent.includes(player) ? sent : [...sent, player],
+  );
   return g.slice(0, h.length).map((x, i) => ({ host: h[i] as AgentId, guest: x }));
 }
 
@@ -277,7 +282,6 @@ export function sectTournamentBoutsProcess(
       TRIBULATION.name,
       DUEL.name,
       FIGHT_STATE.name,
-      PLAYER.name,
       CULTIVATION_STATE.name,
     ],
     // Un duelo puede dejar a uno rendido o la pelea pausada (`strikeFight`).
