@@ -9,7 +9,10 @@ import {
   checkInvariants,
   chooseRivalSeat,
   ENTITY,
+  isRival,
   LOCATION,
+  ORG_RELATION,
+  ORG_RIVALRY_EVENT,
   PLACE,
   PLACE_NAME,
   PLACE_QI,
@@ -120,5 +123,42 @@ describe("la sede rival en la región (novel4-rival-sect-region)", () => {
     }
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
     expect(go().l.hash().total).toBe(l.hash().total);
+  });
+});
+
+describe("la rivalidad entre las dos (novel4-rival-sect-relation)", () => {
+  const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+  it("cada una tiene a la otra por rival, con lo que cree de ella y un origen; determinista", () => {
+    const l = Life.create(3, content, { cultivation: true, rivalSect: true });
+    const t = l.world.truth;
+    const [a, b] = t.ids(SECT) as EntityRef[];
+    if (!a || !b) throw new Error("sin sectas");
+    const born = l.world.log.all().filter((e) => e.kind === ORG_RIVALRY_EVENT);
+    expect(born.length).toBe(1);
+    const ev = born[0];
+    const founded = [t.get(SECT, a), t.get(SECT, b)].map((s) => s?.originEventId);
+    expect(ev?.causes.map((c) => (c.kind === "event" ? c.event : undefined)).sort()).toEqual(
+      [...founded].sort(),
+    );
+    for (const [from, to] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const rel = t.get(ORG_RELATION, from);
+      expect(isRival(rel, to)).toBe(true);
+      const tie = rel?.toward[to];
+      expect(tie?.originEventId).toBe(ev?.id);
+      expect(tie?.grievances).toEqual([]);
+      expect(tie?.believedStrength.elders).toBeGreaterThan(0);
+    }
+    expect(checkInvariants({ truth: t, log: l.world.log })).toEqual([]);
+    const twin = Life.create(3, content, { cultivation: true, rivalSect: true });
+    expect(twin.world.truth.get(ORG_RELATION, a)).toEqual(t.get(ORG_RELATION, a));
+  });
+
+  it("sin la opción, ninguna relación", () => {
+    const l = Life.create(3, content, { cultivation: true });
+    expect(l.world.truth.ids(ORG_RELATION)).toEqual([]);
   });
 });

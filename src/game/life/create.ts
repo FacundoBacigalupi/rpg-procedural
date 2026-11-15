@@ -146,6 +146,7 @@ import {
   seedPlaceNames,
   seedRelations,
   seedReligion,
+  seedRivalry,
   seedSect,
   seedSectLore,
   seedSettlement,
@@ -2316,7 +2317,11 @@ export function createLife(
           ...(schoolNames ? { school: schoolNames } : {}),
         })
       : undefined;
-    if (rival) placeSeat(rival.sect);
+    if (rival && sect) {
+      placeSeat(rival.sect);
+      // La rivalidad entre las dos (novel4-rival-sect-relation): cada una con lo que cree de la otra.
+      seedRivalry(truth, ids, log, { seed, a: sect.org, b: rival.org, place: terrain.village });
+    }
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
