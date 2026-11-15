@@ -26,6 +26,7 @@ import {
   SECT_SITE_SPACES,
   type SectSiteSpace,
   sectSpaceKey,
+  sectsBelieved,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { ANIMAL_WORDS, animalsInSight } from "./animals.ts";
@@ -352,14 +353,20 @@ export function knownEntities(
   }
   // La sede de la secta, si la tiene oída (novel-cult-sect-known): nombrable; con la región
   // (novel-sect-seat-switch) tiene hexes y se puede ir caminando, como a los lugares de la aldea.
-  const lore = w.truth.get(SECT_LORE, w.player);
-  if (lore) {
+  // Las otras que oyó nombrar (novel4-rival-sect-lore): «la otra secta» y su nombre.
+  for (const lore of sectsBelieved(w.truth, w.player)) {
+    const first = w.truth.get(SECT_LORE, w.player)?.org === lore.org;
     const proper = w.truth.get(PLACE_NAME, lore.seat)?.form;
     const seat = w.truth.get(PLACE, lore.seat);
     out.push({
       ref: lore.seat,
       kind: "place",
-      names: ["la secta", "la sede de la secta", ...(proper === undefined ? [] : [proper])],
+      names: [
+        ...(first
+          ? ["la secta", "la sede de la secta"]
+          : ["la otra secta", "la sede de la otra secta"]),
+        ...(proper === undefined ? [] : [proper]),
+      ],
       features: [],
       relations: [],
       present: seat !== undefined && here !== undefined && seat.hexes.includes(here.hex),

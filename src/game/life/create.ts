@@ -46,6 +46,7 @@ import {
   type CurdRule,
   carcassUnits,
   cellElements,
+  chooseRivalSeat,
   chooseSeat,
   DEBRIS_SINK,
   DEMOGRAPHY,
@@ -120,6 +121,7 @@ import {
   SCHEMAS,
   SCHOOLS,
   SEAT_REACH_HOPS,
+  type Sect,
   type SectSeat,
   SKILLS,
   SkillCatalog,
@@ -144,6 +146,7 @@ import {
   seedPlaceNames,
   seedRelations,
   seedReligion,
+  seedRivalry,
   seedSect,
   seedSectLore,
   seedSettlement,
@@ -506,6 +509,12 @@ export interface LifeOptions {
   readonly cultivation?: boolean;
   /** Opt-in (requiere `cultivation`): la sede de la secta en su celda (novel-sect-seat-switch): el mapa de la vida es la región por tierra (`regionMapOf`: aldea, franjas del camino y la celda de la sede) y la sede es un lugar (`sect`) con un hex allí, al que se llega caminando; apagado, el mapa es solo el parche de la aldea. */
   readonly sectSeatRegion?: boolean;
+  /**
+   * Opt-in (requiere `cultivation`, novel4-rival-sect): una segunda secta al alcance de la aldea, en
+   * la mejor sede que no sea la de la primera ni sus vecinas, con su propia fundación, gente y
+   * escuela; apagado, una sola secta y hashes idénticos.
+   */
+  readonly rivalSect?: boolean;
   /** Opt-in: el `move` del jugador a un lugar a más de 8 h de camino es una marcha de varios días (`life.trek`, novel-sect-seat-trek): sale con odre y grano de la despensa, bebe con sed, come a la hora, duerme de noche y retoma el tramo tras un tropiezo, hasta llegar o rendirse a los 30 días; apagado, hashes idénticos. */
   readonly playerTrek?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
@@ -908,16 +917,24 @@ function placeQiOf(planet: Planet, cell: number, content: Content): PlaceQi {
  * La sede de la secta cercana (novel-cult-sect-place): la celda en tierra con más qi a
  * `SEAT_REACH_HOPS` saltos o menos de la aldea, con su distancia, su rumbo y su qi.
  */
-function sectSeatOf(planet: Planet, cell: number, content: Content): SectSeat | undefined {
+function sectSeatOf(
+  planet: Planet,
+  cell: number,
+  content: Content,
+  /** La sede de otra secta: esta no puede caer en ella ni en sus vecinas (novel4-rival-sect-seed). */
+  apartFrom?: number,
+): SectSeat | undefined {
   const { grid, essence, tectonics, hydrology } = planet;
-  const best = chooseSeat(
-    ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
-      cell: c,
-      hops,
-      level: essence.level[c] ?? 0,
-      land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
-    })),
-  );
+  const candidates = ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
+    cell: c,
+    hops,
+    level: essence.level[c] ?? 0,
+    land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
+  }));
+  const best =
+    apartFrom === undefined
+      ? chooseSeat(candidates)
+      : chooseRivalSeat(candidates, new Set(ring(grid, apartFrom, 1).map(([c]) => c)));
   if (!best) return undefined;
   const at = (c: number) => ({ lat: grid.lat[c] ?? 0, lon: grid.lon[c] ?? 0 });
   return {
@@ -1478,7 +1495,16 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     options.cultivation && options.sectSeatRegion
       ? sectSeatOf(planet, site.cell, content)
       : undefined;
-  const map = seat ? regionMapOf(planet, { map: home, patch: site.patch }, seat.cell) : home;
+  // La sede de la secta rival también en la región (novel4-rival-sect-region).
+  const rival =
+    seat && options.rivalSect ? sectSeatOf(planet, site.cell, content, seat.cell) : undefined;
+  const map = seat
+    ? regionMapOf(
+        planet,
+        { map: home, patch: site.patch },
+        rival ? [seat.cell, rival.cell] : seat.cell,
+      )
+    : home;
   return { village, planet, site, map, population };
 }
 
@@ -2243,31 +2269,26 @@ export function createLife(
           ),
         })
       : undefined;
-    if (sect) {
-      const high = (terrain.planet.tectonics.elevation[sect.sect.seat.cell] ?? 0) > 600;
+    // El nombre de la sede y, con la región, su lugar en el mapa (también la de la rival).
+    const placeSeat = (s: Sect): void => {
+      const high = (terrain.planet.tectonics.elevation[s.seat.cell] ?? 0) > 600;
       seedPlaceNames(truth, language, seed, [
-        {
-          id: sect.sect.seatPlace,
-          feature: high ? "mountain" : "forest",
-          event: sect.sect.originEventId,
-        },
+        { id: s.seatPlace, feature: high ? "mountain" : "forest", event: s.originEventId },
       ]);
       // Con la región, la sede es un lugar con un hex en su celda (novel-sect-seat-switch).
       const seatHex = options.sectSeatRegion
-        ? seatHexOf(map, terrain.planet.grid.cellId(sect.sect.seat.cell))
+        ? seatHexOf(map, terrain.planet.grid.cellId(s.seat.cell))
         : undefined;
-      if (seatHex !== undefined) {
-        truth.set(PLACE, sect.sect.seatPlace, { kind: "sect", hexes: [seatHex] });
-        // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
-        truth.set(PLACE_QI, sect.sect.seatPlace, sect.sect.seat.qi);
-        truth.set(QI_TAKEN, sect.sect.seatPlace, { taken: 0, drawn: 0, at: pop.now });
-        // El monte de su celda (novel3-beasts-wilds): las bestias que el clima de ahí sostiene.
-        const span = patchesOf(map).find(
-          (p) => p.cell === terrain.planet.grid.cellId(sect.sect.seat.cell),
-        );
-        if (span) truth.set(WILDS, sect.sect.seatPlace, seatWilds(content, map, span));
-      }
-    }
+      if (seatHex === undefined) return;
+      truth.set(PLACE, s.seatPlace, { kind: "sect", hexes: [seatHex] });
+      // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
+      truth.set(PLACE_QI, s.seatPlace, s.seat.qi);
+      truth.set(QI_TAKEN, s.seatPlace, { taken: 0, drawn: 0, at: pop.now });
+      // El monte de su celda (novel3-beasts-wilds): las bestias que el clima de ahí sostiene.
+      const span = patchesOf(map).find((p) => p.cell === terrain.planet.grid.cellId(s.seat.cell));
+      if (span) truth.set(WILDS, s.seatPlace, seatWilds(content, map, span));
+    };
+    if (sect) placeSeat(sect.sect);
     // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.
     if (sect) {
       seedSectLore(truth, {
@@ -2277,6 +2298,38 @@ export function createLife(
         org: sect.org,
         sect: sect.sect,
         people: pop.people.filter((p) => p.end === null).map((p) => p.id),
+      });
+    }
+    // La secta rival (novel4-rival-sect-seed): otra sede al alcance, aparte de la primera.
+    const rivalSeat =
+      sect && options.rivalSect
+        ? sectSeatOf(terrain.planet, site.cell, content, sect.sect.seat.cell)
+        : undefined;
+    const rival = rivalSeat
+      ? seedSect(truth, ids, log, {
+          seed,
+          now: pop.now,
+          yearTicks: clock.year,
+          place: terrain.village,
+          talents: content.all(TALENTS),
+          seat: rivalSeat,
+          key: "rival",
+          ...(schoolNames ? { school: schoolNames } : {}),
+        })
+      : undefined;
+    if (rival && sect) {
+      placeSeat(rival.sect);
+      // La rivalidad entre las dos (novel4-rival-sect-relation): cada una con lo que cree de la otra.
+      seedRivalry(truth, ids, log, { seed, a: sect.org, b: rival.org, place: terrain.village });
+      // Lo que la aldea oyó de ella (novel4-rival-sect-lore): menos que de la que baja.
+      seedSectLore(truth, {
+        seed,
+        now: pop.now,
+        yearTicks: clock.year,
+        org: rival.org,
+        sect: rival.sect,
+        people: pop.people.filter((p) => p.end === null).map((p) => p.id),
+        other: "rival",
       });
     }
   }

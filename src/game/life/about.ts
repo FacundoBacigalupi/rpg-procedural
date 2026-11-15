@@ -10,7 +10,7 @@ import {
   type Compass8,
   LOCATION,
   type PurposeId,
-  SECT_LORE,
+  sectsBelieved,
 } from "../../sim/index.ts";
 import { knownEntities, whereaboutsFromBeliefs } from "./known.ts";
 import { type BookLine, bookLinesOf } from "./panels.ts";
@@ -101,7 +101,7 @@ export function peoplePanel(w: LifeWorld): PeoplePanel {
 export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel {
   const entity = knownEntities(w).find((k) => k.ref === ref);
   if (entity?.kind !== "person") {
-    const lore = w.truth.get(SECT_LORE, w.player);
+    const lore = sectsBelieved(w.truth, w.player).find((l) => l.seat === ref);
     return {
       kind: "place",
       name,
@@ -109,7 +109,7 @@ export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel 
       aliveSurety: "vague",
       where: entity?.present ? { state: "here" } : { state: "unknown" },
       book: [],
-      ...(lore && lore.seat === ref
+      ...(lore
         ? {
             hearsay: {
               what: "sect" as const,

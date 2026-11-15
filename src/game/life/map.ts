@@ -146,24 +146,40 @@ function stripOf(patch: LocalPatch, prev: number, next: number): number[] {
  * El mapa de la aldea unido, por tierra, con el de otra celda (novel-sect-seat-road): las celdas
  * del camino (`cellPath`) se cosen por los hexes que se tocan en cada borde. La celda de destino
  * entra entera; las de en medio, solo con la franja más corta que las cruza. Si la otra celda es
- * la de la aldea, el mapa es el de la aldea.
+ * la de la aldea, el mapa es el de la aldea. Con varios destinos (novel4-rival-sect-region), un
+ * camino por cada uno: la celda que dos caminos cruzan junta sus franjas, y la que es destino de
+ * uno entra entera aunque otro la cruce.
  */
 export function regionMapOf(
   planet: Planet,
   home: { readonly map: LocalMap; readonly patch: LocalPatch },
-  to: number,
+  to: number | readonly number[],
 ): LocalMap {
-  const cells = cellPath(planet, home.patch.cell, to);
-  if (cells.length < 2) return home.map;
+  // Por celda, los hexes que entran, en el orden en que aparecen.
+  const keeps = new Map<number, number[]>();
+  for (const target of typeof to === "number" ? [to] : to) {
+    const cells = cellPath(planet, home.patch.cell, target);
+    for (let i = 1; i < cells.length; i++) {
+      const c = cells[i] as number;
+      if (c === home.patch.cell) continue;
+      const patch = localPatch(planet, c);
+      const keep =
+        i === cells.length - 1
+          ? patch.hexes.map((_, h) => h)
+          : stripOf(patch, cells[i - 1] as number, cells[i + 1] as number);
+      const had = keeps.get(c);
+      if (!had) keeps.set(c, keep);
+      else if (keep.length === patch.hexes.length) keeps.set(c, keep);
+      else for (const h of keep) if (!had.includes(h)) had.push(h);
+    }
+  }
+  if (keeps.size === 0) return home.map;
   const parts: { map: LocalMap; ids: number[]; outside: (readonly number[])[] }[] = [];
-  for (let i = 1; i < cells.length; i++) {
-    const c = cells[i] as number;
+  for (const [c, kept] of keeps) {
     const patch = localPatch(planet, c);
+    // Si las franjas juntas cubren la celda, entra entera y en su orden.
+    const keep = kept.length === patch.hexes.length ? patch.hexes.map((_, h) => h) : kept;
     const full = localMapOf(planet, { patch, terrain: localTerrain(planet, patch) });
-    const keep =
-      i === cells.length - 1
-        ? patch.hexes.map((_, h) => h)
-        : stripOf(patch, cells[i - 1] as number, cells[i + 1] as number);
     parts.push({
       map: keep.length === patch.hexes.length ? full : subMap(full, keep),
       ids: keep.map((h) => patch.hexes[h] as number),

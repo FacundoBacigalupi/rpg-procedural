@@ -157,4 +157,28 @@ describe("región por tierra", () => {
     expect(path.some((h) => patchOf(region, h).cell === mid?.cell)).toBe(true);
     expect(regionMapOf(planet, home, site.patch.cell)).toBe(village);
   });
+
+  it("a dos destinos: un camino por cada uno, sus celdas enteras, y se llega a las dos", () => {
+    const ones = ring(planet.grid, site.patch.cell, 1).filter(([, d]) => d === 1);
+    const a = ones[0]?.[0] as number;
+    const b = ones[Math.floor(ones.length / 2)]?.[0] as number;
+    // Un solo destino en la lista es lo mismo que el número.
+    expect(JSON.stringify(regionMapOf(planet, home, [a]))).toBe(
+      JSON.stringify(regionMapOf(planet, home, a)),
+    );
+    const region = regionMapOf(planet, home, [a, b]);
+    const parts = patchesOf(region);
+    expect(parts.map((p) => p.cell)).toEqual([
+      planet.grid.cellId(site.patch.cell),
+      planet.grid.cellId(a),
+      planet.grid.cellId(b),
+    ]);
+    expect(region.crossSeconds.slice(0, village.crossSeconds.length)).toEqual(village.crossSeconds);
+    for (const p of parts.slice(1)) {
+      const path = hexPath(region, site.hex, p.base + p.size - 1);
+      expect(path.length).toBeGreaterThan(0);
+    }
+    // El mismo destino dos veces no duplica la celda.
+    expect(patchesOf(regionMapOf(planet, home, [a, a])).length).toBe(2);
+  });
 });

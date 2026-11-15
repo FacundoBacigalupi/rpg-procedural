@@ -394,7 +394,12 @@ const BODY_KEYS: readonly (keyof LifeOptions)[] = [
 
 /** El grupo de un flag: por lista o por prefijo; lo demás es de la aldea. */
 export function lifeGroupOf(key: keyof LifeOptions): LifeGroup {
-  if (key === "cultivation" || key === "sectSeatRegion" || key === "playerTrek")
+  if (
+    key === "cultivation" ||
+    key === "sectSeatRegion" ||
+    key === "playerTrek" ||
+    key === "rivalSect"
+  )
     return "cultivation";
   if (key === "mortalTech") return "tech";
   if (PEOPLE_KEYS.includes(key)) return "people";
