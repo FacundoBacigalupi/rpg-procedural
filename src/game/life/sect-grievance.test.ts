@@ -13,13 +13,16 @@ import {
   ENVOY_WAIT_DAYS,
   GRIEVANCE_RESENTMENT,
   KNOWN_DEEDS,
+  LOCATION,
   MISSION_DAYS,
+  MISSION_DONE_EVENT,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
   ORG_GRIEVANCE_REPLY_EVENT,
   ORG_RELATION,
   orgTie,
   PERSON,
+  PLACE,
   REPARATION_PENALTY,
   SECT,
   SECT_CONTRIBUTION,
@@ -30,7 +33,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { newGrievances } from "./sect-grievance.ts";
+import { envoyDestination, newGrievances, ORG_GRIEVANCE_ENVOY_EVENT } from "./sect-grievance.ts";
 import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -44,12 +47,25 @@ function sources(dir: string, root = dir): ContentSource[] {
 }
 
 const DAY = 86400;
+const HOUR = 3600;
 
 describe("las ofensas entre sectas (novel4-grievance-record)", () => {
   const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
-  const setup = () => {
-    const l = Life.create(3, content, { cultivation: true, rivalSect: true });
+  const setup = (journeys?: number) => {
+    const l = Life.create(3, content, {
+      cultivation: true,
+      rivalSect: true,
+      ...(journeys !== undefined
+        ? {
+            npcJourneyDays: journeys,
+            npcVerbs: ["move"],
+            npcMove: true,
+            npcTransit: true,
+            sectSeatRegion: true,
+          }
+        : {}),
+    });
     const t = l.world.truth;
     const [a, b] = t.ids(SECT) as EntityRef[];
     if (!a || !b) throw new Error("sin sectas");
@@ -204,6 +220,57 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
     const entry = t.get(SECT_GRIEVANCES, a)?.entries[0];
     expect(["paid", "refused"]).toContain(entry?.outcome?.result);
     expect(l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT)).toHaveLength(1);
+    expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
+  });
+
+  it("sin nadie que la tome, la secta manda a uno de los suyos; viaja, le contestan allá y la cobra al volver (novel4-grievance-envoy-npc)", () => {
+    const { l, t, a, b, by, victim, event, knower } = setup(30);
+    t.deleteRaw(KNOWN_DEEDS.name, knower);
+    const asked = l.now;
+    t.set(SECT_GRIEVANCES, a, {
+      entries: [
+        {
+          deed: event,
+          against: b,
+          kind: "assault",
+          by,
+          victim,
+          at: asked,
+          response: { choice: "demand", at: asked },
+        },
+      ],
+    });
+    t.set(SECT_MEMBER, knower, { org: a, rank: "inner", since: l.now });
+    expect(envoyDestination(t, knower)).toBeUndefined();
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS - 1) * DAY);
+    expect(l.world.log.all().some((e) => e.kind === ORG_GRIEVANCE_ENVOY_EVENT)).toBe(false);
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS + 1) * DAY);
+    const sent = l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_ENVOY_EVENT);
+    expect(sent).toHaveLength(1);
+    const envoy = sent[0]?.actors[0] as AgentId;
+    const mission = t.get(SECT_MISSION, envoy);
+    expect(mission).toMatchObject({ org: a, kind: "envoy", against: b, deed: event });
+    expect(t.get(SECT_GRIEVANCES, a)?.entries[0]?.envoy).toEqual({ who: envoy, due: mission?.due });
+    // Viaja de cuerpo (el viaje de NPC, día a día): le contestan al llegar a la otra sede.
+    const due = mission?.due ?? 0;
+    while ((t.get(SECT_MISSION, envoy)?.done ?? 1) < 1 && l.now < due) {
+      l.advanceTo(l.now + DAY);
+    }
+    const replies = l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT);
+    expect(replies).toHaveLength(1);
+    expect((replies[0]?.data as { envoy?: string } | undefined)?.envoy).toBe(envoy);
+    expect(replies[0]?.place).toEqual({ kind: "place", place: t.get(SECT, b)?.seatPlace });
+    expect(["paid", "refused"]).toContain(t.get(SECT_GRIEVANCES, a)?.entries[0]?.outcome?.result);
+    expect(t.get(SECT_MISSION, envoy)).toMatchObject({ done: 1, reply: replies[0]?.id });
+    // Contestada, el enviado quiere volver a su sede; ahí la cobra.
+    expect(envoyDestination(t, envoy)).toBe(t.get(SECT, a)?.seatPlace);
+    const hexA = t.get(PLACE, t.get(SECT, a)?.seatPlace as EntityRef)?.hexes[0] as number;
+    t.set(LOCATION, envoy, { hex: hexA });
+    l.advanceTo(l.now + HOUR);
+    expect(t.get(SECT_MISSION, envoy)).toBeUndefined();
+    expect(
+      l.world.log.all().some((e) => e.kind === MISSION_DONE_EVENT && e.actors[0] === envoy),
+    ).toBe(true);
     expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
   });
 
