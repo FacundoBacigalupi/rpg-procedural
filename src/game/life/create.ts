@@ -92,6 +92,7 @@ import {
   MANURE_UNIT,
   MATERIALS,
   MENTAL_LABELS,
+  MISSION_WATCH_RADIUS,
   NUTRIENT_PROFILES,
   nameRules,
   OFFERING_ASH,
@@ -216,6 +217,7 @@ import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
 import { SECT_UPKEEP } from "./sect-hall.ts";
+import { watchPost } from "./sect-watch.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { FORGE_TRADE, seedSmith } from "./smith.ts";
 import { SOWN_FIELD } from "./sowing.ts";
@@ -2320,7 +2322,29 @@ export function createLife(
     if (rival && sect) {
       placeSeat(rival.sect);
       // La rivalidad entre las dos (novel4-rival-sect-relation): cada una con lo que cree de la otra.
-      seedRivalry(truth, ids, log, { seed, a: sect.org, b: rival.org, place: terrain.village });
+      const rivalry = seedRivalry(truth, ids, log, {
+        seed,
+        a: sect.org,
+        b: rival.org,
+        place: terrain.village,
+      });
+      // El puesto de guardia de cada una en el camino hacia la otra (novel4-watch-npc): un lugar al
+      // que se puede ir, causado por la rivalidad. Si los dos caen en el mismo hex, uno solo.
+      const hexA = truth.get(PLACE, sect.sect.seatPlace)?.hexes[0];
+      const hexB = truth.get(PLACE, rival.sect.seatPlace)?.hexes[0];
+      if (rivalry !== undefined && hexA !== undefined && hexB !== undefined) {
+        const since = Math.max(sect.sect.founded, rival.sect.founded);
+        const posts = [
+          watchPost(map, hexA, hexB, MISSION_WATCH_RADIUS)?.hex,
+          watchPost(map, hexB, hexA, MISSION_WATCH_RADIUS)?.hex,
+        ];
+        for (const hex of [...new Set(posts)]) {
+          if (hex === undefined) continue;
+          const id = ids.next("place");
+          truth.set(ENTITY, id, { id, originEventId: rivalry, createdAt: since });
+          truth.set(PLACE, id, { kind: "post", hexes: [hex] });
+        }
+      }
       // Lo que la aldea oyó de ella (novel4-rival-sect-lore): menos que de la que baja.
       seedSectLore(truth, {
         seed,

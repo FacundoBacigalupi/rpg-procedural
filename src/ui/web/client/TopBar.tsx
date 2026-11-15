@@ -70,6 +70,7 @@ const PLACE: Record<string, string> = {
   water: "agua",
   grave: "tumbas",
   sect: "secta",
+  post: "puesto de guardia",
 };
 
 const SPACE: Record<string, string> = {
