@@ -140,6 +140,7 @@ export type SelfCue =
   | "mission_watch"
   /** Le tocó cazar a la bestia que bajó (novel3-beasts-mission-ask). */
   | "mission_hunt"
+  | "mission_envoy"
   | "mission_progress"
   | "mission_done"
   /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */

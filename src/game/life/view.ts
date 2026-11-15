@@ -879,7 +879,13 @@ export function playerView(
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
     cues.add(
-      kind === "watch" ? "mission_watch" : kind === "hunt" ? "mission_hunt" : "mission_herbs",
+      kind === "watch"
+        ? "mission_watch"
+        : kind === "hunt"
+          ? "mission_hunt"
+          : kind === "envoy"
+            ? "mission_envoy"
+            : "mission_herbs",
     );
   }
   const missionEnd =

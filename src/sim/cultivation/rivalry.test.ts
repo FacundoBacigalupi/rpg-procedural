@@ -13,6 +13,10 @@ import {
   BELIEF_ERROR,
   chooseGrievanceResponse,
   chooseReply,
+  ENVOY_DAYS,
+  ENVOY_WAIT_DAYS,
+  envoySlotReturns,
+  envoyWanted,
   GRIEVANCE_RESENTMENT,
   grievanceUtilities,
   rivalSentiment,
@@ -206,5 +210,39 @@ describe("la ofensa se cobra (novel4-grievance-act)", () => {
     });
     expect([...w.keys()]).toEqual(["agent:1"]);
     expect(w.get("agent:1" as AgentId)?.deed).toBe("event:4");
+  });
+});
+
+describe("quién lleva la exigencia (novel4-grievance-envoy-mission)", () => {
+  const day = 100;
+  const e = {
+    deed: "event:1" as EventId,
+    against: "org:2" as EntityRef,
+    kind: "theft" as const,
+    by: "agent:1" as AgentId,
+    victim: "agent:2" as AgentId,
+    at: 0 as Tick,
+    response: { choice: "demand" as const, at: 10 as Tick },
+  };
+
+  it("sin enviado sale la ranura al terminar la espera; con uno que la lleva, no; vencida, desde el plazo", () => {
+    expect(envoySlotReturns(e, day, false)).toBe(10 + (ENVOY_WAIT_DAYS + ENVOY_DAYS) * day);
+    expect(envoySlotReturns(e, day, true)).toBeUndefined();
+    const lapsed = { ...e, envoy: { who: "agent:9" as AgentId, due: 5000 as Tick } };
+    expect(envoySlotReturns(lapsed, day, false)).toBe(5000 + ENVOY_DAYS * day);
+    expect(
+      envoySlotReturns({ ...e, response: { choice: "retaliate", at: 10 as Tick } }, day, false),
+    ).toBeUndefined();
+  });
+
+  it("se busca enviado solo durante la espera, si nadie la tomó y sigue abierta", () => {
+    expect(envoyWanted(e, 10 as Tick, day)).toBe(true);
+    expect(envoyWanted(e, (10 + ENVOY_WAIT_DAYS * day) as Tick, day)).toBe(false);
+    expect(
+      envoyWanted({ ...e, envoy: { who: "agent:9" as AgentId, due: 99 as Tick } }, 10 as Tick, day),
+    ).toBe(false);
+    expect(
+      envoyWanted({ ...e, outcome: { result: "paid", at: 11 as Tick } }, 12 as Tick, day),
+    ).toBe(false);
   });
 });

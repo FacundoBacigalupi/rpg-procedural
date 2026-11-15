@@ -30,6 +30,7 @@ import {
   PLACE,
   SECT,
   SECT_CONTRIBUTION,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
   SECT_MISSION,
   understand,
@@ -229,4 +230,64 @@ describe("pedir una misión (novel2-missions-ask)", () => {
     expect(none.assigned).toBeUndefined();
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   }, 600_000);
+});
+
+describe("llevar la exigencia como misión (novel4-grievance-envoy-mission)", () => {
+  it("al de rango que pide, el anciano le da llevar la exigencia; el asunto lo anota de enviado", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, {
+      cultivation: true,
+      sectSeatRegion: true,
+      rivalSect: true,
+    });
+    const w = life.world;
+    const me = life.player;
+    const [org, rival] = w.truth.ids(SECT) as EntityRef[];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !rival || !sect) throw new Error("sin sectas");
+    const hex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    w.truth.set(LOCATION, me, { hex });
+    life.advanceTo(life.now + 2 * HOUR);
+    const elder = w.truth
+      .ids(SECT_MEMBER)
+      .map((id) => ({ id: id as AgentId, m: w.truth.get(SECT_MEMBER, id) }))
+      .find((x) => x.m?.org === org && (x.m.rank === "elder" || x.m.rank === "master"))?.id;
+    if (!elder) throw new Error("sin anciano");
+    w.truth.set(SECT_MEMBER, me, { org, rank: "inner", since: life.now });
+    const deed = w.log.all()[0]?.id;
+    if (!deed) throw new Error("sin eventos");
+    w.truth.set(SECT_GRIEVANCES, org, {
+      entries: [
+        {
+          deed,
+          against: rival,
+          kind: "assault",
+          by: elder,
+          victim: me,
+          at: life.now,
+          response: { choice: "demand", at: life.now },
+        },
+      ],
+    });
+    const here = w.truth.get(LOCATION, me);
+    if (!here) throw new Error("sin lugar");
+    w.truth.set(LOCATION, elder, here);
+    for (const id of [me, elder]) {
+      const body = w.truth.get(BODY_STATE, id);
+      if (body) w.truth.set(BODY_STATE, id, { ...body, sleepDebt: 0, fatigue: 0 });
+    }
+    const report = life.turn(say(me, elder, "Anciano, ¿hay alguna misión para mí?"), 1);
+    const reply = report.events.find((e) => e.kind === "action.speak" && e.actors[0] === elder);
+    expect((reply?.data as { effect?: { reply: string } } | undefined)?.effect?.reply).toBe(
+      "mission.give.envoy",
+    );
+    const mission = w.truth.get(SECT_MISSION, me);
+    expect(mission).toMatchObject({ org, kind: "envoy", against: rival, deed, by: elder });
+    life.advanceTo(life.now + 26 * HOUR);
+    expect(w.truth.get(SECT_GRIEVANCES, org)?.entries[0]?.envoy).toEqual({
+      who: me,
+      due: mission?.due,
+    });
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  });
 });

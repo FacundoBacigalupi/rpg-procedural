@@ -13,6 +13,11 @@
 // niega según lo que siente por la que exige (`chooseReply`), y eso vuelve a las dos relaciones
 // (`org.grievance_reply`). Devolverla sale a buscar al ofensor: los de la secta lo retan al
 // cruzarlo (`wantedBy` en `challengeCandidates`) y el duelo ganado la cierra (`life.duels`).
+//
+// El enviado (novel4-grievance-envoy-mission): la exigencia espera `ENVOY_WAIT_DAYS` a que uno de la
+// secta pida llevarla (la misión `envoy` que da el anciano). Si alguien la toma, el asunto lo anota
+// (`envoy`) y la ranura no sale mientras la lleve; si se le vence, sale la ranura desde el plazo. Si
+// nadie la toma, sale la ranura al terminar la espera (`envoySlotReturns`).
 
 import {
   type AgentId,
@@ -20,6 +25,7 @@ import {
   type EntityRef,
   type EventId,
   type PlaceId,
+  type Tick,
 } from "../../core/index.ts";
 import {
   addGrievance,
@@ -29,10 +35,11 @@ import {
   chooseGrievanceResponse,
   chooseReply,
   ENTITY,
-  ENVOY_DAYS,
   type EventDraft,
+  envoySlotReturns,
   type GrievanceKind,
   KNOWN_DEEDS,
+  missionLapsed,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
   ORG_GRIEVANCE_REPLY_EVENT,
@@ -48,6 +55,7 @@ import {
   SECT_CONTRIBUTION,
   SECT_GRIEVANCES,
   SECT_MEMBER,
+  SECT_MISSION,
   type SectContribution,
   type SectGrievanceEntry,
   type StateChange,
@@ -127,6 +135,7 @@ export function sectGrievanceProcess(o: {
       SECT.name,
       SECT_GRIEVANCES.name,
       SECT_CONTRIBUTION.name,
+      SECT_MISSION.name,
     ],
     writes: [ORG_RELATION.name, SECT_GRIEVANCES.name, SECT_CONTRIBUTION.name],
     run(ctx) {
@@ -142,6 +151,8 @@ export function sectGrievanceProcess(o: {
         return l;
       };
       const events: EventDraft[] = [];
+      /** Si se tocó un asunto sin evento (anotar al enviado). */
+      let changed = false;
       const contributions = new Map<AgentId, SectContribution>();
       const seatOf = (org: EntityRef) => truth.get(SECT, org)?.seatPlace;
       const relationOf = (org: EntityRef) => relations.get(org) ?? truth.get(ORG_RELATION, org);
@@ -149,12 +160,26 @@ export function sectGrievanceProcess(o: {
         const had = relationOf(org);
         if (had) relations.set(org, { toward: { ...had.toward, [toward]: tie } });
       };
+      // Quién lleva cada exigencia (novel4-grievance-envoy-mission): la misión vigente, por hecho.
+      const carriers = new Map<string, { who: AgentId; due: Tick }>();
+      for (const id of [...truth.ids(SECT_MISSION)].sort(compareStrings)) {
+        const m = truth.get(SECT_MISSION, id);
+        if (m?.kind !== "envoy" || m.deed === undefined || missionLapsed(m, ctx.now)) continue;
+        carriers.set(`${m.org}|${m.deed}`, { who: id as unknown as AgentId, due: m.due });
+      }
       // Las exigencias que ya llegaron y volvieron: la otra repara o se niega (novel4-grievance-act).
       for (const org of [...truth.ids(SECT_GRIEVANCES)].sort(compareStrings) as EntityRef[]) {
         const entries = ledger(org);
         entries.forEach((e, i) => {
           if (!openGrievance(e) || e.response?.choice !== "demand") return;
-          if (ctx.now < e.response.at + ENVOY_DAYS * o.dayTicks) return;
+          const carrier = carriers.get(`${org}|${e.deed}`);
+          // La tomó uno de los suyos: queda anotado quién y hasta cuándo, y la ranura no sale.
+          if (carrier && (e.envoy?.who !== carrier.who || e.envoy.due !== carrier.due)) {
+            entries[i] = { ...e, envoy: carrier };
+            changed = true;
+          }
+          const back = envoySlotReturns(entries[i] ?? e, o.dayTicks, carrier !== undefined);
+          if (back === undefined || ctx.now < back) return;
           const theirs = orgTie(relationOf(e.against), org);
           const ours = orgTie(relationOf(org), e.against);
           const seat = seatOf(e.against);
@@ -240,7 +265,7 @@ export function sectGrievanceProcess(o: {
           causes: [{ kind: "event", event: g.event }],
         });
       }
-      if (events.length === 0) return {};
+      if (events.length === 0 && !changed) return {};
       const changes: StateChange[] = [
         ...[...relations]
           .sort(([a], [b]) => compareStrings(a, b))

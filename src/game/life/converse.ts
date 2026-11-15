@@ -69,8 +69,11 @@ import {
   dominantVariant,
   draftEvent,
   ENTITY,
+  type EnvoySighting,
   type EtiquetteNorm,
   type EventDraft,
+  envoyNeeds,
+  envoyWanted,
   FACE,
   type FormJudgeInput,
   type FormJudgement,
@@ -146,6 +149,7 @@ import {
   SECRETS,
   SECT,
   SECT_CONTRIBUTION,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
   SECT_MISSION,
   SECT_RANK_RULING,
@@ -1371,7 +1375,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       CULTIVATION_STATE.name,
       MASTER_OF.name,
       ...(o.duels ? [SKILL_STATE.name, OPINIONS.name, FIGHT_STATE.name, YIELDED.name] : []),
-      ...(o.missions ? [SECT_MISSION.name, SECT_HALL.name] : []),
+      ...(o.missions ? [SECT_MISSION.name, SECT_HALL.name, SECT_GRIEVANCES.name] : []),
     ],
     writes: [
       MASTER_OF.name,
@@ -1521,7 +1525,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         act.kind === "promotion" ? petitionOf(truth, me, speaker, feel, ctx.now, o.day) : null;
       const mission =
         act.kind === "mission" && o.missions && ctx.ledger
-          ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now)
+          ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now, o.day)
           : null;
       // El desafío que este oyente le hizo a quien le habla y que espera respuesta (novel3-challenge-npc):
       // un sí, un no, o retarlo de vuelta (que es aceptar).
@@ -2282,6 +2286,7 @@ function missionOf(
   speaker: AgentId,
   defs: NonNullable<ConverseOptions["missions"]>,
   now: Tick,
+  dayTicks: number,
 ): { readonly org: EntityRef; readonly offer?: MissionOffer; readonly refused?: string } | null {
   const mine = truth.get(SECT_MEMBER, me);
   if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
@@ -2316,10 +2321,18 @@ function missionOf(
     if ((truth.get(BODY_STATE, id)?.death ?? null) !== null) continue;
     beasts.push({ beast: id, hex: seen.hex, until: b.until });
   }
+  // Las exigencias que la secta decidió y que esperan quién las lleve (novel4-grievance-envoy-mission).
+  const demands: EnvoySighting[] = (truth.get(SECT_GRIEVANCES, mine.org)?.entries ?? [])
+    .filter((e) => envoyWanted(e, now, dayTicks))
+    .map((e) => ({ against: e.against, deed: e.deed, at: e.response?.at ?? e.at }));
   const offer = pickMission(
     mine.org,
     theirs.rank,
-    [...huntNeeds(beasts, now), ...herbNeeds(defs.pills, { alive, pills, herbs })],
+    [
+      ...huntNeeds(beasts, now),
+      ...envoyNeeds(demands),
+      ...herbNeeds(defs.pills, { alive, pills, herbs }),
+    ],
     assigned,
   );
   return offer ? { org: mine.org, offer } : { org: mine.org, refused: "none" };
