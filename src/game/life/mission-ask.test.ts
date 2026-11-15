@@ -19,7 +19,6 @@ import {
 import {
   type ActionPlan,
   BODY_STATE,
-  CULTIVATION_STATE,
   checkInvariants,
   LOCATION,
   MISSION_ASSIGNED_EVENT,
@@ -290,4 +289,118 @@ describe("llevar la exigencia como misión (novel4-grievance-envoy-mission)", ()
     });
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   });
+});
+
+describe("exigir la reparación de palabra (novel4-grievance-envoy-speak)", () => {
+  it("se entiende como su propio acto, no como acusación", () => {
+    for (const text of [
+      "Exijo reparación por la ofensa",
+      "Mi secta exige una satisfacción",
+      "Vengo a reclamar justicia para los nuestros",
+      "Queremos una compensación",
+    ]) {
+      expect(understand(text, lex).kind, normalize(text)).toBe("reparation");
+    }
+    expect(understand("Exijo reparación por el robo", lex).kind).toBe("reparation");
+    expect(understand("¿Hay alguna misión?", lex).kind).toBe("mission");
+  });
+
+  it("el enviado la dice en la otra sede; contestan, el asunto se cierra y la misión se cobra al volver", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, {
+      cultivation: true,
+      sectSeatRegion: true,
+      rivalSect: true,
+    });
+    const w = life.world;
+    const me = life.player;
+    const [org, rival] = w.truth.ids(SECT) as EntityRef[];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    const theirs = rival ? w.truth.get(SECT, rival) : undefined;
+    if (!org || !rival || !sect || !theirs) throw new Error("sin sectas");
+    const home = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    const away = w.truth.get(PLACE, theirs.seatPlace)?.hexes[0] as number;
+    w.truth.set(LOCATION, me, { hex: home });
+    life.advanceTo(life.now + 2 * HOUR);
+    const members = w.truth
+      .ids(SECT_MEMBER)
+      .map((id) => ({ id: id as AgentId, m: w.truth.get(SECT_MEMBER, id) }));
+    const elder = members.find(
+      (x) => x.m?.org === org && (x.m.rank === "elder" || x.m.rank === "master"),
+    )?.id;
+    // La otra secta no tiene gente a mano: dos de la sede pasan a ser de ella.
+    const [head, culprit] = members
+      .filter((x) => x.m?.org === org && x.id !== me && x.id !== elder)
+      .map((x) => x.id);
+    if (head) w.truth.set(SECT_MEMBER, head, { org: rival, rank: "elder", since: life.now });
+    if (culprit) w.truth.set(SECT_MEMBER, culprit, { org: rival, rank: "outer", since: life.now });
+    if (!elder || !head || !culprit) throw new Error("sin anciano");
+    w.truth.set(SECT_MEMBER, me, { org, rank: "inner", since: life.now });
+    const deed = w.log.all()[0]?.id;
+    if (!deed) throw new Error("sin eventos");
+    w.truth.set(SECT_GRIEVANCES, org, {
+      entries: [
+        {
+          deed,
+          against: rival,
+          kind: "assault",
+          by: culprit,
+          victim: me,
+          at: life.now,
+          response: { choice: "demand", at: life.now },
+        },
+      ],
+    });
+    const rest = (...ids: AgentId[]) => {
+      for (const id of ids) {
+        const body = w.truth.get(BODY_STATE, id);
+        if (body) w.truth.set(BODY_STATE, id, { ...body, sleepDebt: 0, fatigue: 0 });
+      }
+    };
+    const here = w.truth.get(LOCATION, me);
+    if (!here) throw new Error("sin lugar");
+    w.truth.set(LOCATION, elder, here);
+    rest(me, elder);
+    life.turn(say(me, elder, "Anciano, ¿hay alguna misión para mí?"), 1);
+    const mission = w.truth.get(SECT_MISSION, me);
+    expect(mission).toMatchObject({ kind: "envoy", against: rival, deed });
+    const replyOf = (
+      events: readonly { kind: string; actors: readonly string[]; data: unknown }[],
+    ) =>
+      (
+        events.find((e) => e.kind === "action.speak" && e.actors[0] === head)?.data as
+          | { effect?: { reply: string } }
+          | undefined
+      )?.effect?.reply;
+    // Fuera de su sede no lo trata.
+    const road = w.truth.get(LOCATION, me);
+    if (!road) throw new Error("sin lugar");
+    w.truth.set(LOCATION, head, road);
+    rest(me, head);
+    const early = life.turn(say(me, head, "Mi secta exige reparación por la ofensa"), 1);
+    expect(replyOf(early.events)).toBe("reparation.refuse.not_here");
+    // En su sede, contesta.
+    w.truth.set(LOCATION, me, { hex: away });
+    life.advanceTo(life.now + HOUR);
+    const there = w.truth.get(LOCATION, me);
+    if (!there) throw new Error("sin lugar");
+    w.truth.set(LOCATION, head, there);
+    rest(me, head);
+    const report = life.turn(say(me, head, "Mi secta exige reparación por la ofensa"), 1);
+    const answer = replyOf(report.events);
+    expect(["reparation.pay", "reparation.refuse"]).toContain(answer);
+    const entry = w.truth.get(SECT_GRIEVANCES, org)?.entries[0];
+    expect(entry?.outcome?.result).toBe(answer === "reparation.pay" ? "paid" : "refused");
+    const done = w.truth.get(SECT_MISSION, me);
+    expect(done).toMatchObject({ kind: "envoy", done: 1 });
+    expect(done?.reply).toBeDefined();
+    // Vuelve a su sede y la cobra.
+    const before = w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0;
+    w.truth.set(LOCATION, me, { hex: home });
+    life.advanceTo(life.now + 2 * HOUR);
+    expect(w.truth.get(SECT_MISSION, me)).toBeUndefined();
+    expect(w.log.all().some((e) => e.kind === MISSION_DONE_EVENT && e.actors[0] === me)).toBe(true);
+    expect(w.truth.get(SECT_CONTRIBUTION, me)?.points ?? 0).toBeGreaterThan(before);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  }, 600_000);
 });

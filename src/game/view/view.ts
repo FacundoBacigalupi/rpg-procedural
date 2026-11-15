@@ -143,6 +143,7 @@ export type SelfCue =
   | "mission_envoy"
   | "mission_progress"
   | "mission_done"
+  | "mission_envoy_done"
   /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
   | "mission_hunt_done"
   | "mission_lapsed"

@@ -25,6 +25,11 @@ type SpeechBody =
   | { readonly kind: "promotion" }
   /** Pide una misión de la secta (novel2-missions-ask). */
   | { readonly kind: "mission" }
+  /**
+   * Exige reparación de parte de su secta por una ofensa (novel4-grievance-envoy-speak): de qué
+   * ofensa se trata lo dice la misión del que habla, no las palabras.
+   */
+  | { readonly kind: "reparation" }
   /** Reta al oyente a duelo con una regla (novel3-challenge-core). */
   | { readonly kind: "challenge"; readonly rule: DuelRule }
   /**
@@ -204,6 +209,13 @@ const APPRENTICE =
 /** Pedir el ascenso («pido el ascenso», «quiero subir al núcleo», «quiero ser anciano»). */
 const PROMOTION =
   /\b(?:ascen[sd]\w*|(?:subir|pasar|entrar) (?:de rango|(?:a|al) (?:discipul[oa]s? del )?nucleo)|discipul[oa] del nucleo|ser ancian[oa])\b/;
+
+/**
+ * Exigir reparación por una ofensa («exijo reparación», «vengo a reclamar satisfacción», «mi secta
+ * pide compensación por lo que le hicieron»).
+ */
+const REPARATION =
+  /\b(?:reparaci(?:on|ones)|resarc\w*|compensaci(?:on|ones)|(?:exij\w*|exig\w*|reclam\w*) (?:\w+ ){0,4}(?:satisfaccion|disculpas?|justicia))\b/;
 
 /** Pedir una misión («¿hay alguna misión?», «dame un encargo para la secta»). */
 const MISSION = /\b(?:misi(?:on|ones)|encargos?)\b/;
@@ -515,6 +527,8 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
     return { kind: "threaten", harm: THREAT_BEATING_HARM, ...demand };
   }
   if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM, ...demand };
+  // «Exijo reparación por el robo» es exigir, no acusar: la ofensa ya la trató la secta.
+  if (REPARATION.test(norm)) return { kind: "reparation" };
   const theft = ACCUSE_THEFT.test(norm);
   if ((theft || ACCUSE_ASSAULT.test(norm)) && RUMOR_MARK.test(norm)) {
     // «a Juan»: la víctima; la otra persona nombrada es quien lo hizo (si no dice quién, null).

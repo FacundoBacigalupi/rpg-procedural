@@ -1513,6 +1513,12 @@
     ]
   },
   {
+    "id": "self.mission_envoy_done",
+    "lines": [
+      "De vuelta en la sede, das cuenta de la respuesta de la otra secta; la misión queda cumplida y los puntos, anotados a tu nombre."
+    ]
+  },
+  {
     "id": "self.mission_hunt_done",
     "lines": [
       "De vuelta en la sede, la secta da por cumplida la caza de la bestia; los puntos quedan anotados a tu nombre."

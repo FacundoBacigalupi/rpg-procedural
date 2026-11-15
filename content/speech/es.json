@@ -661,6 +661,41 @@
     ]
   },
   {
+    "id": "reparation.no",
+    "lines": ["De eso no me toca a mí responder. Hablalo con quien mande en tu secta o en la mía."],
+    "formal": ["No me corresponde responder por eso."]
+  },
+  {
+    "id": "reparation.pay",
+    "lines": [
+      "Está bien: lo que hizo el nuestro no tiene excusa. Decile a tu secta que lo vamos a reparar y que él lo va a pagar.",
+      "Tienen razón. Llevá la respuesta: esta secta repara la ofensa, y al culpable lo castigamos nosotros."
+    ],
+    "formal": [
+      "Esta secta reconoce la ofensa y la reparará. Transmita a los suyos que el responsable responderá ante nosotros."
+    ]
+  },
+  {
+    "id": "reparation.refuse",
+    "lines": [
+      "No vamos a reparar nada. Decile a tu secta que si quiere algo, venga a buscarlo.",
+      "¿Reparación? Volvé y deciles que esta secta no le debe nada a la suya."
+    ],
+    "formal": ["Esta secta no reconoce deuda alguna con la suya. Transmítalo así."]
+  },
+  {
+    "id": "reparation.refuse.unknown",
+    "lines": ["No sé de qué ofensa me hablás, ni quién te manda a exigirla."],
+    "formal": ["Desconozco esa exigencia y quién la envía."]
+  },
+  {
+    "id": "reparation.refuse.not_here",
+    "lines": [
+      "Eso no se trata en el camino. Si tu secta exige algo, que venga a decirlo a nuestra sede."
+    ],
+    "formal": ["Asuntos así se tratan en nuestra sede, no aquí."]
+  },
+  {
     "id": "mission.refuse.not_member",
     "lines": ["No sos de esta secta. Las misiones son para los nuestros."],
     "formal": ["Usted no pertenece a esta secta."]

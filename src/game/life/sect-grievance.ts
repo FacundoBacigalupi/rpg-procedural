@@ -18,6 +18,11 @@
 // secta pida llevarla (la misión `envoy` que da el anciano). Si alguien la toma, el asunto lo anota
 // (`envoy`) y la ranura no sale mientras la lleve; si se le vence, sale la ranura desde el plazo. Si
 // nadie la toma, sale la ranura al terminar la espera (`envoySlotReturns`).
+//
+// De palabra (novel4-grievance-envoy-speak): el enviado se lo dice a un anciano o al maestro de la
+// otra en su sede; contesta ahí mismo (`converse`) y `life.sect_grievance_spoken` aplica la
+// respuesta como lo haría la ranura: las dos relaciones, el asunto cerrado y lo que se le cobra al
+// ofensor si reparan.
 
 import {
   type AgentId,
@@ -38,6 +43,7 @@ import {
   type EventDraft,
   envoySlotReturns,
   type GrievanceKind,
+  type GrievanceReply,
   KNOWN_DEEDS,
   missionLapsed,
   ORG_GRIEVANCE_EVENT,
@@ -63,6 +69,7 @@ import {
 } from "../../sim/index.ts";
 
 export const SECT_GRIEVANCE_PROCESS = "life.sect_grievance";
+export const SECT_GRIEVANCE_SPOKEN_PROCESS = "life.sect_grievance_spoken";
 
 /** Una ofensa que la secta `org` todavía no guarda contra `against`. */
 export interface SectGrievance {
@@ -278,6 +285,83 @@ export function sectGrievanceProcess(o: {
           .map(([id, c]) => setComponent(SECT_CONTRIBUTION, id, c)),
       ];
       return { changes, events };
+    },
+  };
+}
+
+/**
+ * Escritor de `ORG_RELATION`, `SECT_GRIEVANCES` y `SECT_CONTRIBUTION`: la respuesta que la otra secta
+ * le dio de palabra al enviado (`org.grievance_reply` con `envoy`, novel4-grievance-envoy-speak) vuelve
+ * a las dos relaciones y cierra el asunto, igual que la que trae la ranura.
+ */
+export function sectGrievanceSpokenProcess(): ProcessDef {
+  return {
+    id: SECT_GRIEVANCE_SPOKEN_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [ORG_RELATION.name, SECT_GRIEVANCES.name, SECT_CONTRIBUTION.name],
+    writes: [ORG_RELATION.name, SECT_GRIEVANCES.name, SECT_CONTRIBUTION.name],
+    run(ctx) {
+      const truth = ctx.truth;
+      const relations = new Map<EntityRef, OrgRelations>();
+      const ledgers = new Map<EntityRef, SectGrievanceEntry[]>();
+      const contributions = new Map<AgentId, SectContribution>();
+      const relationOf = (org: EntityRef) => relations.get(org) ?? truth.get(ORG_RELATION, org);
+      const setTie = (org: EntityRef, toward: EntityRef, tie: OrgTie) => {
+        const had = relationOf(org);
+        if (had) relations.set(org, { toward: { ...had.toward, [toward]: tie } });
+      };
+      for (const e of ctx.recent) {
+        if (e.kind !== ORG_GRIEVANCE_REPLY_EVENT) continue;
+        const d = e.data as {
+          org?: EntityRef;
+          against?: EntityRef;
+          deed?: EventId;
+          reply?: GrievanceReply;
+          envoy?: AgentId;
+        } | null;
+        if (!d?.org || !d.against || !d.deed || !d.reply || d.envoy === undefined) continue;
+        let entries = ledgers.get(d.org);
+        if (!entries) {
+          entries = [...(truth.get(SECT_GRIEVANCES, d.org)?.entries ?? [])];
+          ledgers.set(d.org, entries);
+        }
+        const i = entries.findIndex((g) => g.deed === d.deed);
+        const entry = entries[i];
+        if (!entry || !openGrievance(entry)) continue;
+        const theirs = orgTie(relationOf(d.against), d.org);
+        const ours = orgTie(relationOf(d.org), d.against);
+        if (!theirs || !ours) continue;
+        setTie(d.org, d.against, afterReplyReceived(ours, entry.kind, d.reply));
+        if (d.reply === "pay") {
+          setTie(d.against, d.org, afterReplyGiven(theirs));
+          const had = contributions.get(entry.by) ?? truth.get(SECT_CONTRIBUTION, entry.by);
+          if (had?.org === d.against) {
+            const penalty = Math.min(had.points, REPARATION_PENALTY[entry.kind]);
+            if (penalty > 0) contributions.set(entry.by, { ...had, points: had.points - penalty });
+          }
+        }
+        entries[i] = {
+          ...entry,
+          outcome: { result: d.reply === "pay" ? "paid" : "refused", at: ctx.now },
+        };
+      }
+      if (relations.size === 0 && contributions.size === 0) return {};
+      const changes: StateChange[] = [
+        ...[...relations]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, r]) => setComponent(ORG_RELATION, id, r)),
+        ...[...ledgers]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, entries]) => setComponent(SECT_GRIEVANCES, id, { entries })),
+        ...[...contributions]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, c]) => setComponent(SECT_CONTRIBUTION, id, c)),
+      ];
+      return { changes };
     },
   };
 }
