@@ -25,6 +25,7 @@ import {
 } from "../../core/index.ts";
 import {
   adjustFace,
+  afterSectDuel,
   BODY_STATE,
   type Candidate,
   CHALLENGE_COOLDOWN_DAYS,
@@ -48,6 +49,7 @@ import {
   isSectArena,
   LOCATION,
   ORG_RELATION,
+  type OrgRelations,
   orgTie,
   PERSON,
   type ProcessDef,
@@ -269,14 +271,16 @@ export function duelsProcess(o: {
       INNATE.name,
       DUEL_OFFER.name,
       CHALLENGES_SENT.name,
+      ORG_RELATION.name,
     ],
-    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name],
+    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name, ORG_RELATION.name],
     run(ctx) {
       const set = new Map<AgentId, Duel>();
       const closed = new Set<AgentId>();
       const faces = new Map<AgentId, Face>();
       const offers = new Map<AgentId, DuelOffer | null>();
       const sent = new Map<AgentId, Readonly<Record<string, Tick>>>();
+      const relations = new Map<string, OrgRelations>();
       const events: EventDraft[] = [];
       for (const e of ctx.recent) {
         if (e.kind === "combat.fight") {
@@ -314,6 +318,23 @@ export function duelsProcess(o: {
             emissions: {},
             causes: [{ kind: "event", event: e.id }],
           });
+          // Entre sectas, la cara es la de la secta (novel4-sect-meet-face): mueve lo que cada una
+          // siente por la otra.
+          const wo = ctx.truth.get(SECT_MEMBER, v.winner)?.org;
+          const lo = ctx.truth.get(SECT_MEMBER, v.loser)?.org;
+          if (wo !== undefined && lo !== undefined && wo !== lo) {
+            for (const [from, to, side] of [
+              [wo, lo, "won"],
+              [lo, wo, "lost"],
+            ] as const) {
+              const had = relations.get(from) ?? ctx.truth.get(ORG_RELATION, from);
+              const tie = orgTie(had, to);
+              if (!had || !tie) continue;
+              relations.set(from, {
+                toward: { ...had.toward, [to]: afterSectDuel(tie, side, e.id) },
+              });
+            }
+          }
           // La familia del muerto en la plataforma puede no respetar el acuerdo.
           const home = ctx.truth.get(PERSON, v.loser)?.household;
           if (rule !== "death" || !d?.duel?.platform || d.outcomes?.[v.loser] !== "dead") continue;
@@ -425,6 +446,9 @@ export function duelsProcess(o: {
       }
       for (const [id, f] of [...faces].sort(([a], [b]) => compareStrings(a, b))) {
         changes.push(setComponent(FACE, id, f));
+      }
+      for (const [id, r] of [...relations].sort(([a], [b]) => compareStrings(a, b))) {
+        changes.push(setComponent(ORG_RELATION, id as EntityRef, r));
       }
       if (changes.length === 0 && events.length === 0) return {};
       return { changes, ...(events.length > 0 ? { events } : {}) };

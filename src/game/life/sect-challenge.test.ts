@@ -13,6 +13,7 @@ import {
   type Event,
   type EventId,
   loadContent,
+  makeId,
 } from "../../core/index.ts";
 import {
   type ActionPlan,
@@ -54,6 +55,8 @@ function sources(dir: string, root = dir): ContentSource[] {
 }
 
 const DAY = 86400;
+/** Una secta que no está en el mundo (para cruzarse con uno de afuera). */
+const OTHER_ORG = makeId("org", 9999) as EntityRef;
 
 const hit = (actor: AgentId, target: AgentId): ActionPlan => ({
   actor,
@@ -443,7 +446,7 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
       challengeCandidates(s.w.truth, s.me, [{ id: s.rival, resentment: 0.3 }], s.life.now, o),
     ).toEqual([]);
     s.w.truth.set(SECT_MEMBER, s.third, {
-      org: "org:otra" as EntityRef,
+      org: OTHER_ORG,
       rank: "outer",
       since: s.life.now,
     });
@@ -456,7 +459,7 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
   it("a uno de la secta rival que tiene delante lo reta a rendirse por el rencor de su secta (novel4-sect-meet-challenge)", () => {
     const s = setup(0);
     const o = { minResentment: 0.5, deathResentment: 0.8, weight: 0.5, chance: 0.8, dayTicks: DAY };
-    const other = "org:otra" as EntityRef;
+    const other = OTHER_ORG;
     s.w.truth.set(SECT_MEMBER, s.third, { org: other, rank: "outer", since: s.life.now });
     const tie = (resentment: number, formal: readonly "rival"[] = ["rival"]) => ({
       toward: {
@@ -560,11 +563,17 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
   it("entre sectas, un desafío aceptado se pelea ahí mismo y se cierra (novel4-sect-meet-fight)", () => {
     const run = (witnesses: number) => {
       const s = setup(witnesses);
-      s.w.truth.set(SECT_MEMBER, s.third, {
-        org: "org:otra" as EntityRef,
-        rank: "outer",
-        since: s.life.now,
-      });
+      const other = OTHER_ORG;
+      s.w.truth.set(SECT_MEMBER, s.third, { org: other, rank: "outer", since: s.life.now });
+      const tie = {
+        formal: ["rival" as const],
+        sentiment: { trust: 0.1, respect: 0.4, fear: 0.2, resentment: 0.3 },
+        believedStrength: { elders: 1, disciples: 3, topStage: 1 },
+        grievances: [],
+        originEventId: "event:1" as EventId,
+        history: [],
+      };
+      s.w.truth.set(ORG_RELATION, s.org, { toward: { [other]: tie } });
       challengeNow(s, s.rival, s.third, "yield");
       return s;
     };
@@ -591,6 +600,26 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
     expect((fought?.data as { duel?: { rule?: string } } | undefined)?.duel?.rule).toBe("yield");
     expect(s.w.truth.get(DUEL, s.rival)).toBeUndefined();
     expect(s.w.truth.get(DUEL, s.third)).toBeUndefined();
+    // Con vencedor, la secta del vencido respeta más a la otra y le guarda más rencor (novel4-sect-meet-face).
+    const settled = s.w.log
+      .all()
+      .find(
+        (e) =>
+          e.kind === DUEL_SETTLED_EVENT &&
+          e.causes.some((c) => c.kind === "event" && c.event === fought?.id),
+      );
+    if (settled) {
+      // La secta del de casa (`rival`) gana o pierde ante la otra; la otra no tiene ficha acá.
+      const { loser } = settled.data as { loser: AgentId };
+      const mine = s.w.truth.get(ORG_RELATION, s.org)?.toward[OTHER_ORG];
+      expect(mine?.history).toContain(fought?.id);
+      if (loser === s.rival) {
+        expect(mine?.sentiment.respect).toBeGreaterThan(0.4);
+        expect(mine?.sentiment.resentment).toBeGreaterThan(0.3);
+      } else {
+        expect(mine?.sentiment.respect).toBeLessThan(0.4);
+      }
+    }
     expect(checkInvariants({ truth: s.w.truth, log: s.w.log })).toEqual([]);
   });
 
