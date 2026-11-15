@@ -557,6 +557,43 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
     expect(s.w.truth.get(FACE, s.me)?.value ?? 0).toBeLessThan(before ?? 0.5);
   });
 
+  it("entre sectas, un desafío aceptado se pelea ahí mismo y se cierra (novel4-sect-meet-fight)", () => {
+    const run = (witnesses: number) => {
+      const s = setup(witnesses);
+      s.w.truth.set(SECT_MEMBER, s.third, {
+        org: "org:otra" as EntityRef,
+        rank: "outer",
+        since: s.life.now,
+      });
+      challengeNow(s, s.rival, s.third, "yield");
+      return s;
+    };
+    const accepted = [0, 1, 2, 3, 4]
+      .map(run)
+      .find((s) =>
+        challengesTo(s, s.third).some(
+          (e) => (e.data as { response?: string }).response === "accept",
+        ),
+      );
+    if (!accepted) throw new Error("nadie aceptó");
+    const s = accepted;
+    const challenge = challengesTo(s, s.third).find(
+      (e) => (e.data as { response?: string }).response === "accept",
+    );
+    const fought = s.w.log
+      .all()
+      .find(
+        (e) =>
+          e.kind === "combat.fight" &&
+          e.causes.some((c) => c.kind === "event" && c.event === challenge?.id),
+      );
+    expect(fought?.actors).toEqual([s.rival, s.third]);
+    expect((fought?.data as { duel?: { rule?: string } } | undefined)?.duel?.rule).toBe("yield");
+    expect(s.w.truth.get(DUEL, s.rival)).toBeUndefined();
+    expect(s.w.truth.get(DUEL, s.third)).toBeUndefined();
+    expect(checkInvariants({ truth: s.w.truth, log: s.w.log })).toEqual([]);
+  });
+
   it("entre vecinos el retado pesa el desafío al momento, y es determinista", () => {
     const run = () => {
       const s = setup(1);
