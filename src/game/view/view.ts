@@ -166,7 +166,20 @@ export type SelfCue =
   /** Volvió a la sede pasado el plazo y le descontaron aporte (`cultivation.sect_returned`). */
   | "returned_late"
   /** Volvió a la sede a tiempo. */
-  | "returned_on_time";
+  | "returned_on_time"
+  /**
+   * Lo que su secta hizo con una ofensa de otra secta contra él (novel4-grievance-player): mandó a
+   * exigir reparación, salió a buscar al ofensor o lo dejó pasar; la otra reparó o se negó; quedó vengada.
+   */
+  | "grievance_demand"
+  | "grievance_retaliate"
+  | "grievance_forgotten"
+  | "grievance_paid"
+  | "grievance_refused"
+  | "grievance_avenged"
+  /** Él hizo la ofensa: su secta reparó y se lo cobró de su aporte, o se negó y lo cubrió. */
+  | "grievance_punished"
+  | "grievance_shielded";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];

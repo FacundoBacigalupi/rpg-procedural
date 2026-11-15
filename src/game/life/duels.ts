@@ -368,7 +368,13 @@ export function duelsProcess(o: {
                 kind: ORG_GRIEVANCE_AVENGED_EVENT,
                 actors: [v.winner, v.loser],
                 place: e.place,
-                data: { org: wo, against: owed.against, deed: owed.deed, kind: owed.kind },
+                data: {
+                  org: wo,
+                  against: owed.against,
+                  deed: owed.deed,
+                  kind: owed.kind,
+                  victim: owed.victim,
+                },
                 emissions: {},
                 causes: [
                   { kind: "event", event: e.id },

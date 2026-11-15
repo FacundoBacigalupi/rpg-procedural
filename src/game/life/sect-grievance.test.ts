@@ -18,13 +18,17 @@ import {
   ORG_RELATION,
   orgTie,
   PERSON,
+  REPARATION_PENALTY,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_GRIEVANCES,
   SECT_MEMBER,
+  SECT_PRESENCE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { newGrievances } from "./sect-grievance.ts";
+import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -155,6 +159,61 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
       expect(after?.sentiment.resentment ?? 0).toBeGreaterThan(ours.sentiment.resentment);
     }
     expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
+  });
+
+  it("si al personaje le hicieron la ofensa y está en la sede, se entera de lo que decidió su secta (novel4-grievance-player)", () => {
+    const { l, t, a, knower, by, event } = setup();
+    t.set(SECT_MEMBER, l.player, { org: a, rank: "outer", since: l.now });
+    t.set(KNOWN_DEEDS, knower, {
+      deeds: [{ kind: "assault", by, victim: l.player, event, at: l.now, via: "saw" }],
+    });
+    const from = l.now;
+    for (let i = 0; i < 3; i++) l.advanceTo(l.now + DAY);
+    const matter = l.world.log.all().find((e) => e.kind === ORG_GRIEVANCE_MATTER_EVENT);
+    const response = (matter?.data as { response?: string } | undefined)?.response;
+    const expected = {
+      demand: "grievance_demand",
+      retaliate: "grievance_retaliate",
+      forget: "grievance_forgotten",
+    }[response as "demand"];
+    const cues = playerView(l.world, [], { heardSince: from }).self.cues;
+    expect(cues).toContain(expected);
+    // Afuera de la sede no se entera.
+    t.set(SECT_PRESENCE, l.player, { org: a, away: true, since: l.now });
+    expect(playerView(l.world, [], { heardSince: from }).self.cues).not.toContain(expected);
+  });
+
+  it("si la hizo el personaje y su secta repara, se lo cobra del aporte; si se niega, lo cubre (novel4-grievance-player)", () => {
+    const { l, t, a, b, victim, event, knower } = setup();
+    t.deleteRaw(KNOWN_DEEDS.name, knower);
+    t.set(SECT_MEMBER, l.player, { org: b, rank: "outer", since: l.now });
+    t.set(SECT_CONTRIBUTION, l.player, { org: b, points: 100, hours: 0, last: l.now });
+    const asked = l.now;
+    t.set(SECT_GRIEVANCES, a, {
+      entries: [
+        {
+          deed: event,
+          against: b,
+          kind: "killing",
+          by: l.player,
+          victim,
+          at: asked,
+          response: { choice: "demand", at: asked },
+        },
+      ],
+    });
+    l.advanceTo(asked + (ENVOY_DAYS + 1) * DAY);
+    const reply = l.world.log.all().find((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT);
+    const d = reply?.data as { reply?: string; penalty?: number } | undefined;
+    const cues = playerView(l.world, [], { heardSince: asked }).self.cues;
+    if (d?.reply === "pay") {
+      expect(d.penalty).toBe(REPARATION_PENALTY.killing);
+      expect(t.get(SECT_CONTRIBUTION, l.player)?.points).toBe(100 - REPARATION_PENALTY.killing);
+      expect(cues).toContain("grievance_punished");
+    } else {
+      expect(t.get(SECT_CONTRIBUTION, l.player)?.points).toBe(100);
+      expect(cues).toContain("grievance_shielded");
+    }
   });
 
   it("de un compañero muerto, la agresión cuenta como muerte", () => {
