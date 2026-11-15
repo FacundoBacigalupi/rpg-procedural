@@ -2800,6 +2800,9 @@ export function lifeWorld(
                   weight: 0.5,
                   chance: 0.8,
                   dayTicks: parts.clock.day,
+                  // Y a los de la secta rival que tienen delante (novel4-sect-meet-challenge); sin
+                  // otra secta en el mundo no hay a quién.
+                  rivalWeight: 2,
                 },
               }
             : {}),

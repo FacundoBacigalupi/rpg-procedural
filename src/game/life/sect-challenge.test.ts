@@ -11,6 +11,7 @@ import {
   type ContentSource,
   type EntityRef,
   type Event,
+  type EventId,
   loadContent,
 } from "../../core/index.ts";
 import {
@@ -28,6 +29,7 @@ import {
   INNATE,
   KNOWN_DEEDS,
   LOCATION,
+  ORG_RELATION,
   PERSON,
   PLACE,
   SECT,
@@ -449,6 +451,52 @@ describe("los discípulos retan (novel3-challenge-npc)", () => {
     expect(challengeCandidates(s.w.truth, s.me, people, s.life.now, o)).toEqual([]);
     s.w.truth.set(CHALLENGES_SENT, s.me, { [s.rival]: s.life.now - 8 * DAY });
     expect(challengeCandidates(s.w.truth, s.me, people, s.life.now, o)).toHaveLength(1);
+  });
+
+  it("a uno de la secta rival que tiene delante lo reta a rendirse por el rencor de su secta (novel4-sect-meet-challenge)", () => {
+    const s = setup(0);
+    const o = { minResentment: 0.5, deathResentment: 0.8, weight: 0.5, chance: 0.8, dayTicks: DAY };
+    const other = "org:otra" as EntityRef;
+    s.w.truth.set(SECT_MEMBER, s.third, { org: other, rank: "outer", since: s.life.now });
+    const tie = (resentment: number, formal: readonly "rival"[] = ["rival"]) => ({
+      toward: {
+        [other]: {
+          formal,
+          sentiment: { trust: 0.1, respect: 0.4, fear: 0.2, resentment },
+          believedStrength: { elders: 1, disciples: 3, topStage: 1 },
+          grievances: [],
+          originEventId: "event:1" as EventId,
+          history: [],
+        },
+      },
+    });
+    s.w.truth.set(ORG_RELATION, s.org, tie(0.3));
+    const rivalO = { ...o, rivalWeight: 2 };
+    const c = challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO);
+    expect(c.map((x) => [x.target, x.act])).toEqual([
+      [s.third, { kind: "challenge", rule: "yield" }],
+    ]);
+    expect(c[0]?.mood).toBe(0.3);
+    // Aun con mucho rencor propio, entre sectas no hay duelo a muerte.
+    const hot = challengeCandidates(
+      s.w.truth,
+      s.me,
+      [{ id: s.third, resentment: 0.9 }],
+      s.life.now,
+      rivalO,
+    );
+    expect(hot.map((x) => x.act)).toEqual([{ kind: "challenge", rule: "yield" }]);
+    // Sin el peso, con poco rencor de la secta, sin rivalidad o lejos: nada.
+    expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, o)).toEqual([]);
+    s.w.truth.set(ORG_RELATION, s.org, tie(0.2));
+    expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO)).toEqual([]);
+    s.w.truth.set(ORG_RELATION, s.org, tie(0.3, []));
+    expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO)).toEqual([]);
+    s.w.truth.set(ORG_RELATION, s.org, tie(0.3));
+    const here = s.w.truth.get(LOCATION, s.me);
+    if (!here) throw new Error("sin lugar");
+    s.w.truth.set(LOCATION, s.third, { ...here, hex: here.hex + 1 });
+    expect(challengeCandidates(s.w.truth, s.me, [], s.life.now, rivalO)).toEqual([]);
   });
 
   it("al personaje lo retan y queda esperando; «acepto» deja el duelo anotado", () => {
