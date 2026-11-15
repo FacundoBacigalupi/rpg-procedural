@@ -13,6 +13,7 @@ import {
   MISSION_WATCH_RADIUS,
   missionDue,
   missionFits,
+  missionHeld,
   missionLapsed,
   missionLeft,
   pickMission,
@@ -169,5 +170,17 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
     expect(pickMission(org, "inner", band, [taken({ kind: "watch", against: a })])).toMatchObject({
       band: "b",
     });
+  });
+});
+
+describe("la guardia cumplida (novel4-watch-guard)", () => {
+  it("con las horas hechas no se vence: falta cobrarla", () => {
+    const w = taken({ kind: "watch", hours: 8, done: 5, due: 10 });
+    expect(missionHeld(w)).toBe(false);
+    expect(missionLapsed(w, 11)).toBe(true);
+    const full = { ...w, done: 8 };
+    expect(missionHeld(full)).toBe(true);
+    expect(missionLapsed(full, 11)).toBe(false);
+    expect(missionHeld(taken({ grams: 400, done: 400 }))).toBe(false);
   });
 });

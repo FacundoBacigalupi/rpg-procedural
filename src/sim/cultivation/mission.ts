@@ -79,6 +79,11 @@ export interface SectMission {
    * pasa a 1 y se cobra al volver a la sede.
    */
   readonly reply?: EventId;
+  /**
+   * Vigilar (novel4-watch-guard): la última espera o mirada en el puesto que sumó horas; con las horas
+   * cumplidas se cobra al volver a la sede.
+   */
+  readonly watched?: EventId;
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -331,8 +336,24 @@ export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until
  * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) y la de enviado
  * contestada no vencen: esperan a que quien la tiene vuelva a la sede a cobrarla.
  */
-export const missionLapsed = (m: SectMission, now: Tick): boolean =>
-  now > m.due && !((m.kind === "hunt" || m.kind === "envoy") && m.done >= 1);
+export const missionLapsed = (m: SectMission, now: Tick): boolean => now > m.due && !missionHeld(m);
+
+/**
+ * Si la misión ya está hecha afuera y solo falta cobrarla en la sede (no se vence): la caza o la
+ * exigencia cumplidas, la guardia con sus horas (novel4-watch-guard).
+ */
+export function missionHeld(m: SectMission): boolean {
+  if (m.kind === "hunt" || m.kind === "envoy") return m.done >= 1;
+  if (m.kind === "watch") return m.hours !== undefined && m.done >= m.hours;
+  return false;
+}
+
+/** Los actos que cuentan como guardia en el puesto (novel4-watch-guard). */
+export const WATCH_VERBS: ReadonlySet<string> = new Set([
+  "action.wait",
+  "action.look",
+  "action.observe",
+]);
 
 /** Lo que cuenta de una pelea para la misión de cazar: la bestia murió o huyó. */
 export const HUNT_SETTLED: ReadonlySet<string> = new Set(["dead", "fled"]);
