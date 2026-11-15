@@ -34,6 +34,7 @@ import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { atSeat } from "./sect-grievance.ts";
 import { tournamentDuty, tournamentFighters } from "./sect-tournament.ts";
 import { TRANSIT } from "./transit-state.ts";
+import { playerView } from "./view.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -230,6 +231,9 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
       .bouts;
     expect(bouts).toHaveLength(1);
     expect(bouts[0]).toMatchObject({ host: champ, guest: who });
+    // Se entera (novel4-tournament-player-cues): peleó, sabe si ganó o perdió su duelo.
+    const cues = playerView(l.world, [], { heardSince: held.tick }).self.cues;
+    expect(cues).toContain(bouts[0]?.winner === champ ? "tournament_won" : "tournament_lost");
     const fight = l.world.log
       .all()
       .find(

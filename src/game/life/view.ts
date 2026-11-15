@@ -46,6 +46,9 @@ import {
   ORG_GRIEVANCE_AVENGED_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
   ORG_GRIEVANCE_REPLY_EVENT,
+  ORG_TOURNAMENT_CALLED_EVENT,
+  ORG_TOURNAMENT_HELD_EVENT,
+  ORG_TOURNAMENT_LAPSED_EVENT,
   PERSON,
   type Percept,
   PILL_TAKEN_EVENT,
@@ -618,6 +621,62 @@ function grievanceCue(w: LifeWorld, since: Tick): SelfCue | undefined {
 }
 
 /**
+ * El torneo con la otra secta (novel4-tournament-player-cues): lo último desde `since`. Si peleó, si
+ * ganó o perdió su duelo (lo sabe porque estuvo); si no, se entera si es de una de las dos y está en
+ * su sede o subió a la plataforma: convocado (o que lo mandan), cómo les fue a los suyos o que se
+ * perdió.
+ */
+function tournamentCue(w: LifeWorld, since: Tick): SelfCue | undefined {
+  const mine = w.truth.get(SECT_MEMBER, w.player)?.org;
+  if (mine === undefined) return undefined;
+  const home = w.truth.get(SECT_PRESENCE, w.player)?.away !== true;
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    if (
+      e.kind !== ORG_TOURNAMENT_CALLED_EVENT &&
+      e.kind !== ORG_TOURNAMENT_HELD_EVENT &&
+      e.kind !== ORG_TOURNAMENT_LAPSED_EVENT
+    )
+      continue;
+    const d = (e.data ?? {}) as {
+      host?: string;
+      guest?: string;
+      delegates?: readonly string[];
+      bouts?: readonly { host: string; guest: string; winner?: string }[];
+    };
+    if (d.host !== mine && d.guest !== mine) continue;
+    const there = e.actors.includes(w.player);
+    if (e.kind === ORG_TOURNAMENT_HELD_EVENT) {
+      const own = d.bouts?.find((b) => b.host === w.player || b.guest === w.player);
+      if (own) return own.winner === w.player ? "tournament_won" : "tournament_lost";
+      if (!home && !there) continue;
+      const side = d.host === mine ? "host" : "guest";
+      let ours = 0;
+      let theirs = 0;
+      for (const b of d.bouts ?? []) {
+        if (b.winner === undefined) continue;
+        if (b.winner === b[side]) ours++;
+        else theirs++;
+      }
+      return ours > theirs
+        ? "tournament_ours_won"
+        : ours < theirs
+          ? "tournament_ours_lost"
+          : "tournament_even";
+    }
+    if (e.kind === ORG_TOURNAMENT_CALLED_EVENT) {
+      if (d.delegates?.includes(w.player)) return "tournament_delegate";
+      if (home) return "tournament_called";
+      continue;
+    }
+    if (home) return "tournament_lapsed";
+  }
+  return undefined;
+}
+
+/**
  * La secta (novel-cult-sect-visit): si desde `since` llegó el aviso y lo oyó (cree cuándo bajan), o
  * si bajaron y lo sabe (lo esperaba o está en la plaza). Lo último que pasó manda.
  */
@@ -997,6 +1056,9 @@ export function playerView(
   const grievance =
     options.heardSince === undefined ? undefined : grievanceCue(w, options.heardSince);
   if (grievance) cues.add(grievance);
+  const tournament =
+    options.heardSince === undefined ? undefined : tournamentCue(w, options.heardSince);
+  if (tournament) cues.add(tournament);
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =

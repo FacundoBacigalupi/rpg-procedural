@@ -1447,6 +1447,50 @@
     ]
   },
   {
+    "id": "self.tournament_called",
+    "lines": [
+      "En la sede se anuncia el torneo con la otra secta: en unas semanas, los mejores de las dos se miden en la plataforma."
+    ]
+  },
+  {
+    "id": "self.tournament_delegate",
+    "lines": [
+      "Los mayores te nombran entre los que van al torneo con la otra secta: hay que salir ya para llegar a tiempo."
+    ]
+  },
+  {
+    "id": "self.tournament_won",
+    "lines": [
+      "En la plataforma, ante los mayores de las dos sectas, tu rival se rinde: ganaste tu duelo."
+    ]
+  },
+  {
+    "id": "self.tournament_lost",
+    "lines": [
+      "En la plataforma, ante los mayores de las dos sectas, tu duelo no sale: esta vez no ganaste."
+    ]
+  },
+  {
+    "id": "self.tournament_ours_won",
+    "lines": [
+      "Se cuenta en la sede cómo fue el torneo: los nuestros ganaron más duelos que los de la otra secta."
+    ]
+  },
+  {
+    "id": "self.tournament_ours_lost",
+    "lines": [
+      "Se cuenta en la sede cómo fue el torneo: los de la otra secta ganaron más duelos que los nuestros."
+    ]
+  },
+  {
+    "id": "self.tournament_even",
+    "lines": ["Se cuenta en la sede cómo fue el torneo: ninguna de las dos sectas sacó ventaja."]
+  },
+  {
+    "id": "self.tournament_lapsed",
+    "lines": ["El día del torneo con la otra secta pasa sin duelos: no se hizo."]
+  },
+  {
     "id": "self.exchange_refused",
     "lines": ["El encargado mira las cuentas y niega con la cabeza: no hay canje para vos."]
   },

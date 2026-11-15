@@ -189,7 +189,19 @@ export type SelfCue =
   | "grievance_avenged"
   /** Él hizo la ofensa: su secta reparó y se lo cobró de su aporte, o se negó y lo cubrió. */
   | "grievance_punished"
-  | "grievance_shielded";
+  | "grievance_shielded"
+  /**
+   * El torneo con la otra secta (novel4-tournament-player-cues): se convocó (y si lo mandan con la
+   * delegación), él ganó o perdió su duelo, los suyos ganaron, perdieron o empataron, o se perdió.
+   */
+  | "tournament_called"
+  | "tournament_delegate"
+  | "tournament_won"
+  | "tournament_lost"
+  | "tournament_ours_won"
+  | "tournament_ours_lost"
+  | "tournament_even"
+  | "tournament_lapsed";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
