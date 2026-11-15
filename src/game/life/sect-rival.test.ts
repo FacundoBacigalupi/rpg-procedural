@@ -19,11 +19,14 @@ import {
   patchOf,
   SECT,
   SECT_FOUNDED_EVENT,
+  SECT_LORE,
   SECT_MEMBER,
   SECT_SCHOOL,
+  SECTS_HEARD,
   WILDS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
 import { SECT_HALL } from "./sect-hall.ts";
 
@@ -160,5 +163,41 @@ describe("la rivalidad entre las dos (novel4-rival-sect-relation)", () => {
   it("sin la opción, ninguna relación", () => {
     const l = Life.create(3, content, { cultivation: true });
     expect(l.world.truth.ids(ORG_RELATION)).toEqual([]);
+  });
+});
+
+describe("lo que la aldea oyó de la otra secta (novel4-rival-sect-lore)", () => {
+  const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+  it("algunos la oyeron nombrar, menos que a la que baja; la creencia apunta a su sede", () => {
+    const l = Life.create(3, content, { cultivation: true, rivalSect: true });
+    const t = l.world.truth;
+    const [a, b] = t.ids(SECT) as EntityRef[];
+    const rival = b ? t.get(SECT, b) : undefined;
+    if (!a || !b || !rival) throw new Error("sin sectas");
+    const first = t.ids(SECT_LORE).length;
+    const heard = t.ids(SECTS_HEARD) as EntityRef[];
+    expect(heard.length).toBeGreaterThan(0);
+    expect(heard.length).toBeLessThan(first);
+    for (const id of heard) {
+      const lore = t.get(SECTS_HEARD, id)?.toward[b];
+      expect(lore?.seat).toBe(rival.seatPlace);
+      expect(t.get(SECT_LORE, id)?.org ?? a).toBe(a);
+    }
+  });
+
+  it("si el personaje la oyó, la nombra como «la otra secta»", () => {
+    const l = Life.create(3, content, { cultivation: true, rivalSect: true });
+    const t = l.world.truth;
+    const b = (t.ids(SECT) as EntityRef[])[1] as EntityRef;
+    const rival = t.get(SECT, b);
+    if (!rival) throw new Error("sin rival");
+    const someone = (t.ids(SECTS_HEARD) as EntityRef[])[0] as EntityRef;
+    const lore = t.get(SECTS_HEARD, someone)?.toward[b];
+    if (!lore) throw new Error("nadie la oyó");
+    t.set(SECTS_HEARD, l.player, { toward: { [b]: lore } });
+    const k = knownEntities(l.world).find((x) => x.ref === rival.seatPlace);
+    expect(k?.names).toContain("la otra secta");
+    expect(k?.names).not.toContain("la secta");
   });
 });

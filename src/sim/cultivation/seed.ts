@@ -25,9 +25,11 @@ import { PLACE_QI, type PlaceQi } from "./meditation.ts";
 import { generateSchool, type SchoolNames, SECT_SCHOOL } from "./school.ts";
 import {
   generateSect,
+  OTHER_SECT_LORE_FACTOR,
   SECT,
   SECT_FOUNDED_EVENT,
   SECT_LORE,
+  SECTS_HEARD,
   type Sect,
   type SectSeat,
   sectLoreOf,
@@ -236,6 +238,11 @@ export interface SeedSectLoreOptions {
   readonly sect: Sect;
   /** Quienes viven en la aldea (los muertos no aprenden). */
   readonly people: readonly AgentId[];
+  /**
+   * Una secta que no baja a la aldea (novel4-rival-sect-lore): con su clave de rng, la saben menos
+   * (`OTHER_SECT_LORE_FACTOR`) y va a `SECTS_HEARD` en vez de `SECT_LORE`.
+   */
+  readonly other?: string;
 }
 
 /**
@@ -243,7 +250,10 @@ export interface SeedSectLoreOptions {
  * la tienen oída, cada uno con su error. Los más chicos no saben nada todavía.
  */
 export function seedSectLore(truth: WorldTruth, o: SeedSectLoreOptions): number {
-  const root = Rng.root(o.seed).fork("cultivation", "sect", "lore");
+  const root = o.other
+    ? Rng.root(o.seed).fork("cultivation", "sect", "lore", o.other)
+    : Rng.root(o.seed).fork("cultivation", "sect", "lore");
+  const factor = o.other ? OTHER_SECT_LORE_FACTOR : 1;
   let n = 0;
   for (const id of [...o.people].sort(compareStrings)) {
     const p = truth.get(PERSON, id);
@@ -252,8 +262,12 @@ export function seedSectLore(truth: WorldTruth, o: SeedSectLoreOptions): number 
     const chance =
       age >= LORE_ADULT_YEARS ? LORE_ADULT_CHANCE : age >= LORE_CHILD_YEARS ? LORE_CHILD_CHANCE : 0;
     const rng = root.fork(id);
-    if (!rng.fork("knows").chance(chance)) continue;
-    truth.set(SECT_LORE, id, sectLoreOf(rng, o.org, o.sect, o.now));
+    if (!rng.fork("knows").chance(chance * factor)) continue;
+    const lore = sectLoreOf(rng, o.org, o.sect, o.now);
+    if (o.other) {
+      const had = truth.get(SECTS_HEARD, id)?.toward ?? {};
+      truth.set(SECTS_HEARD, id, { toward: { ...had, [o.org]: lore } });
+    } else truth.set(SECT_LORE, id, lore);
     n++;
   }
   return n;

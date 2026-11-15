@@ -2321,6 +2321,16 @@ export function createLife(
       placeSeat(rival.sect);
       // La rivalidad entre las dos (novel4-rival-sect-relation): cada una con lo que cree de la otra.
       seedRivalry(truth, ids, log, { seed, a: sect.org, b: rival.org, place: terrain.village });
+      // Lo que la aldea oyó de ella (novel4-rival-sect-lore): menos que de la que baja.
+      seedSectLore(truth, {
+        seed,
+        now: pop.now,
+        yearTicks: clock.year,
+        org: rival.org,
+        sect: rival.sect,
+        people: pop.people.filter((p) => p.end === null).map((p) => p.id),
+        other: "rival",
+      });
     }
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;

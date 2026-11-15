@@ -7,9 +7,17 @@
 // el qi de la sede y fundamento; todavía sin cuerpo ni lugar, se vuelven personas cuando bajan o
 // cuando alguien sube. Las proporciones no están calibradas.
 
-import { atan2, cos, type EntityRef, type EventId, type Rng, type Tick } from "../../core/index.ts";
+import {
+  atan2,
+  compareStrings,
+  cos,
+  type EntityRef,
+  type EventId,
+  type Rng,
+  type Tick,
+} from "../../core/index.ts";
 import type { Sex, Trait } from "../family/index.ts";
-import { table } from "../world/index.ts";
+import { type ReadonlyWorldTruth, table } from "../world/index.ts";
 import { rootMatch, vesselCapacity } from "./absorb.ts";
 import type { CultivationLaw } from "./law.ts";
 import type { PlaceQi } from "./meditation.ts";
@@ -218,6 +226,28 @@ export interface SectLore {
 
 /** La creencia sobre la secta, en la entidad de quien cree. */
 export const SECT_LORE = table<SectLore>("cultivation.sect_lore");
+
+/**
+ * Las otras sectas que alguien oyó nombrar (novel4-rival-sect-lore): aparte de la que baja a la
+ * aldea (`SECT_LORE`, la que lee la bajada), lo que cree de cada otra, por id de la secta.
+ */
+export interface SectsHeard {
+  readonly toward: Readonly<Record<string, SectLore>>;
+}
+export const SECTS_HEARD = table<SectsHeard>("cultivation.sects_heard");
+
+/** Cuánto menos se sabe de una secta que no baja a la aldea (sin calibrar). */
+export const OTHER_SECT_LORE_FACTOR = 0.5;
+
+/** Todo lo que `who` cree de las sectas: la que baja primero, después las otras por id. */
+export function sectsBelieved(truth: ReadonlyWorldTruth, who: EntityRef): SectLore[] {
+  const first = truth.get(SECT_LORE, who);
+  const heard = truth.get(SECTS_HEARD, who)?.toward ?? {};
+  const others = Object.keys(heard)
+    .sort(compareStrings)
+    .map((k) => heard[k] as SectLore);
+  return first ? [first, ...others] : others;
+}
 
 /** Lo que se camina en una jornada por senderos (sin calibrar). */
 export const WALK_KM_PER_DAY = 25;

@@ -10,12 +10,12 @@ import {
   levelOf,
   MENTAL,
   type ReadonlyWorldTruth,
-  SECT_LORE,
   SKILL_STATE,
   type SkillCatalog,
   type SkillDef,
   STATUS,
   type StatusDef,
+  sectsBelieved,
   villageCulture,
 } from "../../sim/index.ts";
 import type { LexiconEntry } from "./content.ts";
@@ -47,7 +47,7 @@ export function believedConcepts(truth: ReadonlyWorldTruth, who: AgentId): Set<s
   for (const b of Object.values(laws?.beliefs ?? {})) {
     if (b.seen > 0) out.add(`law.${b.key.phenomenon}`);
   }
-  if (truth.get(SECT_LORE, who) !== undefined) out.add("org.sect");
+  if (sectsBelieved(truth, who).length > 0) out.add("org.sect");
   return out;
 }
 
