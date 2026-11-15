@@ -364,3 +364,13 @@ export function wantedBy(g: SectGrievances | undefined): ReadonlyMap<AgentId, Se
   }
   return out;
 }
+
+/**
+ * Lo que la secta que repara le cobra al suyo que hizo la ofensa, en puntos de aporte
+ * (novel4-grievance-player; sin calibrar): la reparación sale de él.
+ */
+export const REPARATION_PENALTY: Readonly<Record<GrievanceKind, number>> = {
+  theft: 10,
+  assault: 20,
+  killing: 50,
+};

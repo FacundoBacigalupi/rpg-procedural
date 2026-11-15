@@ -42,10 +42,13 @@ import {
   openGrievance,
   orgTie,
   type ProcessDef,
+  REPARATION_PENALTY,
   type ReadonlyWorldTruth,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_GRIEVANCES,
   SECT_MEMBER,
+  type SectContribution,
   type SectGrievanceEntry,
   type StateChange,
   setComponent,
@@ -123,8 +126,9 @@ export function sectGrievanceProcess(o: {
       BODY_STATE.name,
       SECT.name,
       SECT_GRIEVANCES.name,
+      SECT_CONTRIBUTION.name,
     ],
-    writes: [ORG_RELATION.name, SECT_GRIEVANCES.name],
+    writes: [ORG_RELATION.name, SECT_GRIEVANCES.name, SECT_CONTRIBUTION.name],
     run(ctx) {
       const truth = ctx.truth;
       const relations = new Map<EntityRef, OrgRelations>();
@@ -138,6 +142,7 @@ export function sectGrievanceProcess(o: {
         return l;
       };
       const events: EventDraft[] = [];
+      const contributions = new Map<AgentId, SectContribution>();
       const seatOf = (org: EntityRef) => truth.get(SECT, org)?.seatPlace;
       const relationOf = (org: EntityRef) => relations.get(org) ?? truth.get(ORG_RELATION, org);
       const setTie = (org: EntityRef, toward: EntityRef, tie: OrgTie) => {
@@ -157,7 +162,16 @@ export function sectGrievanceProcess(o: {
           const roll = ctx.rng.fork("grievance-reply", org, e.deed).float();
           const reply = chooseReply(theirs, e.kind, roll);
           setTie(org, e.against, afterReplyReceived(ours, e.kind, reply));
-          if (reply === "pay") setTie(e.against, org, afterReplyGiven(theirs));
+          // Repara la otra: se lo cobra al suyo que hizo la ofensa (novel4-grievance-player).
+          let penalty = 0;
+          if (reply === "pay") {
+            setTie(e.against, org, afterReplyGiven(theirs));
+            const had = contributions.get(e.by) ?? truth.get(SECT_CONTRIBUTION, e.by);
+            if (had?.org === e.against) {
+              penalty = Math.min(had.points, REPARATION_PENALTY[e.kind]);
+              if (penalty > 0) contributions.set(e.by, { ...had, points: had.points - penalty });
+            }
+          }
           entries[i] = {
             ...e,
             outcome: { result: reply === "pay" ? "paid" : "refused", at: ctx.now },
@@ -166,7 +180,7 @@ export function sectGrievanceProcess(o: {
             kind: ORG_GRIEVANCE_REPLY_EVENT,
             actors: [e.by, e.victim],
             place: { kind: "place", place: seat as unknown as PlaceId },
-            data: { org, against: e.against, kind: e.kind, deed: e.deed, reply },
+            data: { org, against: e.against, kind: e.kind, deed: e.deed, reply, penalty },
             emissions: {},
             causes: [{ kind: "event", event: e.deed }],
           });
@@ -234,6 +248,9 @@ export function sectGrievanceProcess(o: {
         ...[...ledgers]
           .sort(([a], [b]) => compareStrings(a, b))
           .map(([id, entries]) => setComponent(SECT_GRIEVANCES, id, { entries })),
+        ...[...contributions]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, c]) => setComponent(SECT_CONTRIBUTION, id, c)),
       ];
       return { changes, events };
     },

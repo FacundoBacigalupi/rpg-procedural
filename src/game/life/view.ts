@@ -43,6 +43,9 @@ import {
   MISSION_LAPSED_EVENT,
   MISSION_PROGRESS_EVENT,
   mentionableTastes,
+  ORG_GRIEVANCE_AVENGED_EVENT,
+  ORG_GRIEVANCE_MATTER_EVENT,
+  ORG_GRIEVANCE_REPLY_EVENT,
   PERSON,
   type Percept,
   PILL_TAKEN_EVENT,
@@ -62,6 +65,7 @@ import {
   SECT_LEAVE_EVENT,
   SECT_LORE,
   SECT_MEMBER,
+  SECT_PRESENCE,
   SECT_PROMOTED_EVENT,
   SECT_RANK_REFUSED_EVENT,
   SECT_RETURNED_EVENT,
@@ -577,6 +581,43 @@ function lastPlayerEventSince(
 }
 
 /**
+ * Las ofensas entre sectas en las que está el personaje (novel4-grievance-player): lo último que su
+ * secta hizo desde `since`, si es de esa secta y está en la sede (afuera no se entera). Víctima: lo
+ * que decidió y cómo terminó. Ofensor: si su secta reparó (y se lo cobró) o lo cubrió.
+ */
+function grievanceCue(w: LifeWorld, since: Tick): SelfCue | undefined {
+  const mine = w.truth.get(SECT_MEMBER, w.player)?.org;
+  if (mine === undefined || w.truth.get(SECT_PRESENCE, w.player)?.away === true) return undefined;
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    const d = (e.data ?? {}) as {
+      org?: string;
+      against?: string;
+      response?: string;
+      reply?: string;
+      victim?: string;
+    };
+    if (e.kind === ORG_GRIEVANCE_MATTER_EVENT && d.org === mine && e.actors[1] === w.player) {
+      if (d.response === "demand") return "grievance_demand";
+      if (d.response === "retaliate") return "grievance_retaliate";
+      if (d.response === "forget") return "grievance_forgotten";
+    }
+    if (e.kind === ORG_GRIEVANCE_REPLY_EVENT) {
+      const pay = d.reply === "pay";
+      if (d.org === mine && e.actors[1] === w.player)
+        return pay ? "grievance_paid" : "grievance_refused";
+      if (d.against === mine && e.actors[0] === w.player)
+        return pay ? "grievance_punished" : "grievance_shielded";
+    }
+    if (e.kind === ORG_GRIEVANCE_AVENGED_EVENT && d.org === mine && d.victim === w.player)
+      return "grievance_avenged";
+  }
+  return undefined;
+}
+
+/**
  * La secta (novel-cult-sect-visit): si desde `since` llegó el aviso y lo oyó (cree cuándo bajan), o
  * si bajaron y lo sabe (lo esperaba o está en la plaza). Lo último que pasó manda.
  */
@@ -934,6 +975,9 @@ export function playerView(
     const d = (back.data ?? {}) as { late?: number; penalty?: number };
     cues.add((d.late ?? 0) > 0 ? "returned_late" : "returned_on_time");
   }
+  const grievance =
+    options.heardSince === undefined ? undefined : grievanceCue(w, options.heardSince);
+  if (grievance) cues.add(grievance);
   const sect = options.heardSince === undefined ? undefined : sectCue(w, options.heardSince);
   if (sect) cues.add(sect);
   const trial =
