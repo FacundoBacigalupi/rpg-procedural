@@ -8,7 +8,9 @@ import {
   addGrievance,
   afterSectDuel,
   BELIEF_ERROR,
+  chooseGrievanceResponse,
   GRIEVANCE_RESENTMENT,
+  grievanceUtilities,
   rivalSentiment,
   seededBelief,
   strengthScore,
@@ -95,5 +97,38 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
     expect(addGrievance(killed, "event:7" as EventId, "killing")).toBe(killed);
     const robbed = addGrievance(tie, "event:8" as EventId, "theft");
     expect(robbed.sentiment.resentment).toBeLessThan(killed.sentiment.resentment);
+  });
+});
+
+describe("la secta trata la ofensa (novel4-grievance-matter)", () => {
+  const tieWith = (fear: number, resentment: number): OrgTie => ({
+    formal: ["rival"],
+    sentiment: { trust: 0.1, respect: 0.4, fear, resentment },
+    believedStrength: { elders: 1, disciples: 3, topStage: 1 },
+    grievances: [],
+    originEventId: "event:1" as EventId,
+    history: ["event:1" as EventId],
+  });
+
+  it("con miedo y un robo, olvida; con rencor, sin miedo y una muerte, la devuelve", () => {
+    const scared = grievanceUtilities(tieWith(0.9, 0.1), "theft");
+    expect(scared.forget).toBeGreaterThan(scared.demand);
+    expect(scared.forget).toBeGreaterThan(scared.retaliate);
+    const angry = grievanceUtilities(tieWith(0.05, 0.8), "killing");
+    expect(angry.retaliate).toBeGreaterThan(angry.demand);
+    expect(angry.retaliate).toBeGreaterThan(angry.forget);
+    expect(chooseGrievanceResponse(tieWith(0.9, 0.1), "theft", 0.5)).toBe("forget");
+    expect(chooseGrievanceResponse(tieWith(0.05, 0.8), "killing", 0.5)).toBe("retaliate");
+  });
+
+  it("la tirada recorre todas las respuestas en orden; la misma tirada, la misma respuesta", () => {
+    const tie = tieWith(0.3, 0.3);
+    const seen = new Set(
+      [0, 0.2, 0.4, 0.6, 0.8, 0.999].map((r) => chooseGrievanceResponse(tie, "assault", r, 10)),
+    );
+    expect(seen).toEqual(new Set(["demand", "retaliate", "forget"]));
+    expect(chooseGrievanceResponse(tie, "assault", 0.37)).toBe(
+      chooseGrievanceResponse(tie, "assault", 0.37),
+    );
   });
 });

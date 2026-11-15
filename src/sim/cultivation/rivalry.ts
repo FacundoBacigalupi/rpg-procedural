@@ -8,9 +8,11 @@
 // Puro: sin IO. El rng sale del seed con su propia rama, así que no corre los de la siembra.
 
 import {
+  type AgentId,
   type EntityRef,
   type EventId,
   type EventLog,
+  exp,
   type IdAllocator,
   type PlaceRef,
   Rng,
@@ -24,7 +26,7 @@ import {
   type OrgStrength,
   type OrgTie,
 } from "../org/index.ts";
-import type { WorldTruth } from "../world/index.ts";
+import { table, type WorldTruth } from "../world/index.ts";
 import { SECT, type Sect } from "./sect.ts";
 
 export const ORG_RIVALRY_EVENT = "org.rivalry";
@@ -182,4 +184,78 @@ export function addGrievance(tie: OrgTie, event: EventId, kind: GrievanceKind): 
     grievances: [...tie.grievances, event],
     history: [...tie.history, event],
   };
+}
+
+export const ORG_GRIEVANCE_MATTER_EVENT = "org.grievance_matter";
+
+/** Lo que la secta hace con una ofensa: exigir reparación, devolverla u olvidarla. */
+export type GrievanceResponse = "demand" | "retaliate" | "forget";
+
+/** Una ofensa que la secta guarda, con lo que decidió (si ya lo trató). */
+export interface SectGrievanceEntry {
+  /** El hecho (evento de la verdad) que la causó. */
+  readonly deed: EventId;
+  readonly against: EntityRef;
+  readonly kind: GrievanceKind;
+  readonly by: AgentId;
+  readonly victim: AgentId;
+  readonly at: Tick;
+  readonly response?: { readonly choice: GrievanceResponse; readonly at: Tick };
+}
+
+export interface SectGrievances {
+  readonly entries: readonly SectGrievanceEntry[];
+}
+
+/** Las ofensas de cada secta como asuntos, en su entidad `org:N`. */
+export const SECT_GRIEVANCES = table<SectGrievances>("cultivation.sect_grievances");
+
+/** Cuánto pesa cada ofensa al tratarla (0-1, sin calibrar). */
+export const GRIEVANCE_WEIGHT: Readonly<Record<GrievanceKind, number>> = {
+  theft: 0.3,
+  assault: 0.5,
+  killing: 1,
+};
+
+/** Qué tan pareja es la elección: más bajo, más se impone la mejor opción (sin calibrar). */
+export const GRIEVANCE_TEMPERATURE = 0.15;
+
+/**
+ * Lo que vale cada respuesta para quien manda en la secta (organizations §4: una secta concentra
+ * el poder y decide el líder): olvidar si teme a la otra y la ofensa es chica; exigir reparación si
+ * la ofensa pesa y algo le cree a su palabra; devolverla si el rencor puede más que el miedo. Lee
+ * solo lo que la secta siente y cree de la otra (el miedo ya sale de la fuerza que le cree).
+ */
+export function grievanceUtilities(
+  tie: OrgTie,
+  kind: GrievanceKind,
+): Readonly<Record<GrievanceResponse, number>> {
+  const w = GRIEVANCE_WEIGHT[kind];
+  const { fear, resentment, trust } = tie.sentiment;
+  return {
+    forget: round3(0.2 + 0.5 * fear - 0.5 * w - 0.3 * resentment),
+    demand: round3(0.3 * w + 0.2 * resentment + 0.2 * trust),
+    retaliate: round3(-0.1 + 0.5 * w + 0.6 * resentment - 0.7 * fear),
+  };
+}
+
+const RESPONSES: readonly GrievanceResponse[] = ["demand", "retaliate", "forget"];
+
+/** Elige la respuesta con softmax sobre las utilidades, con una tirada `roll` en [0, 1). */
+export function chooseGrievanceResponse(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  roll: number,
+  temperature = GRIEVANCE_TEMPERATURE,
+): GrievanceResponse {
+  const u = grievanceUtilities(tie, kind);
+  const top = Math.max(...RESPONSES.map((r) => u[r]));
+  const weights = RESPONSES.map((r) => exp((u[r] - top) / temperature));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  for (let i = 0; i < RESPONSES.length; i++) {
+    acc += (weights[i] ?? 0) / total;
+    if (roll < acc) return RESPONSES[i] as GrievanceResponse;
+  }
+  return RESPONSES[RESPONSES.length - 1] as GrievanceResponse;
 }

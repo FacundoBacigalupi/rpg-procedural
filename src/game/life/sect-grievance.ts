@@ -4,8 +4,11 @@
 // la otra (`addGrievance`): el hecho entra a `grievances` y el rencor sube según su peso. Una vez
 // por hecho; queda el evento `org.grievance`, causado por el hecho.
 //
-// Corre una vez por día: una secta se entera de lo que saben los suyos sin apuro. Que la secta
-// responda (exigir reparación, represalia, olvidar) viene con novel4-grievance-matter.
+// Corre una vez por día: una secta se entera de lo que saben los suyos sin apuro. La ofensa queda
+// también como asunto (`SECT_GRIEVANCES`) y al día siguiente quien manda la trata
+// (novel4-grievance-matter): exigir reparación, devolverla u olvidarla, según lo que la secta siente
+// y cree de la otra (`chooseGrievanceResponse`); queda `org.grievance_matter`. Ejecutarlo viene con
+// novel4-grievance-act.
 
 import {
   type AgentId,
@@ -17,18 +20,22 @@ import {
 import {
   addGrievance,
   BODY_STATE,
+  chooseGrievanceResponse,
   ENTITY,
   type EventDraft,
   type GrievanceKind,
   KNOWN_DEEDS,
   ORG_GRIEVANCE_EVENT,
+  ORG_GRIEVANCE_MATTER_EVENT,
   ORG_RELATION,
   type OrgRelations,
   orgTie,
   type ProcessDef,
   type ReadonlyWorldTruth,
   SECT,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
+  type SectGrievanceEntry,
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
@@ -85,7 +92,7 @@ export function newGrievances(truth: ReadonlyWorldTruth): SectGrievance[] {
   );
 }
 
-/** Escritor de `ORG_RELATION`: las sectas guardan las ofensas que saben los suyos (cableado opt-in). */
+/** Escritor de `ORG_RELATION` y `SECT_GRIEVANCES`: las sectas guardan y tratan las ofensas que saben los suyos (cableado opt-in). */
 export function sectGrievanceProcess(): ProcessDef {
   return {
     id: SECT_GRIEVANCE_PROCESS,
@@ -101,22 +108,62 @@ export function sectGrievanceProcess(): ProcessDef {
       ENTITY.name,
       BODY_STATE.name,
       SECT.name,
+      SECT_GRIEVANCES.name,
     ],
-    writes: [ORG_RELATION.name],
+    writes: [ORG_RELATION.name, SECT_GRIEVANCES.name],
     run(ctx) {
       const truth = ctx.truth;
-      const found = newGrievances(truth);
-      if (found.length === 0) return {};
       const relations = new Map<EntityRef, OrgRelations>();
+      const ledgers = new Map<EntityRef, SectGrievanceEntry[]>();
+      const ledger = (org: EntityRef) => {
+        let l = ledgers.get(org);
+        if (!l) {
+          l = [...(truth.get(SECT_GRIEVANCES, org)?.entries ?? [])];
+          ledgers.set(org, l);
+        }
+        return l;
+      };
       const events: EventDraft[] = [];
-      for (const g of found) {
+      const seatOf = (org: EntityRef) => truth.get(SECT, org)?.seatPlace;
+      // Lo guardado antes de hoy se trata hoy: quien manda elige la respuesta (novel4-grievance-matter).
+      for (const org of [...truth.ids(SECT_GRIEVANCES)].sort(compareStrings) as EntityRef[]) {
+        const seat = seatOf(org);
+        const had = truth.get(ORG_RELATION, org);
+        if (seat === undefined || !had) continue;
+        const entries = ledger(org);
+        entries.forEach((e, i) => {
+          if (e.response || e.at >= ctx.now) return;
+          const tie = orgTie(had, e.against);
+          if (!tie) return;
+          const roll = ctx.rng.fork("grievance-matter", org, e.deed).float();
+          const choice = chooseGrievanceResponse(tie, e.kind, roll);
+          entries[i] = { ...e, response: { choice, at: ctx.now } };
+          events.push({
+            kind: ORG_GRIEVANCE_MATTER_EVENT,
+            actors: [e.by, e.victim],
+            place: { kind: "place", place: seat as unknown as PlaceId },
+            data: { org, against: e.against, kind: e.kind, deed: e.deed, response: choice },
+            emissions: {},
+            causes: [{ kind: "event", event: e.deed }],
+          });
+        });
+      }
+      for (const g of newGrievances(truth)) {
         const had = relations.get(g.org) ?? truth.get(ORG_RELATION, g.org);
         const tie = orgTie(had, g.against);
         // La ofensa se guarda en la sede (sin sede no hay secta que la guarde).
-        const seat = truth.get(SECT, g.org)?.seatPlace;
+        const seat = seatOf(g.org);
         if (!had || !tie || seat === undefined) continue;
         relations.set(g.org, {
           toward: { ...had.toward, [g.against]: addGrievance(tie, g.event, g.kind) },
+        });
+        ledger(g.org).push({
+          deed: g.event,
+          against: g.against,
+          kind: g.kind,
+          by: g.by,
+          victim: g.victim,
+          at: ctx.now,
         });
         events.push({
           kind: ORG_GRIEVANCE_EVENT,
@@ -127,9 +174,15 @@ export function sectGrievanceProcess(): ProcessDef {
           causes: [{ kind: "event", event: g.event }],
         });
       }
-      const changes: StateChange[] = [...relations]
-        .sort(([a], [b]) => compareStrings(a, b))
-        .map(([id, r]) => setComponent(ORG_RELATION, id, r));
+      if (events.length === 0) return {};
+      const changes: StateChange[] = [
+        ...[...relations]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, r]) => setComponent(ORG_RELATION, id, r)),
+        ...[...ledgers]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, entries]) => setComponent(SECT_GRIEVANCES, id, { entries })),
+      ];
       return { changes, events };
     },
   };
