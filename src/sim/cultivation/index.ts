@@ -9,6 +9,7 @@ export * from "./mission.ts";
 export * from "./pavilion.ts";
 export * from "./pill.ts";
 export * from "./rank.ts";
+export * from "./recruit.ts";
 export * from "./refinement.ts";
 export * from "./rivalry.ts";
 export * from "./school.ts";

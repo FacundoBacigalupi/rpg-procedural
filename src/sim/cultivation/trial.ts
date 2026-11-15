@@ -8,6 +8,7 @@ import type { EntityRef, Rng, Tick } from "../../core/index.ts";
 import type { Innate } from "../family/index.ts";
 import { table } from "../world/index.ts";
 import type { CultivationLaw } from "./law.ts";
+import type { MemberRank } from "./member.ts";
 import { aptitudeOf } from "./talent.ts";
 
 export const SECT_TRIAL_EVENT = "cultivation.sect_trial";
@@ -40,6 +41,8 @@ export interface SectTrial {
   readonly at: Tick;
   readonly reading: TrialReading;
   readonly accepted: boolean;
+  /** El rango que le ofrecieron al aceptarlo (novel4-recruit-choice); sin esto, externo. */
+  readonly rank?: MemberRank;
 }
 
 export const SECT_TRIAL = table<SectTrial>("cultivation.sect_trial");

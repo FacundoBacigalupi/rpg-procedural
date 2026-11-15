@@ -7,6 +7,8 @@ import {
   CULTIVATION_TECHNIQUE,
   compassOf,
   LOCATION,
+  ORG_RELATION,
+  offeredRank,
   PERSON,
   RIVAL_VISIT_LAG_DAYS,
   SECT,
@@ -15,6 +17,7 @@ import {
   SECT_JOINED_EVENT,
   SECT_LORE,
   SECT_MEMBER,
+  SECT_POACHED_EVENT,
   SECT_REPORT_DAYS,
   SECT_SCHOOL,
   SECT_TRIAL,
@@ -238,7 +241,7 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it("la rival baja unos días después: mide al ya citado y le deja la oferta (novel4-recruit-visit)", () => {
+  it("la rival baja unos días después: mide al ya citado, se lo disputa y le deja la oferta (novel4-recruit-visit, novel4-recruit-choice)", () => {
     const life = Life.create(3, content, { cultivation: true, rivalSect: true });
     const w = life.world;
     const first = w.truth.get(SECT_LORE, w.player)?.org;
@@ -267,14 +270,36 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
       if (!at) throw new Error("sin lugar");
       w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
     };
+    // Un chico de la aldea sin secta, con la raíz que la piedra lee alta: va a la plaza las dos veces.
+    const kid = living(w.truth).find(
+      (id) => id !== w.player && w.truth.has(TALENT, id) && !w.truth.has(SECT_MEMBER, id),
+    );
+    if (!kid) throw new Error("sin chico");
+    const kidTalent = w.truth.get(TALENT, kid);
+    const kidPerson = w.truth.get(PERSON, kid);
+    if (!kidTalent || !kidPerson) throw new Error("sin chico");
+    const kidToSquare = (start: number) => {
+      // Justo antes de la primera hora de la bajada, que es cuando miden.
+      w.scheduler.advanceTo(Math.ceil(start / 3600) * 3600 - 1);
+      const at = w.truth.get(LOCATION, kid);
+      if (!at) throw new Error("sin lugar");
+      w.truth.set(LOCATION, kid, { ...at, space: VILLAGE_SQUARE });
+    };
     w.scheduler.advanceTo(visitA.start - 3600);
     w.truth.set(PERSON, w.player, { ...me, born: life.now - 12 * w.clock.year });
     w.truth.set(TALENT, w.player, {
       ...talent,
       innate: { ...talent.innate, spirit_root: 3.5, root_fire: 2 },
     });
+    w.truth.set(PERSON, kid, { ...kidPerson, born: life.now - 12 * w.clock.year });
+    w.truth.set(TALENT, kid, {
+      ...kidTalent,
+      innate: { ...kidTalent.innate, spirit_root: 3.5, root_fire: 2 },
+    });
     toSquare();
+    kidToSquare(visitA.start);
     w.scheduler.advanceTo(visitA.start + 3 * 3600);
+    expect(w.truth.get(SECT_MEMBER, kid)).toMatchObject({ org: first, rank: "outer" });
     expect(w.truth.get(SECT_MEMBER, w.player)).toMatchObject({
       org: first,
       trialYear: visitA.year,
@@ -288,21 +313,48 @@ describe("la bajada de la secta en la vida (novel-cult-sect-visit)", () => {
     expect(w.truth.get(SECTS_HEARD, w.player)?.toward[rival]?.visitAt).toBe(visitB.start);
     expect(w.truth.get(SECT_LORE, w.player)?.org).toBe(first);
     toSquare();
+    kidToSquare(visitB.start);
     w.scheduler.advanceTo(visitB.start + 3 * 3600);
+    // El chico (novel4-recruit-choice): la rival se lo disputa como interno y se cambia; la primera
+    // guarda la ofensa y lo que creía de ella queda entre lo que oyó.
+    expect(w.truth.get(SECT_TRIAL, kid)).toMatchObject({
+      org: rival,
+      accepted: true,
+      rank: "inner",
+    });
+    expect(w.truth.get(SECT_MEMBER, kid)).toMatchObject({
+      org: rival,
+      rank: "inner",
+      trialYear: visitB.year,
+    });
+    const moved = w.log
+      .all()
+      .find((e) => e.kind === SECT_JOINED_EVENT && e.actors[0] === kid && e.tick >= visitB.start);
+    expect(moved?.data).toMatchObject({ org: rival, rank: "inner", from: first });
+    const poached = w.log.all().find((e) => e.kind === SECT_POACHED_EVENT);
+    expect(poached?.actors).toEqual([kid]);
+    expect(poached?.causes).toEqual([{ kind: "event", event: moved?.id }]);
+    const tie = w.truth.get(ORG_RELATION, first)?.toward[rival];
+    expect(tie?.grievances).toContain(poached?.id);
+    expect(w.truth.get(SECT_LORE, kid)).toMatchObject({ org: rival, confidence: 1 });
+    expect(w.truth.get(SECTS_HEARD, kid)?.toward[first]?.org).toBe(first);
+    expect(w.truth.get(SECTS_HEARD, kid)?.toward[rival]).toBeUndefined();
     const mine = w.log
       .all()
       .filter((e) => e.kind === SECT_TRIAL_EVENT && e.actors[0] === w.player)
       .map((e) => (e.data as { org: string }).org);
     expect(mine).toEqual([first, rival]);
     // Aceptado también por la rival: no se suma, queda la oferta.
-    expect(w.truth.get(SECT_TRIAL, w.player)).toMatchObject({ org: rival, accepted: true });
+    const offer = w.truth.get(SECT_TRIAL, w.player);
+    expect(offer).toMatchObject({ org: rival, accepted: true });
+    expect(offer?.rank).toBe(offeredRank(offer?.reading ?? { elements: [], quality: 0 }, true));
     expect(w.truth.get(SECT_MEMBER, w.player)?.org).toBe(first);
     w.scheduler.advanceTo(visitB.end + 3600);
-    // Nadie se suma a las dos ni se mide dos veces en la misma secta el mismo año.
+    // Nadie se suma ni se mide dos veces en la misma secta el mismo año.
     const joined = w.log
       .all()
       .filter((e) => e.kind === SECT_JOINED_EVENT)
-      .map((e) => e.actors[0]);
+      .map((e) => `${e.actors[0]}|${(e.data as { org: string }).org}`);
     expect(new Set(joined).size).toBe(joined.length);
     const trials = w.log
       .all()
