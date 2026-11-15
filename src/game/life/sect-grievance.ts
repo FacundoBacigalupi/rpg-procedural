@@ -23,6 +23,13 @@
 // otra en su sede; contesta ahí mismo (`converse`) y `life.sect_grievance_spoken` aplica la
 // respuesta como lo haría la ranura: las dos relaciones, el asunto cerrado y lo que se le cobra al
 // ofensor si reparan.
+//
+// El enviado NPC (novel4-grievance-envoy-npc, opción `envoys`): si al terminar la espera nadie la
+// tomó y la secta tiene a uno de rango libre (primero el que esté en la sede), se la da a él (`pickEnvoy`,
+// `org.grievance_envoy`); viaja de cuerpo (`envoyDestination` en `decide`, un viaje como cualquiera)
+// y al estar en la sede de la otra le contestan ahí (con lo que la otra siente de la que exige, como
+// la ranura); vuelve a la sede a cobrar la misión. Si no llega, la misión se vence y sale la
+// ranura desde el plazo. Sin nadie a mano, sale la ranura como antes.
 
 import {
   type AgentId,
@@ -40,11 +47,15 @@ import {
   chooseGrievanceResponse,
   chooseReply,
   ENTITY,
+  ENVOY_WAIT_DAYS,
   type EventDraft,
   envoySlotReturns,
   type GrievanceKind,
   type GrievanceReply,
   KNOWN_DEEDS,
+  LOCATION,
+  MISSION_ENVOY_POINTS,
+  missionDue,
   missionLapsed,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
@@ -54,6 +65,7 @@ import {
   type OrgTie,
   openGrievance,
   orgTie,
+  PLACE,
   type ProcessDef,
   REPARATION_PENALTY,
   type ReadonlyWorldTruth,
@@ -64,12 +76,56 @@ import {
   SECT_MISSION,
   type SectContribution,
   type SectGrievanceEntry,
+  type SectMission,
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
 
 export const SECT_GRIEVANCE_PROCESS = "life.sect_grievance";
 export const SECT_GRIEVANCE_SPOKEN_PROCESS = "life.sect_grievance_spoken";
+/** La secta le dio la exigencia a uno de los suyos que está en la sede (novel4-grievance-envoy-npc). */
+export const ORG_GRIEVANCE_ENVOY_EVENT = "org.grievance_envoy";
+
+/** Si `who` está en la sede de `org` (alguno de los hexes de su lugar). */
+export function atSeat(truth: ReadonlyWorldTruth, who: AgentId, org: EntityRef): boolean {
+  const seat = truth.get(SECT, org)?.seatPlace;
+  const hexes = seat ? truth.get(PLACE, seat)?.hexes : undefined;
+  const at = truth.get(LOCATION, who)?.hex;
+  return at !== undefined && hexes?.includes(at) === true;
+}
+
+/**
+ * A quién manda la secta con la exigencia (puro, novel4-grievance-envoy-npc): un vivo de la secta,
+ * de rango para la misión (interno o anciano; el maestro no va), que no lleve otra misión; no el
+ * personaje (él la pide si quiere). Primero el que esté en la sede, si no el que la secta mande a
+ * llamar; entre iguales, el primero por id. Ninguno, undefined.
+ */
+export function pickEnvoy(
+  truth: ReadonlyWorldTruth,
+  org: EntityRef,
+  player: AgentId,
+  busy: ReadonlySet<AgentId>,
+): AgentId | undefined {
+  const free = ([...truth.ids(SECT_MEMBER)].sort(compareStrings) as AgentId[]).filter((id) => {
+    const m = truth.get(SECT_MEMBER, id);
+    if (m?.org !== org || (m.rank !== "inner" && m.rank !== "elder")) return false;
+    if (id === player || busy.has(id) || truth.get(SECT_MISSION, id)) return false;
+    return !dead(truth, id);
+  });
+  return free.find((id) => atSeat(truth, id, org)) ?? free[0];
+}
+
+/**
+ * Adónde va el enviado (puro, novel4-grievance-envoy-npc): con la exigencia sin contestar, a la sede
+ * de la otra; contestada, de vuelta a la suya. Undefined si no lleva esa misión o ya está donde va.
+ */
+export function envoyDestination(truth: ReadonlyWorldTruth, who: AgentId): string | undefined {
+  const m = truth.get(SECT_MISSION, who);
+  if (m?.kind !== "envoy" || m.against === undefined) return undefined;
+  const to = m.done >= 1 ? m.org : m.against;
+  if (atSeat(truth, who, to)) return undefined;
+  return truth.get(SECT, to)?.seatPlace;
+}
 
 /** Una ofensa que la secta `org` todavía no guarda contra `against`. */
 export interface SectGrievance {
@@ -125,6 +181,11 @@ export function newGrievances(truth: ReadonlyWorldTruth): SectGrievance[] {
 export function sectGrievanceProcess(o: {
   /** Cuántos ticks tiene un día (lo que tarda el enviado se cuenta en días). */
   readonly dayTicks: number;
+  /**
+   * Opt-in (novel4-grievance-envoy-npc): la secta manda a uno de los suyos de cuerpo, y al llegar
+   * le contestan. `player` no es elegido ni contestado acá (habla él). Sin esto, solo la ranura.
+   */
+  readonly envoys?: { readonly player: AgentId };
 }): ProcessDef {
   return {
     id: SECT_GRIEVANCE_PROCESS,
@@ -143,8 +204,14 @@ export function sectGrievanceProcess(o: {
       SECT_GRIEVANCES.name,
       SECT_CONTRIBUTION.name,
       SECT_MISSION.name,
+      ...(o.envoys ? [PLACE.name, LOCATION.name] : []),
     ],
-    writes: [ORG_RELATION.name, SECT_GRIEVANCES.name, SECT_CONTRIBUTION.name],
+    writes: [
+      ORG_RELATION.name,
+      SECT_GRIEVANCES.name,
+      SECT_CONTRIBUTION.name,
+      ...(o.envoys ? [SECT_MISSION.name] : []),
+    ],
     run(ctx) {
       const truth = ctx.truth;
       const relations = new Map<EntityRef, OrgRelations>();
@@ -167,6 +234,25 @@ export function sectGrievanceProcess(o: {
         const had = relationOf(org);
         if (had) relations.set(org, { toward: { ...had.toward, [toward]: tie } });
       };
+      /** La respuesta vuelve a las dos relaciones; si reparan, se lo cobran al ofensor (novel4-grievance-player). */
+      const applyReply = (
+        org: EntityRef,
+        e: SectGrievanceEntry,
+        theirs: OrgTie,
+        ours: OrgTie,
+        reply: GrievanceReply,
+      ): number => {
+        setTie(org, e.against, afterReplyReceived(ours, e.kind, reply));
+        if (reply !== "pay") return 0;
+        setTie(e.against, org, afterReplyGiven(theirs));
+        const had = contributions.get(e.by) ?? truth.get(SECT_CONTRIBUTION, e.by);
+        if (had?.org !== e.against) return 0;
+        const penalty = Math.min(had.points, REPARATION_PENALTY[e.kind]);
+        if (penalty > 0) contributions.set(e.by, { ...had, points: had.points - penalty });
+        return penalty;
+      };
+      /** Las misiones de enviado que la secta dio hoy (novel4-grievance-envoy-npc). */
+      const sent = new Map<AgentId, SectMission>();
       // Quién lleva cada exigencia (novel4-grievance-envoy-mission): la misión vigente, por hecho.
       const carriers = new Map<string, { who: AgentId; due: Tick }>();
       for (const id of [...truth.ids(SECT_MISSION)].sort(compareStrings)) {
@@ -185,6 +271,67 @@ export function sectGrievanceProcess(o: {
             entries[i] = { ...e, envoy: carrier };
             changed = true;
           }
+          // Terminó la espera y nadie la tomó: la secta manda a uno de los suyos.
+          const waited = e.response.at + ENVOY_WAIT_DAYS * o.dayTicks;
+          if (o.envoys && !carrier && !e.envoy && ctx.now >= waited) {
+            const who = pickEnvoy(truth, org, o.envoys.player, new Set(sent.keys()));
+            if (who !== undefined) {
+              const due = missionDue("envoy", ctx.now, o.dayTicks);
+              sent.set(who, {
+                org,
+                kind: "envoy",
+                against: e.against,
+                deed: e.deed,
+                points: MISSION_ENVOY_POINTS,
+                by: who,
+                at: ctx.now,
+                due,
+                done: 0,
+                cause: e.deed,
+              });
+              entries[i] = { ...e, envoy: { who, due } };
+              changed = true;
+              const seat = seatOf(org);
+              events.push({
+                kind: ORG_GRIEVANCE_ENVOY_EVENT,
+                actors: [who, e.by, e.victim],
+                place: { kind: "place", place: (seat ?? org) as unknown as PlaceId },
+                data: { org, against: e.against, kind: e.kind, deed: e.deed, envoy: who, due },
+                emissions: {},
+                causes: [{ kind: "event", event: e.deed }],
+              });
+              return;
+            }
+          }
+          // El enviado de cuerpo, en la sede de la otra: le contestan ahí.
+          const envoy =
+            o.envoys && carrier && carrier.who !== o.envoys.player ? carrier.who : undefined;
+          const going = envoy !== undefined ? truth.get(SECT_MISSION, envoy) : undefined;
+          if (envoy !== undefined && going && going.done < 1 && atSeat(truth, envoy, e.against)) {
+            const theirs = orgTie(relationOf(e.against), org);
+            const ours = orgTie(relationOf(org), e.against);
+            const seat = seatOf(e.against);
+            if (!theirs || !ours || seat === undefined) return;
+            const roll = ctx.rng.fork("grievance-reply", org, e.deed).float();
+            const reply = chooseReply(theirs, e.kind, roll);
+            const penalty = applyReply(org, e, theirs, ours, reply);
+            entries[i] = {
+              ...(entries[i] ?? e),
+              outcome: { result: reply === "pay" ? "paid" : "refused", at: ctx.now },
+            };
+            events.push({
+              kind: ORG_GRIEVANCE_REPLY_EVENT,
+              actors: [e.by, e.victim, envoy],
+              place: { kind: "place", place: seat as unknown as PlaceId },
+              data: { org, against: e.against, kind: e.kind, deed: e.deed, reply, penalty, envoy },
+              emissions: {},
+              causes: [
+                { kind: "event", event: e.deed },
+                { kind: "state", entity: envoy as unknown as EntityRef, key: LOCATION.name },
+              ],
+            });
+            return;
+          }
           const back = envoySlotReturns(entries[i] ?? e, o.dayTicks, carrier !== undefined);
           if (back === undefined || ctx.now < back) return;
           const theirs = orgTie(relationOf(e.against), org);
@@ -193,17 +340,7 @@ export function sectGrievanceProcess(o: {
           if (!theirs || !ours || seat === undefined) return;
           const roll = ctx.rng.fork("grievance-reply", org, e.deed).float();
           const reply = chooseReply(theirs, e.kind, roll);
-          setTie(org, e.against, afterReplyReceived(ours, e.kind, reply));
-          // Repara la otra: se lo cobra al suyo que hizo la ofensa (novel4-grievance-player).
-          let penalty = 0;
-          if (reply === "pay") {
-            setTie(e.against, org, afterReplyGiven(theirs));
-            const had = contributions.get(e.by) ?? truth.get(SECT_CONTRIBUTION, e.by);
-            if (had?.org === e.against) {
-              penalty = Math.min(had.points, REPARATION_PENALTY[e.kind]);
-              if (penalty > 0) contributions.set(e.by, { ...had, points: had.points - penalty });
-            }
-          }
+          const penalty = applyReply(org, e, theirs, ours, reply);
           entries[i] = {
             ...e,
             outcome: { result: reply === "pay" ? "paid" : "refused", at: ctx.now },
@@ -283,6 +420,9 @@ export function sectGrievanceProcess(o: {
         ...[...contributions]
           .sort(([a], [b]) => compareStrings(a, b))
           .map(([id, c]) => setComponent(SECT_CONTRIBUTION, id, c)),
+        ...[...sent]
+          .sort(([a], [b]) => compareStrings(a, b))
+          .map(([id, m]) => setComponent(SECT_MISSION, id, m)),
       ];
       return { changes, events };
     },

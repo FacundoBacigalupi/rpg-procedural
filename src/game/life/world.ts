@@ -2598,7 +2598,13 @@ export function lifeWorld(
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
               }),
               // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
-              sectGrievanceProcess({ dayTicks: parts.clock.day }),
+              sectGrievanceProcess({
+                dayTicks: parts.clock.day,
+                // Con viajes de NPC, la secta manda a uno de los suyos (novel4-grievance-envoy-npc).
+                ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
+                  ? { envoys: { player } }
+                  : {}),
+              }),
               // La exigencia contestada de palabra al enviado (novel4-grievance-envoy-speak).
               sectGrievanceSpokenProcess(),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
@@ -2810,6 +2816,12 @@ export function lifeWorld(
                   rivalWeight: 2,
                 },
               }
+            : {}),
+          // El enviado viaja a la otra sede y vuelve (novel4-grievance-envoy-npc).
+          ...(parts.cultivation &&
+          parts.npcJourneyDays !== undefined &&
+          parts.npcVerbs?.includes("move") === true
+            ? { envoys: { weight: 3 } }
             : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
