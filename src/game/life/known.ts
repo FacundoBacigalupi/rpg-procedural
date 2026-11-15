@@ -23,6 +23,7 @@ import {
   PLACE,
   PLACE_NAME,
   SECT_LORE,
+  SECT_MEMBER,
   SECT_SITE_SPACES,
   type SectSiteSpace,
   sectSpaceKey,
@@ -154,15 +155,38 @@ function carriedThings(w: LifeWorld, here: number | undefined): KnownEntity[] {
 }
 
 /** Lo que se ve de alguien que no se reconoce: su figura y su ropa, nunca quién es. */
-export function featuresOfPercept(p: Percept): string[] {
+export function featuresOfPercept(
+  p: Percept,
+  emblemWords: (org: string) => readonly string[] = () => [],
+): string[] {
   const fig = p.fields.figure?.value as { sex?: string; age?: string } | undefined;
   const attire = p.fields.attire?.value;
+  const emblem = p.fields.emblem?.value;
   const words = fig?.sex && fig.age ? (FIGURE_WORDS[fig.sex]?.[fig.age] ?? []) : [];
   return [
     "persona",
     ...words,
     ...(attire === "fine" ? ["ropa fina"] : attire === "worn" ? ["ropa gastada"] : []),
+    ...(typeof emblem === "string" ? emblemWords(emblem) : []),
   ];
+}
+
+/**
+ * Cómo nombra el personaje el emblema que ve (novel4-sect-meet-badge), por lo que sabe: el de su
+ * secta, el de la secta que conoce (la que baja), el de otra que oyó nombrar, o uno que no conoce.
+ */
+export function emblemWordsOf(w: LifeWorld): (org: string) => readonly string[] {
+  const mine = w.truth.get(SECT_MEMBER, w.player)?.org;
+  const first = w.truth.get(SECT_LORE, w.player)?.org;
+  const heard = new Set<string>(sectsBelieved(w.truth, w.player).map((l) => l.org));
+  return (org) =>
+    org === mine
+      ? ["de mi secta", "con el emblema de mi secta"]
+      : org === first
+        ? ["de la secta", "con el emblema de la secta"]
+        : heard.has(org)
+          ? ["de la otra secta", "con el emblema de la otra secta"]
+          : ["con un emblema que no conozco"];
 }
 
 /**
@@ -212,6 +236,7 @@ export function knownEntities(
   }
   // Quienes ve ahora y no son de su familia: los desconocidos no tienen nombre, solo lo que se ve.
   const listed = new Set<EntityRef>(out.map((k) => k.ref));
+  const emblems = emblemWordsOf(w);
   for (const p of seen) {
     const id = p.sourceEntityId;
     if (id === undefined || !id.startsWith("agent:") || id === w.player) continue;
@@ -229,7 +254,7 @@ export function knownEntities(
         if (previous)
           out[index] = {
             ...previous,
-            features: [...new Set([...previous.features, ...featuresOfPercept(p)])],
+            features: [...new Set([...previous.features, ...featuresOfPercept(p, emblems)])],
             present: true,
             ...(here === undefined ? {} : { at: here.hex }),
             phantom: false,
@@ -238,14 +263,14 @@ export function knownEntities(
       }
       // Sin reconocerlo es una figura más («el viejo»): se le puede hablar con lo que se ve, con el
       // mismo ref (lo resuelve la sim) pero sin vincularla al familiar en lo que el personaje cree.
-      out.push(figure(id, p, here));
+      out.push(figure(id, p, here, emblems));
       continue;
     }
     listed.add(id);
     const given = named
       ? callName(w.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] })
       : undefined;
-    out.push(figure(id, p, here, given));
+    out.push(figure(id, p, here, emblems, given));
   }
   // El herrero se nombra por su oficio: toda la aldea sabe quién tiene la fragua (use-tools-mend-trade-buy).
   const smith = smithOf(w.truth);
@@ -378,12 +403,18 @@ export function knownEntities(
 }
 
 /** Alguien visto ahora: con nombre si se lo reconoce, si no solo lo que se ve. */
-function figure(id: EntityRef, p: Percept, here: Where | undefined, given?: string): KnownEntity {
+function figure(
+  id: EntityRef,
+  p: Percept,
+  here: Where | undefined,
+  emblems: (org: string) => readonly string[],
+  given?: string,
+): KnownEntity {
   return {
     ref: id,
     kind: "person",
     names: given === undefined ? [] : [given],
-    features: featuresOfPercept(p),
+    features: featuresOfPercept(p, emblems),
     relations: [],
     present: true,
     ...(here === undefined ? {} : { at: here.hex }),

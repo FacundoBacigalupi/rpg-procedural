@@ -43,6 +43,8 @@ export const PERCEPT_KEYS = [
   "action",
   "words",
   "thing",
+  // El emblema de una organización (novel4-sect-meet-badge): de qué secta es quien se ve.
+  "emblem",
 ] as const;
 export type PerceptKey = (typeof PERCEPT_KEYS)[number];
 
