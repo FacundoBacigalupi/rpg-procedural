@@ -152,6 +152,11 @@ export interface SeedSectOptions {
   readonly visitDay?: number;
   /** Los nombres de la familia del mundo (`content/schools/`); sin ellos, la secta no tiene escuela. */
   readonly school?: SchoolNames;
+  /**
+   * Otra secta de la misma región (novel4-rival-sect-seed): su azar sale de otra rama del seed
+   * (fundación, plazas y escuela propias); sin esto, la secta cercana de siempre.
+   */
+  readonly key?: string;
 }
 
 /**
@@ -168,7 +173,9 @@ export function seedSect(
   const plane = truth.ids(CULTIVATION_LAW)[0];
   const law = plane ? truth.get(CULTIVATION_LAW, plane) : undefined;
   if (!plane || !law) return undefined;
-  const rng = Rng.root(o.seed).fork("cultivation", "sect");
+  const rng = o.key
+    ? Rng.root(o.seed).fork("cultivation", "sect", o.key)
+    : Rng.root(o.seed).fork("cultivation", "sect");
   const foundedYearsAgo = rng.fork("founded").int(80, 400);
   const event = ids.next("event") as EventId;
   const org = ids.next("org");

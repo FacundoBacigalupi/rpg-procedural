@@ -46,6 +46,7 @@ import {
   type CurdRule,
   carcassUnits,
   cellElements,
+  chooseRivalSeat,
   chooseSeat,
   DEBRIS_SINK,
   DEMOGRAPHY,
@@ -506,6 +507,12 @@ export interface LifeOptions {
   readonly cultivation?: boolean;
   /** Opt-in (requiere `cultivation`): la sede de la secta en su celda (novel-sect-seat-switch): el mapa de la vida es la región por tierra (`regionMapOf`: aldea, franjas del camino y la celda de la sede) y la sede es un lugar (`sect`) con un hex allí, al que se llega caminando; apagado, el mapa es solo el parche de la aldea. */
   readonly sectSeatRegion?: boolean;
+  /**
+   * Opt-in (requiere `cultivation`, novel4-rival-sect): una segunda secta al alcance de la aldea, en
+   * la mejor sede que no sea la de la primera ni sus vecinas, con su propia fundación, gente y
+   * escuela; apagado, una sola secta y hashes idénticos.
+   */
+  readonly rivalSect?: boolean;
   /** Opt-in: el `move` del jugador a un lugar a más de 8 h de camino es una marcha de varios días (`life.trek`, novel-sect-seat-trek): sale con odre y grano de la despensa, bebe con sed, come a la hora, duerme de noche y retoma el tramo tras un tropiezo, hasta llegar o rendirse a los 30 días; apagado, hashes idénticos. */
   readonly playerTrek?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
@@ -908,16 +915,24 @@ function placeQiOf(planet: Planet, cell: number, content: Content): PlaceQi {
  * La sede de la secta cercana (novel-cult-sect-place): la celda en tierra con más qi a
  * `SEAT_REACH_HOPS` saltos o menos de la aldea, con su distancia, su rumbo y su qi.
  */
-function sectSeatOf(planet: Planet, cell: number, content: Content): SectSeat | undefined {
+function sectSeatOf(
+  planet: Planet,
+  cell: number,
+  content: Content,
+  /** La sede de otra secta: esta no puede caer en ella ni en sus vecinas (novel4-rival-sect-seed). */
+  apartFrom?: number,
+): SectSeat | undefined {
   const { grid, essence, tectonics, hydrology } = planet;
-  const best = chooseSeat(
-    ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
-      cell: c,
-      hops,
-      level: essence.level[c] ?? 0,
-      land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
-    })),
-  );
+  const candidates = ring(grid, cell, SEAT_REACH_HOPS).map(([c, hops]) => ({
+    cell: c,
+    hops,
+    level: essence.level[c] ?? 0,
+    land: (tectonics.elevation[c] ?? 0) > 0 && !hydrology.lake[c],
+  }));
+  const best =
+    apartFrom === undefined
+      ? chooseSeat(candidates)
+      : chooseRivalSeat(candidates, new Set(ring(grid, apartFrom, 1).map(([c]) => c)));
   if (!best) return undefined;
   const at = (c: number) => ({ lat: grid.lat[c] ?? 0, lon: grid.lon[c] ?? 0 });
   return {
@@ -2278,6 +2293,33 @@ export function createLife(
         sect: sect.sect,
         people: pop.people.filter((p) => p.end === null).map((p) => p.id),
       });
+    }
+    // La secta rival (novel4-rival-sect-seed): otra sede al alcance, aparte de la primera.
+    const rivalSeat =
+      sect && options.rivalSect
+        ? sectSeatOf(terrain.planet, site.cell, content, sect.sect.seat.cell)
+        : undefined;
+    const rival = rivalSeat
+      ? seedSect(truth, ids, log, {
+          seed,
+          now: pop.now,
+          yearTicks: clock.year,
+          place: terrain.village,
+          talents: content.all(TALENTS),
+          seat: rivalSeat,
+          key: "rival",
+          ...(schoolNames ? { school: schoolNames } : {}),
+        })
+      : undefined;
+    if (rival) {
+      const high = (terrain.planet.tectonics.elevation[rival.sect.seat.cell] ?? 0) > 600;
+      seedPlaceNames(truth, language, seed, [
+        {
+          id: rival.sect.seatPlace,
+          feature: high ? "mountain" : "forest",
+          event: rival.sect.originEventId,
+        },
+      ]);
     }
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;

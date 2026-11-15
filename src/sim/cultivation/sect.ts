@@ -73,6 +73,17 @@ export const SECT = table<Sect>("cultivation.sect");
 export const SEAT_REACH_HOPS = 2;
 
 /**
+ * La sede de una segunda secta (novel4-rival-sect-seed): la mejor de las candidatas que no son
+ * `taken` (la sede de la primera y sus vecinas: dos sectas no se apilan en la misma montaña).
+ */
+export function chooseRivalSeat(
+  candidates: readonly SeatCandidate[],
+  taken: ReadonlySet<number>,
+): SeatCandidate | undefined {
+  return chooseSeat(candidates.filter((c) => !taken.has(c.cell)));
+}
+
+/**
  * La sede: la candidata en tierra con más qi; empata la más cercana y después la de menor id.
  * Sin tierra, ninguna.
  */
