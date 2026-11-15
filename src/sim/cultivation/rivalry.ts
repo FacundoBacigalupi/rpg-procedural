@@ -203,6 +203,11 @@ export interface SectGrievanceEntry {
   readonly response?: { readonly choice: GrievanceResponse; readonly at: Tick };
   /** Cómo terminó (novel4-grievance-act): pagada, negada, vengada u olvidada. */
   readonly outcome?: { readonly result: GrievanceOutcome; readonly at: Tick };
+  /**
+   * Exigir (novel4-grievance-envoy-mission): quien de la secta tomó la misión de llevarla y hasta
+   * cuándo. Mientras la tiene, la ranura no sale; si vence sin respuesta, sale la ranura desde `due`.
+   */
+  readonly envoy?: { readonly who: AgentId; readonly due: Tick };
 }
 
 export type GrievanceOutcome = "paid" | "refused" | "avenged" | "forgotten";
@@ -269,6 +274,32 @@ export const ORG_GRIEVANCE_AVENGED_EVENT = "org.grievance_avenged";
 
 /** Cuántos días tarda el enviado en llevar la exigencia y volver con la respuesta (sin calibrar). */
 export const ENVOY_DAYS = 10;
+/**
+ * Cuántos días espera la secta a que uno de los suyos en carne pida llevar la exigencia (la misión
+ * `envoy`) antes de mandar a uno sin nombre (la ranura, en el agregado). Sin calibrar.
+ */
+export const ENVOY_WAIT_DAYS = 3;
+
+/**
+ * Cuándo vuelve la ranura con la respuesta (puro): si nadie tomó la misión, sale al terminar la
+ * espera; si alguien la tomó y se le venció, sale desde ese plazo. Mientras alguien la lleva, nunca.
+ */
+export function envoySlotReturns(
+  e: Pick<SectGrievanceEntry, "response" | "envoy">,
+  dayTicks: number,
+  carried: boolean,
+): Tick | undefined {
+  if (carried || e.response?.choice !== "demand") return undefined;
+  const leaves = e.envoy ? e.envoy.due : e.response.at + ENVOY_WAIT_DAYS * dayTicks;
+  return leaves + ENVOY_DAYS * dayTicks;
+}
+
+/** Si la exigencia todavía busca enviado entre los suyos (para darla como misión). */
+export const envoyWanted = (e: SectGrievanceEntry, now: Tick, dayTicks: number): boolean =>
+  openGrievance(e) &&
+  e.response?.choice === "demand" &&
+  e.envoy === undefined &&
+  now < e.response.at + ENVOY_WAIT_DAYS * dayTicks;
 
 /** Lo que la otra contesta a una exigencia: reparar (disculpa y compensación) o negarse. */
 export type GrievanceReply = "pay" | "refuse";

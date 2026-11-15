@@ -2,9 +2,11 @@
 // cercanas; el encargo resta lo que ya salieron a hacer otros y respeta el rango.
 
 import { describe, expect, it } from "vitest";
-import type { AgentId, EntityRef } from "../../core/index.ts";
+import type { AgentId, EntityRef, EventId, Tick } from "../../core/index.ts";
 import {
+  envoyNeeds,
   herbNeeds,
+  MISSION_ENVOY_POINTS,
   MISSION_HERB_GRAMS,
   MISSION_HERB_MIN_GRAMS,
   MISSION_POINTS_PER_GRAM,
@@ -115,5 +117,29 @@ describe("el tablero de misiones (novel2-missions-board)", () => {
     expect(missionLapsed(m, 240)).toBe(false);
     expect(missionLapsed(m, 241)).toBe(true);
     expect(missionLeft(taken({ kind: "watch", hours: 8, done: 9 }))).toBe(0);
+  });
+});
+
+describe("llevar la exigencia (novel4-grievance-envoy-mission)", () => {
+  it("las exigencias, la más vieja primero; después de cazar y antes de vigilar; una por hecho", () => {
+    const rival = "org:2" as EntityRef;
+    const needs = envoyNeeds([
+      { against: rival, deed: "event:9" as EventId, at: 50 as Tick },
+      { against: rival, deed: "event:3" as EventId, at: 10 as Tick },
+    ]);
+    expect(needs.map((n) => (n.kind === "envoy" ? n.deed : ""))).toEqual(["event:3", "event:9"]);
+    const all = [...watchNeeds([{ band: "b", hex: 4, distance: 1 }]), ...needs];
+    expect(pickMission(org, "inner", all, [])).toEqual({
+      org,
+      kind: "envoy",
+      against: rival,
+      deed: "event:3",
+      points: MISSION_ENVOY_POINTS,
+    });
+    // Ya hay quien lleva la primera: le toca la segunda.
+    const out = [taken({ kind: "envoy", against: rival, deed: "event:3" as EventId })];
+    expect(pickMission(org, "inner", all, out)).toMatchObject({ kind: "envoy", deed: "event:9" });
+    // Un externo no representa a la secta: le toca otra cosa o nada.
+    expect(pickMission(org, "outer", needs, [])).toBeUndefined();
   });
 });

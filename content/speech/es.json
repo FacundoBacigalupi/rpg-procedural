@@ -651,6 +651,16 @@
     ]
   },
   {
+    "id": "mission.give.envoy",
+    "lines": [
+      "La otra secta nos debe una reparación por lo que le hicieron a uno de los nuestros. Andá a su sede, exigila de parte nuestra y traé la respuesta; tenés veinte días.",
+      "Hay que llevarle a la otra secta nuestra exigencia por la ofensa. Andá, hablá con quien mande allá y volvé con lo que diga."
+    ],
+    "formal": [
+      "La otra secta debe reparación por la ofensa a uno de los nuestros. Preséntese en su sede, exíjala en nombre de esta secta y regrese con su respuesta en veinte días."
+    ]
+  },
+  {
     "id": "mission.refuse.not_member",
     "lines": ["No sos de esta secta. Las misiones son para los nuestros."],
     "formal": ["Usted no pertenece a esta secta."]

@@ -10,8 +10,10 @@ import {
   checkInvariants,
   ENTITY,
   ENVOY_DAYS,
+  ENVOY_WAIT_DAYS,
   GRIEVANCE_RESENTMENT,
   KNOWN_DEEDS,
+  MISSION_DAYS,
   ORG_GRIEVANCE_EVENT,
   ORG_GRIEVANCE_MATTER_EVENT,
   ORG_GRIEVANCE_REPLY_EVENT,
@@ -23,6 +25,7 @@ import {
   SECT_CONTRIBUTION,
   SECT_GRIEVANCES,
   SECT_MEMBER,
+  SECT_MISSION,
   SECT_PRESENCE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -140,9 +143,9 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
         },
       ],
     });
-    l.advanceTo(asked + (ENVOY_DAYS - 2) * DAY);
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS + ENVOY_DAYS - 2) * DAY);
     expect(t.get(SECT_GRIEVANCES, a)?.entries[0]?.outcome).toBeUndefined();
-    l.advanceTo(asked + (ENVOY_DAYS + 1) * DAY);
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS + ENVOY_DAYS + 1) * DAY);
     const entry = t.get(SECT_GRIEVANCES, a)?.entries[0];
     const replies = l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT);
     expect(replies).toHaveLength(1);
@@ -158,6 +161,49 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
       expect(entry?.outcome?.result).toBe("refused");
       expect(after?.sentiment.resentment ?? 0).toBeGreaterThan(ours.sentiment.resentment);
     }
+    expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
+  });
+
+  it("si uno de los suyos lleva la exigencia, la ranura no sale; si se le vence, sale desde el plazo (novel4-grievance-envoy-mission)", () => {
+    const { l, t, a, b, by, victim, event, knower } = setup();
+    t.deleteRaw(KNOWN_DEEDS.name, knower);
+    const asked = l.now;
+    t.set(SECT_GRIEVANCES, a, {
+      entries: [
+        {
+          deed: event,
+          against: b,
+          kind: "assault",
+          by,
+          victim,
+          at: asked,
+          response: { choice: "demand", at: asked },
+        },
+      ],
+    });
+    t.set(SECT_MEMBER, knower, { org: a, rank: "inner", since: l.now });
+    const due = asked + MISSION_DAYS.envoy * DAY;
+    t.set(SECT_MISSION, knower, {
+      org: a,
+      kind: "envoy",
+      against: b,
+      deed: event,
+      done: 0,
+      points: 30,
+      by: victim,
+      at: asked,
+      due,
+    });
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS + ENVOY_DAYS + 1) * DAY);
+    const carried = t.get(SECT_GRIEVANCES, a)?.entries[0];
+    expect(carried?.envoy).toEqual({ who: knower, due });
+    expect(carried?.outcome).toBeUndefined();
+    l.advanceTo(due + (ENVOY_DAYS - 1) * DAY);
+    expect(t.get(SECT_GRIEVANCES, a)?.entries[0]?.outcome).toBeUndefined();
+    l.advanceTo(due + (ENVOY_DAYS + 1) * DAY);
+    const entry = t.get(SECT_GRIEVANCES, a)?.entries[0];
+    expect(["paid", "refused"]).toContain(entry?.outcome?.result);
+    expect(l.world.log.all().filter((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT)).toHaveLength(1);
     expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
   });
 
@@ -202,7 +248,7 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
         },
       ],
     });
-    l.advanceTo(asked + (ENVOY_DAYS + 1) * DAY);
+    l.advanceTo(asked + (ENVOY_WAIT_DAYS + ENVOY_DAYS + 1) * DAY);
     const reply = l.world.log.all().find((e) => e.kind === ORG_GRIEVANCE_REPLY_EVENT);
     const d = reply?.data as { reply?: string; penalty?: number } | undefined;
     const cues = playerView(l.world, [], { heardSince: asked }).self.cues;
