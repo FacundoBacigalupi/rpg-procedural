@@ -1523,6 +1523,16 @@
     ]
   },
   {
+    "id": "self.mission_watch_progress",
+    "lines": ["Las horas de guardia en el camino cuentan para la misión."]
+  },
+  {
+    "id": "self.mission_watch_done",
+    "lines": [
+      "De vuelta en la sede, la secta da por cumplida la guardia; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
     "id": "self.mission_hunt_done",
     "lines": [
       "De vuelta en la sede, la secta da por cumplida la caza de la bestia; los puntos quedan anotados a tu nombre."

@@ -148,6 +148,10 @@ export type SelfCue =
   | "mission_envoy_done"
   /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
   | "mission_hunt_done"
+  /** Horas de guardia en el puesto, anotadas (novel4-watch-guard). */
+  | "mission_watch_progress"
+  /** Cobró la guardia: las horas cumplidas y él de vuelta en la sede (novel4-watch-guard). */
+  | "mission_watch_done"
   | "mission_lapsed"
   /** Retó a alguien y aceptó: el duelo quedó acordado (novel3-challenge-ask). */
   | "challenge_accepted"

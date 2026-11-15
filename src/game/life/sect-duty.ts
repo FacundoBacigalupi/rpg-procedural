@@ -65,6 +65,7 @@ import {
   MISSION_PROGRESS_EVENT,
   methodExchange,
   missionCredit,
+  missionHeld,
   missionLapsed,
   ORG_GRIEVANCE_REPLY_EVENT,
   type PillDef,
@@ -96,6 +97,7 @@ import {
   type StateChange,
   setComponent,
   TECHNIQUE_TAUGHT_EVENT,
+  WATCH_VERBS,
   type WeaponDef,
 } from "../../sim/index.ts";
 import { meditation } from "./meditate.ts";
@@ -298,6 +300,46 @@ export function sectDutyProcess(
           if (d?.envoy !== undefined && m?.kind === "envoy" && m.deed === d.deed && m.done < 1) {
             missions.set(d.envoy, { ...m, reply: e.id, done: 1 });
           }
+          continue;
+        }
+        // La guardia (novel4-watch-guard): esperar o mirar en el puesto suma las horas a la misión.
+        if (WATCH_VERBS.has(e.kind) && e.outcome !== "failure") {
+          const who = e.actors[0] as AgentId | undefined;
+          const m = who !== undefined ? missionOf(who) : undefined;
+          const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
+          if (
+            who === undefined ||
+            m?.kind !== "watch" ||
+            m.hours === undefined ||
+            m.done >= m.hours ||
+            typeof seconds !== "number" ||
+            seconds <= 0 ||
+            ctx.truth.get(LOCATION, who as unknown as EntityRef)?.hex !== m.hex
+          ) {
+            continue;
+          }
+          const done = round2(Math.min(m.hours, m.done + seconds / 3600));
+          missions.set(who, { ...m, done, watched: e.id });
+          events.push({
+            kind: MISSION_PROGRESS_EVENT,
+            actors: [who],
+            place: e.place,
+            data: {
+              org: m.org,
+              kind: m.kind,
+              ...(m.against !== undefined ? { against: m.against } : {}),
+              ...(m.band !== undefined ? { band: m.band } : {}),
+              hours: round2(done - m.done),
+              done,
+              of: m.hours,
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: e.id },
+              ...(m.cause ? [{ kind: "event" as const, event: m.cause }] : []),
+              { kind: "state", entity: who as unknown as EntityRef, key: SECT_MISSION.name },
+            ],
+          });
           continue;
         }
         if (e.kind === "combat.fight") {
@@ -749,7 +791,8 @@ export function sectDutyProcess(
         }
       }
       // Cazar: quien la tiene hecha y está en la sede la cobra (novel3-beasts-mission-claim). Lo mismo
-      // el enviado que trae la respuesta (novel4-grievance-envoy-speak).
+      // el enviado que trae la respuesta (novel4-grievance-envoy-speak) y la guardia con sus horas
+      // (novel4-watch-guard).
       const claimable = new Set([...ctx.truth.ids(SECT_MISSION), ...missions.keys()]);
       for (const id of [...claimable].sort() as EntityRef[]) {
         const who = id as unknown as AgentId;
@@ -759,7 +802,9 @@ export function sectDutyProcess(
             ? m.fight
             : m?.kind === "envoy" && m.done >= 1
               ? m.reply
-              : undefined;
+              : m?.kind === "watch" && missionHeld(m)
+                ? m.watched
+                : undefined;
         if (!m || proof === undefined) continue;
         if (m.kind === "hunt" && m.beast !== undefined) {
           const dead = (ctx.truth.get(BODY_STATE, m.beast)?.death ?? null) !== null;
@@ -787,6 +832,7 @@ export function sectDutyProcess(
             kind: m.kind,
             ...(m.beast !== undefined ? { beast: m.beast } : {}),
             ...(m.against !== undefined ? { against: m.against } : {}),
+            ...(m.band !== undefined ? { band: m.band } : {}),
             points: m.points,
           },
           emissions: {},

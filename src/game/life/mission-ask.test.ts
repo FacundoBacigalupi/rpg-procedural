@@ -25,6 +25,7 @@ import {
   MISSION_DONE_EVENT,
   MISSION_LAPSED_EVENT,
   MISSION_PROGRESS_EVENT,
+  MISSION_WATCH_HOURS,
   normalize,
   ORG_RELATION,
   PLACE,
@@ -39,6 +40,7 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { treasuryAccount } from "./sect-hall.ts";
 import { watchPosts } from "./sect-watch.ts";
+import { skipPlan } from "./skip.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -344,6 +346,64 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
     expect(mission?.hex).toBe(watchPosts(life.world.map)(w.truth, org, rival)?.hex);
     expect(mission?.hex).not.toBe(hex);
     expect(theirHex).not.toBe(hex);
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  });
+
+  it("las horas de espera en el puesto cuentan; cumplidas, se cobra al volver (novel4-watch-guard)", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, {
+      cultivation: true,
+      sectSeatRegion: true,
+      rivalSect: true,
+    });
+    const w = life.world;
+    const me = life.player;
+    const [org, rival] = w.truth.ids(SECT) as EntityRef[];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    if (!org || !rival || !sect) throw new Error("sin sectas");
+    const seatHex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    const post = watchPosts(w.map)(w.truth, org, rival)?.hex;
+    if (post === undefined) throw new Error("sin puesto");
+    w.truth.set(SECT_MEMBER, me, { org, rank: "inner", since: life.now });
+    w.truth.set(SECT_MISSION, me, {
+      org,
+      kind: "watch",
+      against: rival,
+      hex: post,
+      hours: MISSION_WATCH_HOURS,
+      done: 0,
+      points: 16,
+      by: me,
+      at: life.now,
+      due: life.now + 7 * 24 * HOUR,
+    });
+    // Esperar fuera del puesto no cuenta.
+    w.truth.set(LOCATION, me, { hex: seatHex });
+    life.turn(skipPlan(me, 2 * HOUR), 1);
+    expect(w.truth.get(SECT_MISSION, me)?.done).toBe(0);
+    // En el puesto, sí, hasta las horas pedidas.
+    for (
+      let i = 0;
+      i < 6 && (w.truth.get(SECT_MISSION, me)?.done ?? 0) < MISSION_WATCH_HOURS;
+      i++
+    ) {
+      w.truth.set(LOCATION, me, { hex: post });
+      const body = w.truth.get(BODY_STATE, me);
+      if (body) w.truth.set(BODY_STATE, me, { ...body, sleepDebt: 0, fatigue: 0 });
+      life.turn(skipPlan(me, 3 * HOUR), 1);
+    }
+    const kept = w.truth.get(SECT_MISSION, me);
+    expect(kept?.done).toBe(MISSION_WATCH_HOURS);
+    expect(kept?.watched).toBeDefined();
+    expect(w.log.all().some((e) => e.kind === MISSION_PROGRESS_EVENT && e.actors[0] === me)).toBe(
+      true,
+    );
+    // Cumplida, no se vence aunque pase el plazo; se cobra en la sede.
+    w.truth.set(LOCATION, me, { hex: seatHex });
+    life.advanceTo(life.now + HOUR);
+    expect(w.truth.get(SECT_MISSION, me)).toBeUndefined();
+    const done = w.log.all().find((e) => e.kind === MISSION_DONE_EVENT && e.actors[0] === me);
+    expect(done?.data).toMatchObject({ org, kind: "watch", against: rival });
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   });
 });

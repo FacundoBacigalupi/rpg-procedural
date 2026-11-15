@@ -909,9 +909,13 @@ export function playerView(
           ? "mission_hunt_done"
           : (missionEnd.data as { kind?: unknown } | null)?.kind === "envoy"
             ? "mission_envoy_done"
-            : "mission_done"
+            : (missionEnd.data as { kind?: unknown } | null)?.kind === "watch"
+              ? "mission_watch_done"
+              : "mission_done"
         : missionEnd.kind === MISSION_PROGRESS_EVENT
-          ? "mission_progress"
+          ? (missionEnd.data as { kind?: unknown } | null)?.kind === "watch"
+            ? "mission_watch_progress"
+            : "mission_progress"
           : "mission_lapsed",
     );
   }
