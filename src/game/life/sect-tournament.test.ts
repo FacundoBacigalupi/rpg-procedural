@@ -13,14 +13,17 @@ import {
   ORG_TOURNAMENT_CALLED_EVENT,
   ORG_TOURNAMENT_HELD_EVENT,
   ORG_TOURNAMENT_LAPSED_EVENT,
+  ORG_TOURNAMENT_PRIZE_EVENT,
   PERSON,
   PLACE,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_MEMBER,
   SECT_TOURNAMENT,
   TOURNAMENT_LATE_DAYS,
   TOURNAMENT_NOTICE_DAYS,
   TOURNAMENT_RETURN_DAYS,
+  TOURNAMENT_WIN_POINTS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE } from "./act.ts";
@@ -124,7 +127,7 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     ).toHaveLength(0);
   });
 
-  it("la visitante manda a uno de cuerpo: va, pelea en la plataforma y vuelve (delegation, bouts)", () => {
+  it("la visitante manda a uno de cuerpo: va, pelea en la plataforma, deja premio y vuelve (delegation, bouts, prize)", () => {
     const { l, t, a, b } = setup(0.1, true);
     const sa = t.get(SECT, a);
     const sb = t.get(SECT, b);
@@ -245,6 +248,24 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
               e.causes.some((c) => c.kind === "event" && c.event === fight.id),
           ),
       ).toBe(true);
+    }
+    // Lo que deja (novel4-tournament-prize): puntos al que ganó y la fuerza vista como piso.
+    const prize = l.world.log.all().find((e) => e.kind === ORG_TOURNAMENT_PRIZE_EVENT);
+    expect(prize?.causes).toEqual([{ kind: "event", event: held.id }]);
+    const winner = bouts[0]?.winner;
+    if (winner) {
+      expect(prize?.actors).toEqual([winner]);
+      const row = t.get(SECT_CONTRIBUTION, winner as unknown as EntityRef);
+      expect(row?.org).toBe(t.get(SECT_MEMBER, winner)?.org);
+      expect(row?.points).toBeGreaterThanOrEqual(TOURNAMENT_WIN_POINTS);
+    }
+    for (const [from, to] of [
+      [host, guest],
+      [guest, host],
+    ] as const) {
+      const tie = t.get(ORG_RELATION, from)?.toward[to];
+      expect(tie?.believedStrength.disciples).toBeGreaterThanOrEqual(1);
+      expect(tie?.history).toContain(prize?.id);
     }
     // Cerrado, vuelve.
     const now = l.now;

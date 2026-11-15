@@ -3,6 +3,7 @@ import type { EntityRef, EventId } from "../../core/index.ts";
 import type { OrgTie } from "../org/index.ts";
 import {
   acceptsTournament,
+  afterTournamentSeen,
   delegateLeg,
   nextHost,
   TOURNAMENT_EVERY_DAYS,
@@ -74,5 +75,24 @@ describe("el torneo entre sectas (novel4-tournament-call)", () => {
     const held = rec({ at, status: "held", closed: at });
     expect(delegateLeg(held, at + DAY, DAY)).toBe("home");
     expect(delegateLeg(held, at + TOURNAMENT_RETURN_DAYS * DAY, DAY)).toBeUndefined();
+  });
+});
+
+describe("lo que deja el torneo (novel4-tournament-prize)", () => {
+  it("lo visto en la plataforma es un piso de la fuerza creída", () => {
+    const t = tie(0.1, 0.1);
+    const seen = afterTournamentSeen(
+      t,
+      { disciples: 3, elders: 0, topStage: 5 },
+      "event:9" as EventId,
+    );
+    expect(seen.believedStrength).toEqual({ elders: 2, disciples: 10, topStage: 5 });
+    expect(seen.history).toEqual(["event:9"]);
+    const more = afterTournamentSeen(
+      t,
+      { disciples: 12, elders: 3, topStage: 1 },
+      "event:9" as EventId,
+    );
+    expect(more.believedStrength).toEqual({ elders: 3, disciples: 12, topStage: 3 });
   });
 });

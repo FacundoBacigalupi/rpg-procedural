@@ -255,6 +255,7 @@ import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
 import {
   sectTournamentBoutsProcess,
+  sectTournamentPrizeProcess,
   sectTournamentProcess,
   tournamentDuty,
 } from "./sect-tournament.ts";
@@ -2664,6 +2665,8 @@ export function lifeWorld(
                       lonDeg: parts.map.lonDeg,
                       player,
                     }),
+                    // Lo que deja: puntos al que ganó y la fuerza vista (novel4-tournament-prize).
+                    sectTournamentPrizeProcess(),
                     // La secta anota quién falta de la sede (novel-sect-seat-return-leave).
                     sectAbsenceProcess({ map: parts.map, dayTicks: parts.clock.day }),
                     // Las bestias del monte de la sede bajan con hambre (novel3-beasts-materialize).

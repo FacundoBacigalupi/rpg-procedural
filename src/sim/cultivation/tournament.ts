@@ -120,3 +120,33 @@ export function delegateLeg(
   }
   return now < (rec.closed ?? rec.at) + TOURNAMENT_RETURN_DAYS * dayTicks ? "home" : undefined;
 }
+
+/** Lo que deja (novel4-tournament-prize): premio y fuerza vista. */
+export const ORG_TOURNAMENT_PRIZE_EVENT = "org.tournament_prize";
+/** Puntos de aporte que su propia secta le da a quien ganó un duelo del torneo (sin calibrar). */
+export const TOURNAMENT_WIN_POINTS = 20;
+
+/** Lo que una secta vio de la otra en la plataforma: cuántos, de qué rango y el umbral más alto. */
+export interface TournamentSeen {
+  readonly disciples: number;
+  readonly elders: number;
+  readonly topStage: number;
+}
+
+/**
+ * Lo que el torneo le hace a la fuerza que una secta le cree a la otra (puro, novel4-tournament-
+ * prize): lo visto en la plataforma es un piso (discípulos, ancianos y umbral más alto); lo que no
+ * subió a la plataforma no se descuenta. Queda en la historia.
+ */
+export function afterTournamentSeen(tie: OrgTie, seen: TournamentSeen, event: EventId): OrgTie {
+  const b = tie.believedStrength;
+  return {
+    ...tie,
+    believedStrength: {
+      elders: Math.max(b.elders, seen.elders),
+      disciples: Math.max(b.disciples, seen.disciples),
+      topStage: Math.max(b.topStage, seen.topStage),
+    },
+    history: [...tie.history, event],
+  };
+}

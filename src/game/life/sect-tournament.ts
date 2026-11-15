@@ -16,6 +16,11 @@
 // (`strikeFight`) y `life.duels` mueve la cara y lo que una secta siente por la otra. Se cierra
 // hecho (`org.tournament_held`, con quién ganó cada duelo). Sin pares, se espera al día siguiente
 // hasta que se pierde.
+//
+// Lo que deja (novel4-tournament-prize): `life.sect_tournament_prize`, por evento, le da a cada
+// ganador `TOURNAMENT_WIN_POINTS` de aporte de su propia secta, y cada secta toma lo que vio de la
+// otra en la plataforma (cuántos subieron, sus ancianos y el umbral más alto) como piso de la fuerza
+// que le cree (`afterTournamentSeen`). `org.tournament_prize`, causado por el torneo hecho.
 
 import {
   type AgentId,
@@ -27,6 +32,7 @@ import {
 } from "../../core/index.ts";
 import {
   acceptsTournament,
+  afterTournamentSeen,
   BODY_STATE,
   CULTIVATION_STATE,
   DUEL,
@@ -43,6 +49,8 @@ import {
   ORG_TOURNAMENT_CALLED_EVENT,
   ORG_TOURNAMENT_HELD_EVENT,
   ORG_TOURNAMENT_LAPSED_EVENT,
+  ORG_TOURNAMENT_PRIZE_EVENT,
+  type OrgRelations,
   orgTie,
   PERSON,
   PLACE,
@@ -51,9 +59,11 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   SECT,
+  SECT_CONTRIBUTION,
   SECT_MEMBER,
   SECT_MISSION,
   SECT_TOURNAMENT,
+  type SectContribution,
   type SectTournaments,
   SKILL_STATE,
   type SpaceGraph,
@@ -62,7 +72,9 @@ import {
   setComponent,
   TOURNAMENT_DELEGATES,
   TOURNAMENT_NOTICE_DAYS,
+  TOURNAMENT_WIN_POINTS,
   type TournamentRecord,
+  type TournamentSeen,
   TRIBULATION,
   tournamentDue,
   tournamentKeeper,
@@ -77,6 +89,7 @@ import { DUEL_PLATFORM_EVENT, type SectSparOptions } from "./sect-spar.ts";
 
 export const SECT_TOURNAMENT_PROCESS = "life.sect_tournament";
 export const SECT_TOURNAMENT_BOUTS_PROCESS = "life.sect_tournament_bouts";
+export const SECT_TOURNAMENT_PRIZE_PROCESS = "life.sect_tournament_prize";
 /** La hora local de los duelos (de mañana: no choca con la práctica de la tarde). */
 export const TOURNAMENT_HOUR = 10;
 /** Lo que espera de una vez el delegado en la sede que pone el torneo (decide es diario). */
@@ -380,6 +393,107 @@ export function sectTournamentBoutsProcess(
           ...[...kept]
             .sort(([x], [y]) => compareStrings(x, y))
             .map(([id, t]) => setComponent(SECT_TOURNAMENT, id, t)),
+        ],
+      };
+    },
+  };
+}
+
+/**
+ * Lo que cada secta vio de las otras en la plataforma (puro): de los que subieron (`actors` del
+ * torneo hecho), por secta, cuántos discípulos, cuántos ancianos o maestro y el umbral más alto.
+ */
+export function tournamentSeen(
+  truth: ReadonlyWorldTruth,
+  up: readonly AgentId[],
+): Map<EntityRef, TournamentSeen> {
+  const out = new Map<EntityRef, TournamentSeen>();
+  for (const id of up) {
+    const m = truth.get(SECT_MEMBER, id);
+    if (!m) continue;
+    const org = m.org as EntityRef;
+    const had = out.get(org) ?? { disciples: 0, elders: 0, topStage: 0 };
+    const elder = m.rank === "elder" || m.rank === "master";
+    out.set(org, {
+      disciples: had.disciples + (elder ? 0 : 1),
+      elders: had.elders + (elder ? 1 : 0),
+      topStage: Math.max(had.topStage, truth.get(CULTIVATION_STATE, id)?.stage ?? 0),
+    });
+  }
+  return out;
+}
+
+/** Escritor del premio y de la fuerza vista (cableado con los duelos del torneo). */
+export function sectTournamentPrizeProcess(): ProcessDef {
+  return {
+    id: SECT_TOURNAMENT_PRIZE_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [SECT_MEMBER.name, SECT_CONTRIBUTION.name, ORG_RELATION.name, CULTIVATION_STATE.name],
+    writes: [SECT_CONTRIBUTION.name, ORG_RELATION.name],
+    run(ctx) {
+      const truth = ctx.truth;
+      const events: EventDraft[] = [];
+      const rows = new Map<AgentId, SectContribution>();
+      const relations = new Map<EntityRef, OrgRelations>();
+      for (const e of ctx.recent) {
+        if (e.kind !== ORG_TOURNAMENT_HELD_EVENT) continue;
+        const d = e.data as {
+          host?: EntityRef;
+          guest?: EntityRef;
+          bouts?: readonly { winner?: AgentId }[];
+        } | null;
+        if (!d?.host || !d.guest) continue;
+        const prize = draftEvent(events.length);
+        const winners: AgentId[] = [];
+        for (const b of d.bouts ?? []) {
+          const who = b.winner;
+          const org = who ? truth.get(SECT_MEMBER, who)?.org : undefined;
+          if (!who || org === undefined) continue;
+          const had = rows.get(who) ?? truth.get(SECT_CONTRIBUTION, who as unknown as EntityRef);
+          rows.set(who, {
+            org: org as EntityRef,
+            points: (had?.org === org ? had.points : 0) + TOURNAMENT_WIN_POINTS,
+            hours: had?.org === org ? had.hours : 0,
+            last: ctx.now,
+          });
+          winners.push(who);
+        }
+        const seen = tournamentSeen(truth, e.actors as AgentId[]);
+        for (const [from, to] of [
+          [d.host, d.guest],
+          [d.guest, d.host],
+        ] as const) {
+          const had = relations.get(from) ?? truth.get(ORG_RELATION, from);
+          const tie = orgTie(had, to);
+          const what = seen.get(to);
+          if (!had || !tie || !what) continue;
+          relations.set(from, {
+            toward: { ...had.toward, [to]: afterTournamentSeen(tie, what, prize) },
+          });
+        }
+        events.push({
+          kind: ORG_TOURNAMENT_PRIZE_EVENT,
+          actors: winners,
+          place: e.place,
+          data: { host: d.host, guest: d.guest, winners, points: TOURNAMENT_WIN_POINTS },
+          emissions: {},
+          causes: [{ kind: "event", event: e.id }],
+        });
+      }
+      if (events.length === 0) return {};
+      return {
+        events,
+        changes: [
+          ...[...rows]
+            .sort(([x], [y]) => compareStrings(x, y))
+            .map(([id, row]) => setComponent(SECT_CONTRIBUTION, id as unknown as EntityRef, row)),
+          ...[...relations]
+            .sort(([x], [y]) => compareStrings(x, y))
+            .map(([id, r]) => setComponent(ORG_RELATION, id, r)),
         ],
       };
     },
