@@ -641,6 +641,16 @@
     ]
   },
   {
+    "id": "mission.give.watch_rival",
+    "lines": [
+      "La otra secta anda con malas intenciones. Hacé guardia en el camino que va para allá, mirá quién pasa y volvé a contar; tenés una semana.",
+      "No me fío de los de la otra secta. Vigilá el camino hacia su sede unas horas y volvé antes de una semana."
+    ],
+    "formal": [
+      "La otra secta nos tiene en vilo. Monte guardia en el camino hacia su sede, observe a quien pase y regrese a informar en una semana."
+    ]
+  },
+  {
     "id": "mission.give.hunt",
     "lines": [
       "Bajó una bestia del monte y anda cerca de la sede. Matala o echala antes de que vuelva arriba, y vení a contarlo.",

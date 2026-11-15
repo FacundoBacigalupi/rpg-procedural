@@ -26,6 +26,7 @@ import {
   MISSION_LAPSED_EVENT,
   MISSION_PROGRESS_EVENT,
   normalize,
+  ORG_RELATION,
   PLACE,
   SECT,
   SECT_CONTRIBUTION,
@@ -37,6 +38,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { treasuryAccount } from "./sect-hall.ts";
+import { watchPosts } from "./sect-watch.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -287,6 +289,61 @@ describe("llevar la exigencia como misión (novel4-grievance-envoy-mission)", ()
       who: me,
       due: mission?.due,
     });
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+  });
+});
+
+describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
+  it("con rencor a la otra, el anciano da la guardia en el camino hacia su sede", () => {
+    const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+    const life = Life.create(3, content, {
+      cultivation: true,
+      sectSeatRegion: true,
+      rivalSect: true,
+    });
+    const w = life.world;
+    const me = life.player;
+    const [org, rival] = w.truth.ids(SECT) as EntityRef[];
+    const sect = org ? w.truth.get(SECT, org) : undefined;
+    const other = rival ? w.truth.get(SECT, rival) : undefined;
+    if (!org || !rival || !sect || !other) throw new Error("sin sectas");
+    const hex = w.truth.get(PLACE, sect.seatPlace)?.hexes[0] as number;
+    const theirHex = w.truth.get(PLACE, other.seatPlace)?.hexes[0] as number;
+    w.truth.set(LOCATION, me, { hex });
+    life.advanceTo(life.now + 2 * HOUR);
+    const elder = w.truth
+      .ids(SECT_MEMBER)
+      .map((id) => ({ id: id as AgentId, m: w.truth.get(SECT_MEMBER, id) }))
+      .find((x) => x.m?.org === org && (x.m.rank === "elder" || x.m.rank === "master"))?.id;
+    if (!elder) throw new Error("sin anciano");
+    w.truth.set(SECT_MEMBER, me, { org, rank: "inner", since: life.now });
+    const relations = w.truth.get(ORG_RELATION, org);
+    const tie = relations?.toward[rival];
+    if (!relations || !tie) throw new Error("sin relación");
+    w.truth.set(ORG_RELATION, org, {
+      toward: {
+        ...relations.toward,
+        [rival]: { ...tie, sentiment: { ...tie.sentiment, resentment: 0.8 } },
+      },
+    });
+    const here = w.truth.get(LOCATION, me);
+    if (!here) throw new Error("sin lugar");
+    w.truth.set(LOCATION, elder, here);
+    for (const id of [me, elder]) {
+      const body = w.truth.get(BODY_STATE, id);
+      if (body) w.truth.set(BODY_STATE, id, { ...body, sleepDebt: 0, fatigue: 0 });
+    }
+    const report = life.turn(say(me, elder, "Anciano, ¿hay alguna misión para mí?"), 1);
+    const reply = report.events.find((e) => e.kind === "action.speak" && e.actors[0] === elder);
+    expect((reply?.data as { effect?: { reply: string } } | undefined)?.effect?.reply).toBe(
+      "mission.give.watch_rival",
+    );
+    const mission = w.truth.get(SECT_MISSION, me);
+    expect(mission).toMatchObject({ org, kind: "watch", against: rival, by: elder });
+    // El puesto es el del camino hacia la otra sede, fuera de la propia.
+    expect(mission?.hex).toBe(watchPosts(life.world.map)(w.truth, org, rival)?.hex);
+    expect(mission?.hex).not.toBe(hex);
+    expect(theirHex).not.toBe(hex);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   });
 });
