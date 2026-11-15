@@ -31,6 +31,7 @@ import {
   type LedgerUnit,
   ledgerUnit,
   type PlaceId,
+  type PlaceRef,
 } from "../../core/index.ts";
 import {
   ART_KNOWN,
@@ -328,7 +329,8 @@ export function sectDutyProcess(
             m.done >= m.hours ||
             typeof seconds !== "number" ||
             seconds <= 0 ||
-            ctx.truth.get(LOCATION, who as unknown as EntityRef)?.hex !== m.hex
+            m.hex === undefined ||
+            !watchedAt(ctx.truth, who, e.place, m.hex)
           ) {
             continue;
           }
@@ -965,4 +967,17 @@ function herbDelivery(
     return undefined;
   if (seatOrgOf(truth, to) !== mission.org) return undefined;
   return { who, to, mission, unit: ledgerUnit(`good:${herb.good}`), grams };
+}
+
+/**
+ * Si lo que se hizo fue en el puesto (`hex`): el lugar del evento lo contiene o, si el evento no
+ * nombra un lugar, el actor está ahí. El evento manda porque la espera larga se anota al cerrar y
+ * para entonces el actor pudo haberse ido.
+ */
+function watchedAt(truth: ReadonlyWorldTruth, who: AgentId, place: PlaceRef, hex: number): boolean {
+  if (place.kind === "place") {
+    const p = truth.get(PLACE, place.place as unknown as EntityRef);
+    if (p) return (p.hexes as readonly number[]).includes(hex);
+  }
+  return truth.get(LOCATION, who as unknown as EntityRef)?.hex === hex;
 }
