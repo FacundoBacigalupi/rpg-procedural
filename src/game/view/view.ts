@@ -152,6 +152,8 @@ export type SelfCue =
   | "mission_watch_progress"
   /** Cobró la guardia: las horas cumplidas y él de vuelta en la sede (novel4-watch-guard). */
   | "mission_watch_done"
+  /** Al cobrar la guardia contó que vio pasar a los de la otra secta (novel4-watch-report). */
+  | "mission_watch_seen"
   | "mission_lapsed"
   /** Retó a alguien y aceptó: el duelo quedó acordado (novel3-challenge-ask). */
   | "challenge_accepted"

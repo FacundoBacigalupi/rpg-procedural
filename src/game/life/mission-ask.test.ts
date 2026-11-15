@@ -28,6 +28,7 @@ import {
   MISSION_WATCH_HOURS,
   normalize,
   ORG_RELATION,
+  PERSON,
   PLACE,
   SECT,
   SECT_CONTRIBUTION,
@@ -381,6 +382,19 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
     w.truth.set(LOCATION, me, { hex: seatHex });
     life.turn(skipPlan(me, 2 * HOUR), 1);
     expect(w.truth.get(SECT_MISSION, me)?.done).toBe(0);
+    // Uno de la otra secta anda afuera en el puesto (novel4-watch-report).
+    const passer = w.truth
+      .ids(PERSON)
+      .find(
+        (id) =>
+          id !== me &&
+          w.truth.get(SECT_MEMBER, id) === undefined &&
+          (w.truth.get(BODY_STATE, id)?.death ?? null) === null &&
+          w.truth.get(LOCATION, id) !== undefined,
+      ) as AgentId | undefined;
+    if (!passer) throw new Error("sin nadie");
+    w.truth.set(SECT_MEMBER, passer, { org: rival, rank: "outer", since: life.now });
+    const fearBefore = w.truth.get(ORG_RELATION, org)?.toward[rival]?.sentiment.fear ?? 0;
     // En el puesto, sí, hasta las horas pedidas.
     for (
       let i = 0;
@@ -388,6 +402,7 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
       i++
     ) {
       w.truth.set(LOCATION, me, { hex: post });
+      w.truth.set(LOCATION, passer, { hex: post });
       const body = w.truth.get(BODY_STATE, me);
       if (body) w.truth.set(BODY_STATE, me, { ...body, sleepDebt: 0, fatigue: 0 });
       life.turn(skipPlan(me, 3 * HOUR), 1);
@@ -395,6 +410,7 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
     const kept = w.truth.get(SECT_MISSION, me);
     expect(kept?.done).toBe(MISSION_WATCH_HOURS);
     expect(kept?.watched).toBeDefined();
+    expect(kept?.sighted).toEqual([passer]);
     expect(w.log.all().some((e) => e.kind === MISSION_PROGRESS_EVENT && e.actors[0] === me)).toBe(
       true,
     );
@@ -403,7 +419,10 @@ describe("vigilar el camino hacia la otra secta (novel4-watch-need)", () => {
     life.advanceTo(life.now + HOUR);
     expect(w.truth.get(SECT_MISSION, me)).toBeUndefined();
     const done = w.log.all().find((e) => e.kind === MISSION_DONE_EVENT && e.actors[0] === me);
-    expect(done?.data).toMatchObject({ org, kind: "watch", against: rival });
+    expect(done?.data).toMatchObject({ org, kind: "watch", against: rival, sighted: 1 });
+    const tie = w.truth.get(ORG_RELATION, org)?.toward[rival];
+    expect(tie?.sentiment.fear).toBeGreaterThan(fearBefore);
+    expect(tie?.believedStrength.disciples).toBeGreaterThanOrEqual(1);
     expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
   });
 });
