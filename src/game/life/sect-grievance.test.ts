@@ -12,10 +12,12 @@ import {
   GRIEVANCE_RESENTMENT,
   KNOWN_DEEDS,
   ORG_GRIEVANCE_EVENT,
+  ORG_GRIEVANCE_MATTER_EVENT,
   ORG_RELATION,
   orgTie,
   PERSON,
   SECT,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -81,6 +83,33 @@ describe("las ofensas entre sectas (novel4-grievance-record)", () => {
       before.sentiment.resentment + GRIEVANCE_RESENTMENT.killing + 1e-9,
     );
     expect(newGrievances(t).filter((g) => g.event === event)).toHaveLength(0);
+    expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
+  });
+
+  it("al día siguiente quien manda la trata: una respuesta, causada por el hecho; determinista", () => {
+    const run = () => {
+      const s = setup();
+      for (let i = 0; i < 3; i++) s.l.advanceTo(s.l.now + DAY);
+      return s;
+    };
+    const { l, t, a, b, event } = run();
+    const all = l.world.log.all();
+    const recorded = all.find(
+      (e) => e.kind === ORG_GRIEVANCE_EVENT && (e.data as { deed?: string }).deed === event,
+    );
+    const matters = all.filter(
+      (e) => e.kind === ORG_GRIEVANCE_MATTER_EVENT && (e.data as { deed?: string }).deed === event,
+    );
+    expect(matters).toHaveLength(1);
+    const matter = matters[0];
+    if (!recorded || !matter) throw new Error("sin eventos");
+    expect(matter.tick).toBeGreaterThan(recorded.tick);
+    expect(matter.causes).toContainEqual({ kind: "event", event });
+    const entry = t.get(SECT_GRIEVANCES, a)?.entries.find((e) => e.deed === event);
+    expect(entry?.against).toBe(b);
+    expect(entry?.response?.choice).toBe((matter.data as { response?: string }).response);
+    expect(["demand", "retaliate", "forget"]).toContain(entry?.response?.choice);
+    expect(run().t.get(SECT_GRIEVANCES, a)).toEqual(t.get(SECT_GRIEVANCES, a));
     expect(checkInvariants({ truth: l.world.truth, log: l.world.log })).toEqual([]);
   });
 
