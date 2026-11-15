@@ -253,6 +253,7 @@ import { sectGrievanceProcess, sectGrievanceSpokenProcess } from "./sect-grievan
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
+import { sectTournamentProcess } from "./sect-tournament.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
 import { sectWatchProcess, watchDestination, watchPosts } from "./sect-watch.ts";
 import { sleepProcess } from "./sleep.ts";
@@ -2617,6 +2618,8 @@ export function lifeWorld(
               }),
               // La exigencia contestada de palabra al enviado (novel4-grievance-envoy-speak).
               sectGrievanceSpokenProcess(),
+              // Las sectas rivales convocan su torneo (novel4-tournament-call).
+              sectTournamentProcess({ dayTicks: parts.clock.day }),
               // Con viajes de NPC, la secta manda a uno de guardia al puesto (novel4-watch-npc).
               ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
                 ? [

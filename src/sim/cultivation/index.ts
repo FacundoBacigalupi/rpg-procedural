@@ -15,4 +15,5 @@ export * from "./school.ts";
 export * from "./sect.ts";
 export * from "./seed.ts";
 export * from "./talent.ts";
+export * from "./tournament.ts";
 export * from "./trial.ts";
