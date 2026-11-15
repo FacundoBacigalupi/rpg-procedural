@@ -4,17 +4,25 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, type EntityRef, loadContent } from "../../core/index.ts";
+import { type ContentSource, type EntityRef, HOUR, loadContent } from "../../core/index.ts";
 import {
+  checkInvariants,
   chooseRivalSeat,
   ENTITY,
+  LOCATION,
+  PLACE,
   PLACE_NAME,
+  PLACE_QI,
+  patchOf,
   SECT,
   SECT_FOUNDED_EVENT,
+  SECT_MEMBER,
   SECT_SCHOOL,
+  WILDS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
+import { SECT_HALL } from "./sect-hall.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -67,5 +75,50 @@ describe("la secta rival en la vida (novel4-rival-sect-seed)", () => {
     expect(off.world.truth.ids(SECT).length).toBe(1);
     const explicit = Life.create(3, content, { cultivation: true, rivalSect: false });
     expect(explicit.hash().total).toBe(off.hash().total);
+  });
+});
+
+describe("la sede rival en la región (novel4-rival-sect-region)", () => {
+  const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+  const options = { cultivation: true, sectSeatRegion: true, rivalSect: true } as const;
+  const run = () => {
+    const l = Life.create(3, content, options);
+    const w = l.world;
+    const [first, rival] = w.truth.ids(SECT) as EntityRef[];
+    const a = first ? w.truth.get(SECT, first) : undefined;
+    const b = rival ? w.truth.get(SECT, rival) : undefined;
+    if (!a || !b || !rival) throw new Error("sin sectas");
+    const hexA = w.truth.get(PLACE, a.seatPlace)?.hexes[0];
+    const hexB = w.truth.get(PLACE, b.seatPlace)?.hexes[0];
+    if (hexA === undefined || hexB === undefined) throw new Error("sedes fuera del mapa");
+    return { l, w, rival, b, hexA, hexB };
+  };
+
+  it("las dos sedes están en el mapa, cada una en su parche, con su qi y su monte", () => {
+    const { l, w, b, hexA, hexB } = run();
+    const map = l.world.map;
+    expect(patchOf(map, hexA).base).not.toBe(patchOf(map, hexB).base);
+    expect(w.truth.get(PLACE_QI, b.seatPlace)).toEqual(b.seat.qi);
+    expect(w.truth.has(WILDS, b.seatPlace)).toBe(true);
+  });
+
+  it("al llegar a su sede, su gente está ahí, de su secta; determinista", () => {
+    const go = () => {
+      const r = run();
+      r.w.truth.set(LOCATION, r.l.player, { hex: r.hexB });
+      r.l.advanceTo(r.l.now + 2 * HOUR);
+      return r;
+    };
+    const { l, w, rival, hexB } = go();
+    const people = w.truth.get(SECT_HALL, rival)?.people ?? [];
+    expect(people.length).toBeGreaterThan(0);
+    const base = patchOf(l.world.map, hexB).base;
+    for (const x of people) {
+      expect(w.truth.get(SECT_MEMBER, x.person)?.org).toBe(rival);
+      const hex = w.truth.get(LOCATION, x.person)?.hex as number;
+      expect(patchOf(l.world.map, hex).base).toBe(base);
+    }
+    expect(checkInvariants({ truth: w.truth, log: w.log })).toEqual([]);
+    expect(go().l.hash().total).toBe(l.hash().total);
   });
 });

@@ -121,6 +121,7 @@ import {
   SCHEMAS,
   SCHOOLS,
   SEAT_REACH_HOPS,
+  type Sect,
   type SectSeat,
   SKILLS,
   SkillCatalog,
@@ -1493,7 +1494,16 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     options.cultivation && options.sectSeatRegion
       ? sectSeatOf(planet, site.cell, content)
       : undefined;
-  const map = seat ? regionMapOf(planet, { map: home, patch: site.patch }, seat.cell) : home;
+  // La sede de la secta rival también en la región (novel4-rival-sect-region).
+  const rival =
+    seat && options.rivalSect ? sectSeatOf(planet, site.cell, content, seat.cell) : undefined;
+  const map = seat
+    ? regionMapOf(
+        planet,
+        { map: home, patch: site.patch },
+        rival ? [seat.cell, rival.cell] : seat.cell,
+      )
+    : home;
   return { village, planet, site, map, population };
 }
 
@@ -2258,31 +2268,26 @@ export function createLife(
           ),
         })
       : undefined;
-    if (sect) {
-      const high = (terrain.planet.tectonics.elevation[sect.sect.seat.cell] ?? 0) > 600;
+    // El nombre de la sede y, con la región, su lugar en el mapa (también la de la rival).
+    const placeSeat = (s: Sect): void => {
+      const high = (terrain.planet.tectonics.elevation[s.seat.cell] ?? 0) > 600;
       seedPlaceNames(truth, language, seed, [
-        {
-          id: sect.sect.seatPlace,
-          feature: high ? "mountain" : "forest",
-          event: sect.sect.originEventId,
-        },
+        { id: s.seatPlace, feature: high ? "mountain" : "forest", event: s.originEventId },
       ]);
       // Con la región, la sede es un lugar con un hex en su celda (novel-sect-seat-switch).
       const seatHex = options.sectSeatRegion
-        ? seatHexOf(map, terrain.planet.grid.cellId(sect.sect.seat.cell))
+        ? seatHexOf(map, terrain.planet.grid.cellId(s.seat.cell))
         : undefined;
-      if (seatHex !== undefined) {
-        truth.set(PLACE, sect.sect.seatPlace, { kind: "sect", hexes: [seatHex] });
-        // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
-        truth.set(PLACE_QI, sect.sect.seatPlace, sect.sect.seat.qi);
-        truth.set(QI_TAKEN, sect.sect.seatPlace, { taken: 0, drawn: 0, at: pop.now });
-        // El monte de su celda (novel3-beasts-wilds): las bestias que el clima de ahí sostiene.
-        const span = patchesOf(map).find(
-          (p) => p.cell === terrain.planet.grid.cellId(sect.sect.seat.cell),
-        );
-        if (span) truth.set(WILDS, sect.sect.seatPlace, seatWilds(content, map, span));
-      }
-    }
+      if (seatHex === undefined) return;
+      truth.set(PLACE, s.seatPlace, { kind: "sect", hexes: [seatHex] });
+      // Su reserva de qi, la de su celda (novel-sect-seat-hall-qi): meditar ahí toma de esta.
+      truth.set(PLACE_QI, s.seatPlace, s.seat.qi);
+      truth.set(QI_TAKEN, s.seatPlace, { taken: 0, drawn: 0, at: pop.now });
+      // El monte de su celda (novel3-beasts-wilds): las bestias que el clima de ahí sostiene.
+      const span = patchesOf(map).find((p) => p.cell === terrain.planet.grid.cellId(s.seat.cell));
+      if (span) truth.set(WILDS, s.seatPlace, seatWilds(content, map, span));
+    };
+    if (sect) placeSeat(sect.sect);
     // Lo que la aldea sabe de ella (novel-cult-sect-known): de oídas, con errores.
     if (sect) {
       seedSectLore(truth, {
@@ -2311,16 +2316,7 @@ export function createLife(
           ...(schoolNames ? { school: schoolNames } : {}),
         })
       : undefined;
-    if (rival) {
-      const high = (terrain.planet.tectonics.elevation[rival.sect.seat.cell] ?? 0) > 600;
-      seedPlaceNames(truth, language, seed, [
-        {
-          id: rival.sect.seatPlace,
-          feature: high ? "mountain" : "forest",
-          event: rival.sect.originEventId,
-        },
-      ]);
-    }
+    if (rival) placeSeat(rival.sect);
   }
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
