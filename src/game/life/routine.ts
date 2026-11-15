@@ -36,6 +36,7 @@ import {
   CULTIVATION_LAW,
   CULTIVATION_STATE,
   DRAFT_FATIGUE,
+  DUEL,
   dayOf,
   draftEvent,
   EATEN,
@@ -480,7 +481,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       ...(o.draft ? draftReads(o.draft) : []),
-      ...(o.seatOf ? [SECT_MEMBER.name, SECT.name, PLACE.name] : []),
+      ...(o.seatOf ? [SECT_MEMBER.name, SECT.name, PLACE.name, DUEL.name] : []),
     ],
     writes: [
       LOCATION.name,
@@ -610,7 +611,8 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         if (work) there = { hex: work.hex, space: work.key };
         events.push({
           kind:
-            seat.chores === true
+            // Un externo con un duelo pactado deja la tarea a la hora de práctica (novel4-duel-npc).
+            seat.chores === true && !(hour === o.sparHour && truth.has(DUEL, me))
               ? ROUTINE_CHORE_EVENT
               : hour === o.sparHour
                 ? ROUTINE_SPAR_EVENT
