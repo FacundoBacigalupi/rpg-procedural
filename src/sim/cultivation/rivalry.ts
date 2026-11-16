@@ -405,3 +405,44 @@ export const REPARATION_PENALTY: Readonly<Record<GrievanceKind, number>> = {
   assault: 20,
   killing: 50,
 };
+
+/**
+ * Desde cuánto rencor o miedo la otra secta es una amenaza que se vigila (novel4-watch-need). Las
+ * semillas quedan por debajo (rencor 0,1-0,4); lo suben las ofensas y los duelos perdidos. Sin calibrar.
+ */
+export const WATCH_THREAT = 0.5;
+
+/** Si la secta tiene a la otra en guardia: el rencor o el miedo que le tiene llega a `WATCH_THREAT`. */
+export function threatens(tie: OrgTie | undefined): boolean {
+  if (!tie) return false;
+  return Math.max(tie.sentiment.resentment, tie.sentiment.fear) >= WATCH_THREAT;
+}
+
+/** Cuánto sube el miedo por cada uno de la otra secta visto en el camino (novel4-watch-report). */
+export const WATCH_FEAR_PER_SIGHTED = 0.04;
+/** Lo más que sube el miedo por una guardia. */
+export const WATCH_FEAR_MAX = 0.15;
+/** Cuánto baja el miedo si la guardia no vio pasar a nadie de la otra. */
+export const WATCH_CALM = 0.02;
+
+/**
+ * Lo que la guardia contada le hace a la relación (novel4-watch-report, organizations §10): los de la
+ * otra secta que el guardia vio pasar suben el miedo (hasta `WATCH_FEAR_MAX`) y son un piso para los
+ * discípulos que se le creen; si no vio a nadie, el miedo baja un poco. Queda en la historia.
+ */
+export function afterWatchReport(tie: OrgTie, sighted: number, event: EventId): OrgTie {
+  const s = tie.sentiment;
+  const fear =
+    sighted > 0
+      ? clamp01(s.fear + Math.min(WATCH_FEAR_MAX, WATCH_FEAR_PER_SIGHTED * sighted))
+      : clamp01(s.fear - WATCH_CALM);
+  return {
+    ...tie,
+    sentiment: { ...s, fear },
+    believedStrength: {
+      ...tie.believedStrength,
+      disciples: Math.max(tie.believedStrength.disciples, sighted),
+    },
+    history: [...tie.history, event],
+  };
+}

@@ -154,6 +154,7 @@ import {
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
 import { envoyDestination } from "./sect-grievance.ts";
+import { watchDestination } from "./sect-watch.ts";
 import { requestWant, type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
 import { stageBoldness } from "./stages.ts";
 import {
@@ -332,6 +333,11 @@ export interface DecideOptions {
    */
   readonly envoys?: { readonly weight: number };
   /**
+   * Opt-in (novel4-watch-npc): quien tiene la guardia hacia otra secta va al puesto, espera ahí las
+   * horas que faltan (`wait:<segundos>s`) y, cumplidas, vuelve a la sede (con ánimo `weight`).
+   */
+  readonly watches?: { readonly weight: number };
+  /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
    * que ese conocido tiene efectivo; `life.pawn_decide` la ejecuta. Apagado, no cambia.
@@ -426,6 +432,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           ]
         : []),
       ...(o.envoys ? [SECT_MISSION.name, SECT.name, LOCATION.name] : []),
+      ...(o.watches ? [SECT_MISSION.name, SECT.name, LOCATION.name, PLACE.name] : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
@@ -1212,6 +1219,30 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           loss: STAKES_RISK.none.loss,
           mood: o.envoys.weight,
         });
+      }
+      // La guardia de la secta (opt-in `watches`): al puesto, esperar ahí y de vuelta a la sede.
+      const watch = o.watches ? watchDestination(truth, me) : undefined;
+      if (o.watches && watch) {
+        catalogCandidates.push(
+          watch.kind === "go"
+            ? {
+                id: `move:${watch.place}`,
+                verb: "move",
+                target: watch.place as unknown as EntityRef,
+                contributes: {},
+                chance: 0.9,
+                loss: STAKES_RISK.none.loss,
+                mood: o.watches.weight,
+              }
+            : {
+                id: `wait:${watch.seconds}s`,
+                verb: "wait",
+                contributes: {},
+                chance: 1,
+                loss: STAKES_RISK.none.loss,
+                mood: o.watches.weight,
+              },
+        );
       }
       // Recado (opt-in `errands`): ir a un lugar de otro hex; el azar sale de un fork propio.
       if (o.errands && age >= (o.errands.minAgeYears ?? 0)) {

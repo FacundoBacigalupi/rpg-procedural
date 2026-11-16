@@ -201,6 +201,8 @@ const ENTITY_PART = /^(agent|place|settlement):/;
 const LEGACY_ENTITY_PART = /^(agent|place):/;
 /** Ids con partes propias de otro proceso (pedir prestado, empeñar, ir hacia): no son del catálogo. */
 const SPECIAL_PART = /^(borrow|pawn|toward):/;
+/** Una duración en el id de la decisión: `<segundos>s`. */
+const DURATION_PART = /^([1-9][0-9]*)s$/;
 
 /**
  * El plan de una decisión del catálogo (puro): el id es `<verbo>:<parte>+<parte>` con las partes en
@@ -231,7 +233,14 @@ export function planFromDecision(
   let next = 0;
   for (const a of def.args) {
     if (a.kind === "duration") {
-      // La duración por defecto no deja parte en el id; se usa la del verbo.
+      // `<n>s` en el id es la duración en segundos (novel4-watch-npc: esperar las horas de guardia);
+      // sin ella, la del verbo.
+      const secs = parts[next]?.match(DURATION_PART)?.[1];
+      if (secs !== undefined) {
+        args.push({ role: a.role, seconds: Number(secs) });
+        next++;
+        continue;
+      }
       if (a.required) return undefined;
       continue;
     }

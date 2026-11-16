@@ -138,6 +138,8 @@ export type SelfCue =
   | "rank_refused"
   | "mission_herbs"
   | "mission_watch"
+  /** Le tocó vigilar el camino hacia la otra secta (novel4-watch-need). */
+  | "mission_watch_rival"
   /** Le tocó cazar a la bestia que bajó (novel3-beasts-mission-ask). */
   | "mission_hunt"
   | "mission_envoy"
@@ -146,6 +148,12 @@ export type SelfCue =
   | "mission_envoy_done"
   /** Cobró la de cazar: la bestia muerta o echada y él de vuelta en la sede (novel3-beasts-mission-claim). */
   | "mission_hunt_done"
+  /** Horas de guardia en el puesto, anotadas (novel4-watch-guard). */
+  | "mission_watch_progress"
+  /** Cobró la guardia: las horas cumplidas y él de vuelta en la sede (novel4-watch-guard). */
+  | "mission_watch_done"
+  /** Al cobrar la guardia contó que vio pasar a los de la otra secta (novel4-watch-report). */
+  | "mission_watch_seen"
   | "mission_lapsed"
   /** Retó a alguien y aceptó: el duelo quedó acordado (novel3-challenge-ask). */
   | "challenge_accepted"

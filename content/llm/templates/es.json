@@ -1491,6 +1491,10 @@
     "lines": ["Te tocó una misión: vigilar el camino donde anda una banda."]
   },
   {
+    "id": "self.mission_watch_rival",
+    "lines": ["Te tocó una misión: hacer guardia en el camino que lleva a la otra secta."]
+  },
+  {
     "id": "self.mission_hunt",
     "lines": ["Te tocó una misión: cazar o echar a la bestia que bajó del monte."]
   },
@@ -1517,6 +1521,20 @@
     "lines": [
       "De vuelta en la sede, das cuenta de la respuesta de la otra secta; la misión queda cumplida y los puntos, anotados a tu nombre."
     ]
+  },
+  {
+    "id": "self.mission_watch_progress",
+    "lines": ["Las horas de guardia en el camino cuentan para la misión."]
+  },
+  {
+    "id": "self.mission_watch_done",
+    "lines": [
+      "De vuelta en la sede, la secta da por cumplida la guardia; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
+    "id": "self.mission_watch_seen",
+    "lines": ["Contás lo que viste en el camino: gente de la otra secta anduvo por ahí."]
   },
   {
     "id": "self.mission_hunt_done",

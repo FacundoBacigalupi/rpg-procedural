@@ -31,9 +31,11 @@ import {
   type LedgerUnit,
   ledgerUnit,
   type PlaceId,
+  type PlaceRef,
 } from "../../core/index.ts";
 import {
   ART_KNOWN,
+  afterWatchReport,
   BODY_STATE,
   BREAKTHROUGH_EVENT,
   CAVE_RANKS,
@@ -57,6 +59,7 @@ import {
   isSectCave,
   type KnownTechnique,
   LOCATION,
+  type LocalMap,
   leaveDays,
   MASTER_OF,
   MISSION_ASSIGNED_EVENT,
@@ -65,8 +68,12 @@ import {
   MISSION_PROGRESS_EVENT,
   methodExchange,
   missionCredit,
+  missionHeld,
   missionLapsed,
   ORG_GRIEVANCE_REPLY_EVENT,
+  ORG_RELATION,
+  type OrgRelations,
+  PERSON,
   type PillDef,
   PLACE,
   type PostingDraft,
@@ -93,11 +100,14 @@ import {
   type SectCavePass,
   type SectContribution,
   type SectMission,
+  type SpaceGraph,
   type StateChange,
   setComponent,
   TECHNIQUE_TAUGHT_EVENT,
+  WATCH_VERBS,
   type WeaponDef,
 } from "../../sim/index.ts";
+import { outdoorsAt } from "./beast-attack.ts";
 import { meditation } from "./meditate.ts";
 import { RANK_REVIEW_READS, type RankIssue, reviewRank } from "./rank-review.ts";
 import { treasuryAccount } from "./sect-hall.ts";
@@ -218,6 +228,11 @@ export function sectDutyProcess(
     readonly herbs?: readonly HerbDef[];
     /** Las armas que canjea la armería (novel3-weapons-sect); sin esto no se canjean. */
     readonly weapons?: readonly WeaponDef[];
+    /**
+     * Opt-in (novel4-watch-report): con esto, el guardia anota a los de la otra secta que ve afuera
+     * en el puesto o al lado, y al cobrar la secta ajusta lo que cree y teme de ella.
+     */
+    readonly watch?: { readonly spaces: SpaceGraph; readonly map: LocalMap };
   } = {},
 ): ProcessDef {
   const day = o.dayTicks ?? 86_400;
@@ -241,6 +256,7 @@ export function sectDutyProcess(
       BODY_STATE.name,
       ...RANK_REVIEW_READS,
       ...(o.weapons ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name, ENTITY.name] : []),
+      ...(o.watch ? [PERSON.name, ORG_RELATION.name, ...(o.weapons ? [] : [ENTITY.name])] : []),
     ],
     writes: [
       SECT_MISSION.name,
@@ -252,6 +268,7 @@ export function sectDutyProcess(
       CULTIVATION_TECHNIQUE.name,
       ART_KNOWN.name,
       ...(o.weapons ? [ITEM_HOLD.name, LOCATION.name] : []),
+      ...(o.watch ? [ORG_RELATION.name] : []),
     ],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -298,6 +315,47 @@ export function sectDutyProcess(
           if (d?.envoy !== undefined && m?.kind === "envoy" && m.deed === d.deed && m.done < 1) {
             missions.set(d.envoy, { ...m, reply: e.id, done: 1 });
           }
+          continue;
+        }
+        // La guardia (novel4-watch-guard): esperar o mirar en el puesto suma las horas a la misión.
+        if (WATCH_VERBS.has(e.kind) && e.outcome !== "failure") {
+          const who = e.actors[0] as AgentId | undefined;
+          const m = who !== undefined ? missionOf(who) : undefined;
+          const seconds = (e.data as { seconds?: unknown } | null)?.seconds;
+          if (
+            who === undefined ||
+            m?.kind !== "watch" ||
+            m.hours === undefined ||
+            m.done >= m.hours ||
+            typeof seconds !== "number" ||
+            seconds <= 0 ||
+            m.hex === undefined ||
+            !watchedAt(ctx.truth, who, e.place, m.hex)
+          ) {
+            continue;
+          }
+          const done = round2(Math.min(m.hours, m.done + seconds / 3600));
+          missions.set(who, { ...m, done, watched: e.id });
+          events.push({
+            kind: MISSION_PROGRESS_EVENT,
+            actors: [who],
+            place: e.place,
+            data: {
+              org: m.org,
+              kind: m.kind,
+              ...(m.against !== undefined ? { against: m.against } : {}),
+              ...(m.band !== undefined ? { band: m.band } : {}),
+              hours: round2(done - m.done),
+              done,
+              of: m.hours,
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: e.id },
+              ...(m.cause ? [{ kind: "event" as const, event: m.cause }] : []),
+              { kind: "state", entity: who as unknown as EntityRef, key: SECT_MISSION.name },
+            ],
+          });
           continue;
         }
         if (e.kind === "combat.fight") {
@@ -748,8 +806,31 @@ export function sectDutyProcess(
           events.push(e);
         }
       }
+      // La guardia mira (novel4-watch-report): quien vigila a otra secta y está en su puesto anota a los
+      // de ella que están afuera ahí o al lado (como el lobo: estar afuera en el mismo lugar es verlo).
+      if (o.watch) {
+        const watch = o.watch;
+        const guards = new Set([...ctx.truth.ids(SECT_MISSION), ...missions.keys()]);
+        for (const id of [...guards].sort() as EntityRef[]) {
+          const who = id as unknown as AgentId;
+          const m = missionOf(who);
+          if (m?.kind !== "watch" || m.against === undefined || m.hex === undefined) continue;
+          if (ctx.truth.get(LOCATION, id)?.hex !== m.hex) continue;
+          const seen = new Set(m.sighted ?? []);
+          const before = seen.size;
+          for (const hex of [m.hex, ...(watch.map.neighbors[m.hex] ?? [])]) {
+            for (const p of outdoorsAt(ctx.truth, watch.spaces, hex)) {
+              if (p !== who && ctx.truth.get(SECT_MEMBER, p)?.org === m.against) seen.add(p);
+            }
+          }
+          if (seen.size > before) missions.set(who, { ...m, sighted: [...seen].sort() });
+        }
+      }
+      /** Las relaciones tocadas al contar las guardias. */
+      const told = new Map<EntityRef, OrgRelations>();
       // Cazar: quien la tiene hecha y está en la sede la cobra (novel3-beasts-mission-claim). Lo mismo
-      // el enviado que trae la respuesta (novel4-grievance-envoy-speak).
+      // el enviado que trae la respuesta (novel4-grievance-envoy-speak) y la guardia con sus horas
+      // (novel4-watch-guard).
       const claimable = new Set([...ctx.truth.ids(SECT_MISSION), ...missions.keys()]);
       for (const id of [...claimable].sort() as EntityRef[]) {
         const who = id as unknown as AgentId;
@@ -759,7 +840,9 @@ export function sectDutyProcess(
             ? m.fight
             : m?.kind === "envoy" && m.done >= 1
               ? m.reply
-              : undefined;
+              : m?.kind === "watch" && missionHeld(m)
+                ? m.watched
+                : undefined;
         if (!m || proof === undefined) continue;
         if (m.kind === "hunt" && m.beast !== undefined) {
           const dead = (ctx.truth.get(BODY_STATE, m.beast)?.death ?? null) !== null;
@@ -770,6 +853,18 @@ export function sectDutyProcess(
         const at = ctx.truth.get(LOCATION, id)?.hex;
         if (at === undefined || !hexes?.includes(at)) continue;
         missions.set(who, null);
+        // Lo visto en la guardia se cuenta (novel4-watch-report).
+        const sighted = m.kind === "watch" ? (m.sighted?.length ?? 0) : 0;
+        if (o.watch && m.kind === "watch" && m.against !== undefined) {
+          const had = told.get(m.org) ?? ctx.truth.get(ORG_RELATION, m.org);
+          const tie = had?.toward[m.against];
+          if (had && tie) {
+            told.set(m.org, {
+              ...had,
+              toward: { ...had.toward, [m.against]: afterWatchReport(tie, sighted, proof) },
+            });
+          }
+        }
         const before = pointsOf(who);
         const same = before?.org === m.org ? before : undefined;
         rows.set(who, {
@@ -787,6 +882,8 @@ export function sectDutyProcess(
             kind: m.kind,
             ...(m.beast !== undefined ? { beast: m.beast } : {}),
             ...(m.against !== undefined ? { against: m.against } : {}),
+            ...(m.band !== undefined ? { band: m.band } : {}),
+            ...(o.watch && m.kind === "watch" && m.against !== undefined ? { sighted } : {}),
             points: m.points,
           },
           emissions: {},
@@ -822,6 +919,7 @@ export function sectDutyProcess(
         else if (ctx.truth.has(SECT_MISSION, who as unknown as EntityRef))
           changes.push(deleteComponent(SECT_MISSION, who as unknown as EntityRef));
       }
+      for (const [org, rel] of told) changes.push(setComponent(ORG_RELATION, org, rel));
       for (const [who, row] of rows) changes.push(setComponent(SECT_CONTRIBUTION, who, row));
       for (const [who, k] of taught) changes.push(setComponent(CULTIVATION_TECHNIQUE, who, k));
       for (const [who, pass] of passes) {
@@ -869,4 +967,17 @@ function herbDelivery(
     return undefined;
   if (seatOrgOf(truth, to) !== mission.org) return undefined;
   return { who, to, mission, unit: ledgerUnit(`good:${herb.good}`), grams };
+}
+
+/**
+ * Si lo que se hizo fue en el puesto (`hex`): el lugar del evento lo contiene o, si el evento no
+ * nombra un lugar, el actor está ahí. El evento manda porque la espera larga se anota al cerrar y
+ * para entonces el actor pudo haberse ido.
+ */
+function watchedAt(truth: ReadonlyWorldTruth, who: AgentId, place: PlaceRef, hex: number): boolean {
+  if (place.kind === "place") {
+    const p = truth.get(PLACE, place.place as unknown as EntityRef);
+    if (p) return (p.hexes as readonly number[]).includes(hex);
+  }
+  return truth.get(LOCATION, who as unknown as EntityRef)?.hex === hex;
 }

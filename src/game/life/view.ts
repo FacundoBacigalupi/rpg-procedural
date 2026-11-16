@@ -878,14 +878,17 @@ export function playerView(
       : lastPlayerEventSince(w, options.heardSince, (e) => e.kind === MISSION_ASSIGNED_EVENT);
   if (mission) {
     const kind = (mission.data as { kind?: unknown } | null)?.kind;
+    const against = (mission.data as { against?: unknown } | null)?.against;
     cues.add(
-      kind === "watch"
-        ? "mission_watch"
-        : kind === "hunt"
-          ? "mission_hunt"
-          : kind === "envoy"
-            ? "mission_envoy"
-            : "mission_herbs",
+      kind === "watch" && against !== undefined
+        ? "mission_watch_rival"
+        : kind === "watch"
+          ? "mission_watch"
+          : kind === "hunt"
+            ? "mission_hunt"
+            : kind === "envoy"
+              ? "mission_envoy"
+              : "mission_herbs",
     );
   }
   const missionEnd =
@@ -900,15 +903,23 @@ export function playerView(
             e.kind === MISSION_LAPSED_EVENT,
         );
   if (missionEnd) {
+    const sighted = (missionEnd.data as { sighted?: unknown } | null)?.sighted;
+    if (missionEnd.kind === MISSION_DONE_EVENT && typeof sighted === "number" && sighted > 0) {
+      cues.add("mission_watch_seen");
+    }
     cues.add(
       missionEnd.kind === MISSION_DONE_EVENT
         ? (missionEnd.data as { kind?: unknown } | null)?.kind === "hunt"
           ? "mission_hunt_done"
           : (missionEnd.data as { kind?: unknown } | null)?.kind === "envoy"
             ? "mission_envoy_done"
-            : "mission_done"
+            : (missionEnd.data as { kind?: unknown } | null)?.kind === "watch"
+              ? "mission_watch_done"
+              : "mission_done"
         : missionEnd.kind === MISSION_PROGRESS_EVENT
-          ? "mission_progress"
+          ? (missionEnd.data as { kind?: unknown } | null)?.kind === "watch"
+            ? "mission_watch_progress"
+            : "mission_progress"
           : "mission_lapsed",
     );
   }

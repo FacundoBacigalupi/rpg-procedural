@@ -25,9 +25,11 @@ export type MissionNeed =
   | { readonly kind: "herbs"; readonly herb: string; readonly grams: number }
   | {
       readonly kind: "watch";
-      /** La banda que anda cerca. */
-      readonly band: string;
-      /** El hex donde se la vio por última vez: ahí se vigila. */
+      /** La banda que anda cerca (la amenaza de `novel2-missions-watch`). */
+      readonly band?: string;
+      /** La otra secta que la tiene en guardia (novel4-watch-need); el puesto es `hex`. */
+      readonly against?: EntityRef;
+      /** El hex donde se la vio por última vez (o el puesto hacia la otra sede): ahí se vigila. */
       readonly hex: number;
       /** A cuántos hex de la sede. */
       readonly distance: number;
@@ -64,7 +66,7 @@ export interface SectMission {
   readonly beast?: EntityRef;
   /** Cazar: cuándo vuelve al monte; el plazo es ese. */
   readonly until?: Tick;
-  /** Enviado: a qué secta se le exige y por qué hecho. */
+  /** Enviado: a qué secta se le exige y por qué hecho. Vigilar (novel4-watch-need): de qué secta. */
   readonly against?: EntityRef;
   readonly deed?: EventId;
   /**
@@ -77,6 +79,16 @@ export interface SectMission {
    * pasa a 1 y se cobra al volver a la sede.
    */
   readonly reply?: EventId;
+  /**
+   * Vigilar (novel4-watch-guard): la última espera o mirada en el puesto que sumó horas; con las horas
+   * cumplidas se cobra al volver a la sede.
+   */
+  readonly watched?: EventId;
+  /**
+   * Vigilar a otra secta (novel4-watch-report): los de ella que el guardia vio afuera en el puesto o
+   * al lado mientras estaba ahí (por id, ordenados); se cuentan al cobrar.
+   */
+  readonly sighted?: readonly AgentId[];
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -198,6 +210,23 @@ export function watchNeeds(bands: readonly BandSighting[]): MissionNeed[] {
     .map((b) => ({ kind: "watch" as const, band: b.band, hex: b.hex, distance: b.distance }));
 }
 
+/** Una secta que la tiene en guardia (novel4-watch-need): cuál y el puesto en el camino hacia ella. */
+export interface RivalThreat {
+  readonly against: EntityRef;
+  readonly hex: number;
+  readonly distance: number;
+}
+
+/** Vigilar el camino hacia cada secta que la tiene en guardia, la más cercana primero. */
+export function rivalWatchNeeds(threats: readonly RivalThreat[]): MissionNeed[] {
+  return [...threats]
+    .sort(
+      (a, b) =>
+        a.distance - b.distance || (a.against < b.against ? -1 : a.against > b.against ? 1 : 0),
+    )
+    .map((t) => ({ kind: "watch" as const, against: t.against, hex: t.hex, distance: t.distance }));
+}
+
 /** Una bestia que la secta vio: cuál, dónde y hasta cuándo anda abajo. */
 export interface BeastSighting {
   readonly beast: EntityRef;
@@ -274,11 +303,15 @@ export function pickMission(
       };
     }
     if (need.kind === "watch") {
-      if (mine.some((m) => m.kind === "watch" && m.band === need.band)) continue;
+      const same = (m: SectMission) =>
+        m.kind === "watch" &&
+        (need.against !== undefined ? m.against === need.against : m.band === need.band);
+      if (mine.some(same)) continue;
       return {
         org,
         kind: "watch",
-        band: need.band,
+        ...(need.band !== undefined ? { band: need.band } : {}),
+        ...(need.against !== undefined ? { against: need.against } : {}),
         hex: need.hex,
         hours: MISSION_WATCH_HOURS,
         points: MISSION_WATCH_HOURS * MISSION_WATCH_POINTS_PER_HOUR,
@@ -308,8 +341,24 @@ export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until
  * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) y la de enviado
  * contestada no vencen: esperan a que quien la tiene vuelva a la sede a cobrarla.
  */
-export const missionLapsed = (m: SectMission, now: Tick): boolean =>
-  now > m.due && !((m.kind === "hunt" || m.kind === "envoy") && m.done >= 1);
+export const missionLapsed = (m: SectMission, now: Tick): boolean => now > m.due && !missionHeld(m);
+
+/**
+ * Si la misión ya está hecha afuera y solo falta cobrarla en la sede (no se vence): la caza o la
+ * exigencia cumplidas, la guardia con sus horas (novel4-watch-guard).
+ */
+export function missionHeld(m: SectMission): boolean {
+  if (m.kind === "hunt" || m.kind === "envoy") return m.done >= 1;
+  if (m.kind === "watch") return m.hours !== undefined && m.done >= m.hours;
+  return false;
+}
+
+/** Los actos que cuentan como guardia en el puesto (novel4-watch-guard). */
+export const WATCH_VERBS: ReadonlySet<string> = new Set([
+  "action.wait",
+  "action.look",
+  "action.observe",
+]);
 
 /** Lo que cuenta de una pelea para la misión de cazar: la bestia murió o huyó. */
 export const HUNT_SETTLED: ReadonlySet<string> = new Set(["dead", "fled"]);

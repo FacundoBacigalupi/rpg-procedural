@@ -190,6 +190,12 @@ export interface SeatRoutine {
 
 export interface RoutineOptions {
   /**
+   * Opt-in (novel4-watch-npc): el NPC de guardia (ir al puesto, esperar ahí, volver a la sede) no
+   * vuelve a su casa a la hora de dormir ni va al campo: solo recibe lo chico, como quien espera
+   * (comer en casa, beber donde hay agua o del odre).
+   */
+  readonly onDuty?: (truth: ReadonlyWorldTruth, me: AgentId) => boolean;
+  /**
    * Opt-in (novel-sect-seat-hall-people-keep): quien vive en una sede duerme y come en su casa de
    * ahí (`home`) y pasa las horas de trabajo meditando en `work` (la hora la resuelve
    * `life.cultivation.meditate`), sin campo, leña ni herramientas.
@@ -505,12 +511,13 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const delegated = truth.has(PLAYER, me) && plan !== undefined && delegatedPlan(plan);
       // Quien espera (el jugador con un plan de solo `wait`) solo recibe lo chico: comer y beber.
       const tendOnly =
-        !delegated &&
-        o.waitTend === true &&
-        truth.has(PLAYER, me) &&
-        plan !== undefined &&
-        !plan.done &&
-        onlyWaits(plan.plan);
+        (!delegated &&
+          o.waitTend === true &&
+          truth.has(PLAYER, me) &&
+          plan !== undefined &&
+          !plan.done &&
+          onlyWaits(plan.plan)) ||
+        (!truth.has(PLAYER, me) && o.onDuty?.(truth, me) === true);
       if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly && !delegated) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};

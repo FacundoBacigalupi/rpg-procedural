@@ -254,6 +254,7 @@ import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./se
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
 import { sectVisitProcess } from "./sect-visit.ts";
+import { sectWatchProcess, watchDestination, watchPosts } from "./sect-watch.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
   ASLEEP,
@@ -1626,7 +1627,14 @@ export function lifeWorld(
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
           ...(parts.cultivation?.pills && parts.cultivation.herbs
-            ? { missions: { pills: parts.cultivation.pills, herbs: parts.cultivation.herbs } }
+            ? {
+                missions: {
+                  pills: parts.cultivation.pills,
+                  herbs: parts.cultivation.herbs,
+                  // Vigilar el camino hacia la secta que la tiene en guardia (novel4-watch-need).
+                  watchPost: watchPosts(parts.map),
+                },
+              }
             : {}),
           // Con cultivo, los desafíos a duelo se pesan y se anotan (novel3-challenge-ask).
           ...(parts.cultivation ? { duels: { skills: parts.skills } } : {}),
@@ -2596,6 +2604,8 @@ export function lifeWorld(
                   : {}),
                 // La armería canjea armas por puntos (novel3-weapons-sect).
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
+                // La guardia anota a los de la otra secta y se cuenta al cobrar (novel4-watch-report).
+                watch: { spaces: parts.spaces, map: parts.map },
               }),
               // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
               sectGrievanceProcess({
@@ -2607,6 +2617,16 @@ export function lifeWorld(
               }),
               // La exigencia contestada de palabra al enviado (novel4-grievance-envoy-speak).
               sectGrievanceSpokenProcess(),
+              // Con viajes de NPC, la secta manda a uno de guardia al puesto (novel4-watch-npc).
+              ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
+                ? [
+                    sectWatchProcess({
+                      dayTicks: parts.clock.day,
+                      player,
+                      postOf: watchPosts(parts.map),
+                    }),
+                  ]
+                : []),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
@@ -2821,7 +2841,7 @@ export function lifeWorld(
           ...(parts.cultivation &&
           parts.npcJourneyDays !== undefined &&
           parts.npcVerbs?.includes("move") === true
-            ? { envoys: { weight: 3 } }
+            ? { envoys: { weight: 3 }, watches: { weight: 3 } }
             : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
@@ -2931,7 +2951,14 @@ export function lifeWorld(
               npcVerbsProcess({
                 ...(parts.sleepers ? { sleepers: true } : {}),
                 catalog: parts.catalog,
-                verbs: parts.npcVerbs,
+                // El guardia de la secta espera en el puesto (novel4-watch-npc): `wait` va con él.
+                verbs:
+                  parts.cultivation &&
+                  parts.npcJourneyDays !== undefined &&
+                  parts.npcVerbs.includes("move") &&
+                  !parts.npcVerbs.includes("wait")
+                    ? [...parts.npcVerbs, "wait"]
+                    : parts.npcVerbs,
                 day: parts.clock.day,
                 ...(parts.legacyNoSettlementWalk === true ? { legacyNoSettlementWalk: true } : {}),
                 ...(parts.legacyNoRainWaitPersist === true
@@ -3132,6 +3159,15 @@ export function lifeWorld(
             : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
+          // El guardia de la secta no vuelve a dormir a casa mientras cumple (novel4-watch-npc).
+          ...(parts.cultivation &&
+          parts.npcJourneyDays !== undefined &&
+          parts.npcVerbs?.includes("move") === true
+            ? {
+                onDuty: (t: ReadonlyWorldTruth, me: AgentId) =>
+                  watchDestination(t, me) !== undefined,
+              }
+            : {}),
           ...(parts.npcFieldWatering === true ? { fieldWatering: true } : {}),
           ...(parts.npcFieldWatering === true && parts.npcFieldSowing === true
             ? { fieldSowing: true }
