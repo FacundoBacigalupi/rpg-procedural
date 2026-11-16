@@ -249,6 +249,7 @@ import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from
 import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sectDutyProcess } from "./sect-duty.ts";
+import { sectGrievanceProcess, sectGrievanceSpokenProcess } from "./sect-grievance.ts";
 import { SECT_HALL, SECT_STORE_DAYS, seatRoutineOf, sectHallProcess } from "./sect-hall.ts";
 import { sectAbsenceProcess } from "./sect-leave.ts";
 import { SECT_SPAR_HOUR, SECT_SPAR_LIGHT, sectSparProcess } from "./sect-spar.ts";
@@ -2596,6 +2597,16 @@ export function lifeWorld(
                 // La armería canjea armas por puntos (novel3-weapons-sect).
                 ...(parts.weapons?.length ? { weapons: parts.weapons } : {}),
               }),
+              // Las sectas guardan las ofensas de la otra que saben los suyos (novel4-grievance-record).
+              sectGrievanceProcess({
+                dayTicks: parts.clock.day,
+                // Con viajes de NPC, la secta manda a uno de los suyos (novel4-grievance-envoy-npc).
+                ...(parts.npcJourneyDays !== undefined && parts.npcVerbs?.includes("move") === true
+                  ? { envoys: { player } }
+                  : {}),
+              }),
+              // La exigencia contestada de palabra al enviado (novel4-grievance-envoy-speak).
+              sectGrievanceSpokenProcess(),
               // Con la región hasta la sede, su gente se materializa al llegar (hall-people-born).
               ...(parts.map.patches
                 ? [
@@ -2805,6 +2816,12 @@ export function lifeWorld(
                   rivalWeight: 2,
                 },
               }
+            : {}),
+          // El enviado viaja a la otra sede y vuelve (novel4-grievance-envoy-npc).
+          ...(parts.cultivation &&
+          parts.npcJourneyDays !== undefined &&
+          parts.npcVerbs?.includes("move") === true
+            ? { envoys: { weight: 3 } }
             : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),

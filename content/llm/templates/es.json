@@ -1399,6 +1399,54 @@
     "lines": ["Volvés a la sede a tiempo; en las cuentas tachan tu ausencia sin decir nada."]
   },
   {
+    "id": "self.grievance_demand",
+    "lines": [
+      "En la sede se sabe lo que te hicieron los de la otra secta: los mayores mandan a alguien a pedir reparación."
+    ]
+  },
+  {
+    "id": "self.grievance_retaliate",
+    "lines": [
+      "En la sede se sabe lo que te hicieron los de la otra secta: los mayores dicen que al que fue se lo busca y se le cobra."
+    ]
+  },
+  {
+    "id": "self.grievance_forgotten",
+    "lines": [
+      "Lo que te hicieron los de la otra secta queda así: los mayores deciden no mover nada por eso."
+    ]
+  },
+  {
+    "id": "self.grievance_paid",
+    "lines": [
+      "Vuelve el enviado de la otra secta: pidieron disculpas y repararon lo que te hicieron."
+    ]
+  },
+  {
+    "id": "self.grievance_refused",
+    "lines": [
+      "Vuelve el enviado de la otra secta con las manos vacías: se negaron a reparar lo que te hicieron."
+    ]
+  },
+  {
+    "id": "self.grievance_avenged",
+    "lines": [
+      "Corre por la sede que uno de los nuestros le ganó al que te hizo aquello: la cuenta queda saldada."
+    ]
+  },
+  {
+    "id": "self.grievance_punished",
+    "lines": [
+      "La otra secta mandó a reclamar por lo que hiciste y la nuestra reparó: en las cuentas te lo cobran de tu aporte."
+    ]
+  },
+  {
+    "id": "self.grievance_shielded",
+    "lines": [
+      "La otra secta mandó a reclamar por lo que hiciste; los mayores se negaron a entregarte."
+    ]
+  },
+  {
     "id": "self.exchange_refused",
     "lines": ["El encargado mira las cuentas y niega con la cabeza: no hay canje para vos."]
   },
@@ -1447,6 +1495,12 @@
     "lines": ["Te tocó una misión: cazar o echar a la bestia que bajó del monte."]
   },
   {
+    "id": "self.mission_envoy",
+    "lines": [
+      "Te tocó una misión: llevar la exigencia de la secta a la sede de la otra, por la ofensa, y volver con su respuesta."
+    ]
+  },
+  {
     "id": "self.mission_progress",
     "lines": [
       "El anciano recibe las hierbas y las anota a tu nombre; todavía falta para cumplir la misión."
@@ -1456,6 +1510,12 @@
     "id": "self.mission_done",
     "lines": [
       "El anciano recibe las hierbas y da la misión por cumplida; los puntos quedan anotados a tu nombre."
+    ]
+  },
+  {
+    "id": "self.mission_envoy_done",
+    "lines": [
+      "De vuelta en la sede, das cuenta de la respuesta de la otra secta; la misión queda cumplida y los puntos, anotados a tu nombre."
     ]
   },
   {

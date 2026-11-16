@@ -164,6 +164,12 @@ export interface ReplyInput {
    */
   readonly mission?: { readonly given: string } | { readonly refused: string };
   /**
+   * Lo que contesta a la exigencia de reparación quien manda en la secta ofensora
+   * (novel4-grievance-envoy-speak): repara, se niega, o por qué no la trata. Sin esto el oyente no
+   * es quien la contesta.
+   */
+  readonly reparation?: { readonly reply: "pay" | "refuse" } | { readonly refused: string };
+  /**
    * Lo que contesta el retado a un desafío (novel3-challenge-core): ya pesado por quien lo cablea
    * (`weighChallenge`). Sin esto el oyente no lo toma en serio (no puede pelear, o no es el caso).
    */
@@ -408,6 +414,10 @@ function decideBody(i: ReplyInput, at: number): Reply {
       if (!i.challenge) return say("challenge.ignore");
       if (i.challenge.response === "accept") return say(`challenge.accept.${a.rule}`);
       return say("challenge.refuse");
+    case "reparation":
+      if (!i.reparation) return say("reparation.no");
+      if ("reply" in i.reparation) return say(`reparation.${i.reparation.reply}`);
+      return say(`reparation.refuse.${i.reparation.refused}`);
     case "mission":
       if (!i.mission) return say("mission.no");
       if ("given" in i.mission) return say(`mission.give.${i.mission.given}`);

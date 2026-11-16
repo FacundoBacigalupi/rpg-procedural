@@ -25,6 +25,7 @@ import {
 } from "../../core/index.ts";
 import {
   adjustFace,
+  afterAvenged,
   afterSectDuel,
   BODY_STATE,
   type Candidate,
@@ -48,18 +49,22 @@ import {
   isRival,
   isSectArena,
   LOCATION,
+  ORG_GRIEVANCE_AVENGED_EVENT,
   ORG_RELATION,
   type OrgRelations,
   orgTie,
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
+  type SectGrievances,
   STAKES_RISK,
   type StateChange,
   setComponent,
   standardize,
   type Trait,
+  wantedBy,
 } from "../../sim/index.ts";
 
 /** El evento del duelo peleado: la regla, quién ganó y la cara que se movió. */
@@ -233,6 +238,8 @@ function rivalsHere(truth: ReadonlyWorldTruth, me: AgentId): Map<AgentId, number
   const mine = truth.get(SECT_MEMBER, me);
   if (!mine) return out;
   const relations = truth.get(ORG_RELATION, mine.org);
+  // A quien la secta salió a buscar (represalia, novel4-grievance-act) se lo reta con todo el rencor.
+  const wanted = wantedBy(truth.get(SECT_GRIEVANCES, mine.org));
   for (const id of truth.ids(SECT_MEMBER) as AgentId[]) {
     if (id === me) continue;
     const org = truth.get(SECT_MEMBER, id)?.org;
@@ -240,7 +247,7 @@ function rivalsHere(truth: ReadonlyWorldTruth, me: AgentId): Map<AgentId, number
     if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     if ((truth.get(BODY_STATE, id)?.death ?? null) !== null) continue;
     if (!sameSpot(truth, id, me)) continue;
-    out.set(id, orgTie(relations, org)?.sentiment.resentment ?? 0);
+    out.set(id, wanted.has(id) ? 1 : (orgTie(relations, org)?.sentiment.resentment ?? 0));
   }
   return out;
 }
@@ -272,8 +279,16 @@ export function duelsProcess(o: {
       DUEL_OFFER.name,
       CHALLENGES_SENT.name,
       ORG_RELATION.name,
+      SECT_GRIEVANCES.name,
     ],
-    writes: [DUEL.name, FACE.name, DUEL_OFFER.name, CHALLENGES_SENT.name, ORG_RELATION.name],
+    writes: [
+      DUEL.name,
+      FACE.name,
+      DUEL_OFFER.name,
+      CHALLENGES_SENT.name,
+      ORG_RELATION.name,
+      SECT_GRIEVANCES.name,
+    ],
     run(ctx) {
       const set = new Map<AgentId, Duel>();
       const closed = new Set<AgentId>();
@@ -281,6 +296,7 @@ export function duelsProcess(o: {
       const offers = new Map<AgentId, DuelOffer | null>();
       const sent = new Map<AgentId, Readonly<Record<string, Tick>>>();
       const relations = new Map<string, OrgRelations>();
+      const grievances = new Map<EntityRef, SectGrievances>();
       const events: EventDraft[] = [];
       for (const e of ctx.recent) {
         if (e.kind === "combat.fight") {
@@ -332,6 +348,38 @@ export function duelsProcess(o: {
               if (!had || !tie) continue;
               relations.set(from, {
                 toward: { ...had.toward, [to]: afterSectDuel(tie, side, e.id) },
+              });
+            }
+            // Si el vencido era el ofensor que la secta del vencedor buscaba, queda vengada.
+            const ledger = grievances.get(wo) ?? ctx.truth.get(SECT_GRIEVANCES, wo);
+            const owed = wantedBy(ledger).get(v.loser);
+            const had = relations.get(wo) ?? ctx.truth.get(ORG_RELATION, wo);
+            const tie = orgTie(had, owed?.against ?? lo);
+            if (ledger && owed && had && tie) {
+              grievances.set(wo, {
+                entries: ledger.entries.map((g) =>
+                  g.deed === owed.deed ? { ...g, outcome: { result: "avenged", at: e.tick } } : g,
+                ),
+              });
+              relations.set(wo, {
+                toward: { ...had.toward, [owed.against]: afterAvenged(tie, owed.kind, e.id) },
+              });
+              events.push({
+                kind: ORG_GRIEVANCE_AVENGED_EVENT,
+                actors: [v.winner, v.loser],
+                place: e.place,
+                data: {
+                  org: wo,
+                  against: owed.against,
+                  deed: owed.deed,
+                  kind: owed.kind,
+                  victim: owed.victim,
+                },
+                emissions: {},
+                causes: [
+                  { kind: "event", event: e.id },
+                  { kind: "event", event: owed.deed },
+                ],
               });
             }
           }
@@ -449,6 +497,9 @@ export function duelsProcess(o: {
       }
       for (const [id, r] of [...relations].sort(([a], [b]) => compareStrings(a, b))) {
         changes.push(setComponent(ORG_RELATION, id as EntityRef, r));
+      }
+      for (const [id, g] of [...grievances].sort(([a], [b]) => compareStrings(a, b))) {
+        changes.push(setComponent(SECT_GRIEVANCES, id, g));
       }
       if (changes.length === 0 && events.length === 0) return {};
       return { changes, ...(events.length > 0 ? { events } : {}) };

@@ -51,6 +51,7 @@ import {
   CULTIVATION_STATE,
   callName,
   challengeOdds,
+  chooseReply,
   clampTemper,
   credulity,
   DEFAULT_FACE,
@@ -69,14 +70,18 @@ import {
   dominantVariant,
   draftEvent,
   ENTITY,
+  type EnvoySighting,
   type EtiquetteNorm,
   type EventDraft,
+  envoyNeeds,
+  envoyWanted,
   FACE,
   type FormJudgeInput,
   type FormJudgement,
   formalityShift,
   GIFT_GRAMS,
   type GoodDef,
+  type GrievanceReply,
   goodUnit,
   greets,
   HEARD,
@@ -115,11 +120,16 @@ import {
   normalize,
   type Offense,
   OPINIONS,
+  ORG_GRIEVANCE_REPLY_EVENT,
+  ORG_RELATION,
   OWN_DEEDS,
+  openGrievance,
   opinionKey,
+  orgTie,
   PERSON,
   PERSON_NAME,
   type PillDef,
+  PLACE,
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
@@ -130,6 +140,7 @@ import {
   RANK_PETITION_EVENT,
   RELATIONS,
   RELIGIOUS_IDENTITY,
+  REPARATION_PENALTY,
   RESERVE_GRAMS_PER_MEMBER,
   type ReadonlyWorldTruth,
   type Recipient,
@@ -146,10 +157,12 @@ import {
   SECRETS,
   SECT,
   SECT_CONTRIBUTION,
+  SECT_GRIEVANCES,
   SECT_MEMBER,
   SECT_MISSION,
   SECT_RANK_RULING,
   SECT_TRIAL,
+  type SectGrievanceEntry,
   type SectMission,
   SKILL_STATE,
   type SkillCatalog,
@@ -1371,7 +1384,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       CULTIVATION_STATE.name,
       MASTER_OF.name,
       ...(o.duels ? [SKILL_STATE.name, OPINIONS.name, FIGHT_STATE.name, YIELDED.name] : []),
-      ...(o.missions ? [SECT_MISSION.name, SECT_HALL.name] : []),
+      ...(o.missions
+        ? [SECT_MISSION.name, SECT_HALL.name, SECT_GRIEVANCES.name, ORG_RELATION.name, PLACE.name]
+        : []),
     ],
     writes: [
       MASTER_OF.name,
@@ -1521,7 +1536,13 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         act.kind === "promotion" ? petitionOf(truth, me, speaker, feel, ctx.now, o.day) : null;
       const mission =
         act.kind === "mission" && o.missions && ctx.ledger
-          ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now)
+          ? missionOf(truth, ctx.ledger, me, speaker, o.missions, ctx.now, o.day)
+          : null;
+      const reparation =
+        act.kind === "reparation" && o.missions
+          ? reparationOf(truth, me, speaker, ctx.now, () =>
+              ctx.rng.fork("reparation", pending.key).float(),
+            )
           : null;
       // El desafío que este oyente le hizo a quien le habla y que espera respuesta (novel3-challenge-npc):
       // un sí, un no, o retarlo de vuelta (que es aceptar).
@@ -1590,6 +1611,14 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   apprentice.decision.kind === "accepted"
                     ? { accepted: true as const }
                     : { accepted: false as const, refused: apprentice.decision.refused },
+              }
+            : {}),
+          ...(reparation
+            ? {
+                reparation:
+                  "reply" in reparation
+                    ? { reply: reparation.reply }
+                    : { refused: reparation.refused },
               }
             : {}),
           ...(mission
@@ -1825,6 +1854,31 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             ],
           }
         : undefined;
+      // La exigencia contestada de palabra (novel4-grievance-envoy-speak): la aplica
+      // `life.sect_grievance_spoken` y `sect-duty` da la misión por hecha.
+      const reparationEvent: EventDraft | undefined =
+        reparation && "reply" in reparation
+          ? {
+              kind: ORG_GRIEVANCE_REPLY_EVENT,
+              actors: [reparation.entry.by, reparation.entry.victim, speaker, me],
+              place: o.placeOf(truth, me),
+              data: {
+                org: reparation.org,
+                against: reparation.against,
+                kind: reparation.entry.kind,
+                deed: reparation.entry.deed,
+                reply: reparation.reply,
+                penalty: reparation.penalty,
+                envoy: speaker,
+              },
+              emissions: {},
+              causes: [
+                { kind: "event", event: draftEvent(0) },
+                { kind: "event", event: reparation.entry.deed },
+                { kind: "state", entity: speaker as unknown as EntityRef, key: SECT_MISSION.name },
+              ],
+            }
+          : undefined;
       // Pidió una misión (novel2-missions-ask): el anciano la da; la anota `sect-duty`.
       const missionEvent: EventDraft | undefined = mission?.offer
         ? {
@@ -2171,6 +2225,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(masterEvent ? [masterEvent] : []),
           ...(petitionEvent ? [petitionEvent] : []),
           ...(missionEvent ? [missionEvent] : []),
+          ...(reparationEvent ? [reparationEvent] : []),
           ...(challengeEvent ? [challengeEvent] : []),
         ],
         postings:
@@ -2282,6 +2337,7 @@ function missionOf(
   speaker: AgentId,
   defs: NonNullable<ConverseOptions["missions"]>,
   now: Tick,
+  dayTicks: number,
 ): { readonly org: EntityRef; readonly offer?: MissionOffer; readonly refused?: string } | null {
   const mine = truth.get(SECT_MEMBER, me);
   if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
@@ -2316,13 +2372,67 @@ function missionOf(
     if ((truth.get(BODY_STATE, id)?.death ?? null) !== null) continue;
     beasts.push({ beast: id, hex: seen.hex, until: b.until });
   }
+  // Las exigencias que la secta decidió y que esperan quién las lleve (novel4-grievance-envoy-mission).
+  const demands: EnvoySighting[] = (truth.get(SECT_GRIEVANCES, mine.org)?.entries ?? [])
+    .filter((e) => envoyWanted(e, now, dayTicks))
+    .map((e) => ({ against: e.against, deed: e.deed, at: e.response?.at ?? e.at }));
   const offer = pickMission(
     mine.org,
     theirs.rank,
-    [...huntNeeds(beasts, now), ...herbNeeds(defs.pills, { alive, pills, herbs })],
+    [
+      ...huntNeeds(beasts, now),
+      ...envoyNeeds(demands),
+      ...herbNeeds(defs.pills, { alive, pills, herbs }),
+    ],
     assigned,
   );
   return offer ? { org: mine.org, offer } : { org: mine.org, refused: "none" };
+}
+
+/**
+ * La exigencia de reparación que trae el enviado (novel4-grievance-envoy-speak): la contesta un
+ * anciano o el maestro de la secta ofensora, en su sede. Si el que habla lleva la misión de exigirle
+ * a esta secta y el asunto sigue abierto, repara o se niega según lo que su secta siente de la que
+ * exige (`chooseReply`); si repara, cuánto le va a cobrar la suya al ofensor. Si no, por qué no la
+ * trata: no sabe de qué le hablan, o eso se trata en la sede. Null si el oyente no manda en una secta.
+ */
+function reparationOf(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  speaker: AgentId,
+  now: Tick,
+  roll: () => number,
+):
+  | {
+      readonly org: EntityRef;
+      readonly against: EntityRef;
+      readonly entry: SectGrievanceEntry;
+      readonly reply: GrievanceReply;
+      readonly penalty: number;
+    }
+  | { readonly refused: "unknown" | "not_here" }
+  | null {
+  const mine = truth.get(SECT_MEMBER, me);
+  if (!mine || (mine.rank !== "elder" && mine.rank !== "master")) return null;
+  const m = truth.get(SECT_MISSION, speaker);
+  if (m?.kind !== "envoy" || m.against !== mine.org || m.deed === undefined) {
+    return { refused: "unknown" };
+  }
+  if (missionLapsed(m, now) || m.done >= 1) return { refused: "unknown" };
+  const entry = truth.get(SECT_GRIEVANCES, m.org)?.entries.find((e) => e.deed === m.deed);
+  const tie = orgTie(truth.get(ORG_RELATION, mine.org), m.org);
+  if (!entry || !openGrievance(entry) || !tie) return { refused: "unknown" };
+  const seat = truth.get(SECT, mine.org)?.seatPlace;
+  const hexes = seat ? truth.get(PLACE, seat)?.hexes : undefined;
+  const here = truth.get(LOCATION, me)?.hex;
+  if (here === undefined || !hexes?.includes(here)) return { refused: "not_here" };
+  const reply = chooseReply(tie, entry.kind, roll());
+  const owed = truth.get(SECT_CONTRIBUTION, entry.by);
+  const penalty =
+    reply === "pay" && owed?.org === mine.org
+      ? Math.min(owed.points, REPARATION_PENALTY[entry.kind])
+      : 0;
+  return { org: m.org, against: mine.org, entry, reply, penalty };
 }
 
 /**

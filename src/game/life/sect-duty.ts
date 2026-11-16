@@ -24,6 +24,7 @@ import {
   type AgentId,
   type EntityRef,
   type Event,
+  type EventId,
   type HolderRef,
   holderAccount,
   type ItemId,
@@ -65,6 +66,7 @@ import {
   methodExchange,
   missionCredit,
   missionLapsed,
+  ORG_GRIEVANCE_REPLY_EVENT,
   type PillDef,
   PLACE,
   type PostingDraft,
@@ -286,6 +288,16 @@ export function sectDutyProcess(
           const who = e.actors[0] as AgentId | undefined;
           if (who !== undefined && d)
             missions.set(who, { ...d, at: ctx.now, done: 0, cause: e.id });
+          continue;
+        }
+        // La otra secta contestó la exigencia al enviado (novel4-grievance-envoy-speak): la misión
+        // queda hecha y se cobra en la sede.
+        if (e.kind === ORG_GRIEVANCE_REPLY_EVENT) {
+          const d = e.data as { envoy?: AgentId; deed?: EventId } | null;
+          const m = d?.envoy !== undefined ? missionOf(d.envoy) : undefined;
+          if (d?.envoy !== undefined && m?.kind === "envoy" && m.deed === d.deed && m.done < 1) {
+            missions.set(d.envoy, { ...m, reply: e.id, done: 1 });
+          }
           continue;
         }
         if (e.kind === "combat.fight") {
@@ -736,13 +748,23 @@ export function sectDutyProcess(
           events.push(e);
         }
       }
-      // Cazar: quien la tiene hecha y está en la sede la cobra (novel3-beasts-mission-claim).
-      for (const id of [...ctx.truth.ids(SECT_MISSION)].sort()) {
+      // Cazar: quien la tiene hecha y está en la sede la cobra (novel3-beasts-mission-claim). Lo mismo
+      // el enviado que trae la respuesta (novel4-grievance-envoy-speak).
+      const claimable = new Set([...ctx.truth.ids(SECT_MISSION), ...missions.keys()]);
+      for (const id of [...claimable].sort() as EntityRef[]) {
         const who = id as unknown as AgentId;
         const m = missionOf(who);
-        if (m?.kind !== "hunt" || m.beast === undefined || m.fight === undefined) continue;
-        const dead = (ctx.truth.get(BODY_STATE, m.beast)?.death ?? null) !== null;
-        if (m.done < 1 && !dead) continue;
+        const proof =
+          m?.kind === "hunt" && m.beast !== undefined
+            ? m.fight
+            : m?.kind === "envoy" && m.done >= 1
+              ? m.reply
+              : undefined;
+        if (!m || proof === undefined) continue;
+        if (m.kind === "hunt" && m.beast !== undefined) {
+          const dead = (ctx.truth.get(BODY_STATE, m.beast)?.death ?? null) !== null;
+          if (m.done < 1 && !dead) continue;
+        }
         const seat = ctx.truth.get(SECT, m.org)?.seatPlace;
         const hexes = seat ? ctx.truth.get(PLACE, seat)?.hexes : undefined;
         const at = ctx.truth.get(LOCATION, id)?.hex;
@@ -760,10 +782,16 @@ export function sectDutyProcess(
           kind: MISSION_DONE_EVENT,
           actors: [who],
           place: { kind: "place", place: seat as unknown as PlaceId },
-          data: { org: m.org, kind: m.kind, beast: m.beast, points: m.points },
+          data: {
+            org: m.org,
+            kind: m.kind,
+            ...(m.beast !== undefined ? { beast: m.beast } : {}),
+            ...(m.against !== undefined ? { against: m.against } : {}),
+            points: m.points,
+          },
           emissions: {},
           causes: [
-            { kind: "event", event: m.fight },
+            { kind: "event", event: proof },
             ...(m.cause ? [{ kind: "event" as const, event: m.cause }] : []),
             { kind: "state", entity: id, key: SECT_MISSION.name },
             { kind: "state", entity: id, key: LOCATION.name },

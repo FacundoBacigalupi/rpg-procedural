@@ -6,6 +6,8 @@
 // - Vigilar: una banda viva cerca de la sede; se vigila el lugar donde anda.
 // - Cazar (novel3-beasts-mission-ask): una bestia que bajó del monte, que vio alguien de la secta y
 //   que sigue viva y abajo; vence cuando vuelve al monte.
+// - Enviado (novel4-grievance-envoy-mission): una exigencia de reparación que la secta decidió y que
+//   nadie lleva todavía; se va a la sede de la otra a exigirla.
 // Lo que pide cada misión, el plazo y los puntos son números de acá, sin calibrar.
 //
 // Puro: recibe lo que la secta sabe (cuántos viven, qué hay en el tesoro, dónde anda la banda) y lo
@@ -16,7 +18,7 @@ import { table } from "../world/index.ts";
 import type { MemberRank } from "./member.ts";
 import type { PillDef } from "./pill.ts";
 
-export type MissionKind = "herbs" | "watch" | "hunt";
+export type MissionKind = "herbs" | "watch" | "hunt" | "envoy";
 
 /** Una necesidad de la secta, antes de volverse encargo. */
 export type MissionNeed =
@@ -38,6 +40,13 @@ export type MissionNeed =
       readonly hex: number;
       /** Cuándo vuelve al monte: el plazo. */
       readonly until: Tick;
+    }
+  | {
+      readonly kind: "envoy";
+      /** La secta a la que se le exige. */
+      readonly against: EntityRef;
+      /** El hecho de la ofensa (el asunto en `SECT_GRIEVANCES`). */
+      readonly deed: EventId;
     };
 
 /** Un encargo tomado: lo que pide, hasta cuándo y cuánto paga. */
@@ -55,11 +64,19 @@ export interface SectMission {
   readonly beast?: EntityRef;
   /** Cazar: cuándo vuelve al monte; el plazo es ese. */
   readonly until?: Tick;
+  /** Enviado: a qué secta se le exige y por qué hecho. */
+  readonly against?: EntityRef;
+  readonly deed?: EventId;
   /**
    * Cazar (novel3-beasts-mission-claim): la última pelea de quien la tiene con la bestia. `done` pasa
    * a 1 si en esa pelea murió o huyó; si quedó caída y muere después, también cuenta.
    */
   readonly fight?: EventId;
+  /**
+   * Enviado (novel4-grievance-envoy-speak): la respuesta que le dio la otra secta de palabra; `done`
+   * pasa a 1 y se cobra al volver a la sede.
+   */
+  readonly reply?: EventId;
   /** Lo que lleva hecho (gramos entregados u horas de guardia). */
   readonly done: number;
   readonly points: number;
@@ -98,12 +115,16 @@ export const MISSION_DAYS: Readonly<Record<MissionKind, number>> = {
   herbs: 14,
   watch: 7,
   hunt: 2,
+  envoy: 20,
 };
+/** Lo que paga llevar una exigencia a la otra secta y traer la respuesta: un viaje con riesgo. */
+export const MISSION_ENVOY_POINTS = 30;
 /** Desde qué rango se da cada clase: vigilar a una banda no es para un externo. */
 export const MISSION_MIN_RANK: Readonly<Record<MissionKind, MemberRank>> = {
   herbs: "outer",
   watch: "inner",
   hunt: "outer",
+  envoy: "inner",
 };
 
 const RANK_ORDER: readonly MemberRank[] = ["outer", "inner", "core", "elder", "master"];
@@ -192,12 +213,27 @@ export function huntNeeds(beasts: readonly BeastSighting[], now: Tick): MissionN
     .map((b) => ({ kind: "hunt" as const, beast: b.beast, hex: b.hex, until: b.until }));
 }
 
+/** Una exigencia de reparación abierta que la secta decidió: contra quién, por qué hecho y desde cuándo. */
+export interface EnvoySighting {
+  readonly against: EntityRef;
+  readonly deed: EventId;
+  readonly at: Tick;
+}
+
+/** Las exigencias que esperan enviado, la más vieja primero. */
+export function envoyNeeds(demands: readonly EnvoySighting[]): MissionNeed[] {
+  return [...demands]
+    .sort((a, b) => a.at - b.at || (a.deed < b.deed ? -1 : a.deed > b.deed ? 1 : 0))
+    .map((d) => ({ kind: "envoy" as const, against: d.against, deed: d.deed }));
+}
+
 /** Lo que el que asigna le da a quien pide: el encargo, sin quién ni cuándo. */
 export type MissionOffer = Omit<SectMission, "by" | "at" | "due" | "cause" | "done">;
 
 /**
- * El encargo para quien pide: primero cazar (la bestia se va pronto), después vigilar (una banda cerca
- * apura más), después hierbas; una sola misión por bestia y por banda; de cada
+ * El encargo para quien pide: primero cazar (la bestia se va pronto), después llevar una exigencia
+ * (la otra secta espera respuesta), después vigilar (una banda cerca apura más), después hierbas; una
+ * sola misión por bestia, por exigencia y por banda; de cada
  * necesidad se resta lo que ya salieron a hacer otros de la misma secta. Nada si no hay necesidad
  * que su rango pueda tomar.
  */
@@ -210,6 +246,7 @@ export function pickMission(
   const mine = assigned.filter((m) => m.org === org);
   const ordered = [
     ...needs.filter((n) => n.kind === "hunt"),
+    ...needs.filter((n) => n.kind === "envoy"),
     ...needs.filter((n) => n.kind === "watch"),
     ...needs.filter((n) => n.kind === "herbs"),
   ];
@@ -224,6 +261,16 @@ export function pickMission(
         hex: need.hex,
         until: need.until,
         points: MISSION_HUNT_POINTS,
+      };
+    }
+    if (need.kind === "envoy") {
+      if (mine.some((m) => m.kind === "envoy" && m.deed === need.deed)) continue;
+      return {
+        org,
+        kind: "envoy",
+        against: need.against,
+        deed: need.deed,
+        points: MISSION_ENVOY_POINTS,
       };
     }
     if (need.kind === "watch") {
@@ -258,11 +305,11 @@ export const missionDue = (kind: MissionKind, now: Tick, dayTicks: number, until
   Math.min(now + MISSION_DAYS[kind] * dayTicks, until ?? Number.POSITIVE_INFINITY);
 
 /**
- * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) no vence: espera
- * a que quien la tiene vuelva a la sede a cobrarla.
+ * Si la misión ya venció sin cumplirse. La de cazar hecha (la bestia muerta o echada) y la de enviado
+ * contestada no vencen: esperan a que quien la tiene vuelva a la sede a cobrarla.
  */
 export const missionLapsed = (m: SectMission, now: Tick): boolean =>
-  now > m.due && !(m.kind === "hunt" && m.done >= 1);
+  now > m.due && !((m.kind === "hunt" || m.kind === "envoy") && m.done >= 1);
 
 /** Lo que cuenta de una pelea para la misión de cazar: la bestia murió o huyó. */
 export const HUNT_SETTLED: ReadonlySet<string> = new Set(["dead", "fled"]);

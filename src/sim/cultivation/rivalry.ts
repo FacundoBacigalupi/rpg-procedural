@@ -8,9 +8,11 @@
 // Puro: sin IO. El rng sale del seed con su propia rama, así que no corre los de la siembra.
 
 import {
+  type AgentId,
   type EntityRef,
   type EventId,
   type EventLog,
+  exp,
   type IdAllocator,
   type PlaceRef,
   Rng,
@@ -24,7 +26,7 @@ import {
   type OrgStrength,
   type OrgTie,
 } from "../org/index.ts";
-import type { WorldTruth } from "../world/index.ts";
+import { table, type WorldTruth } from "../world/index.ts";
 import { SECT, type Sect } from "./sect.ts";
 
 export const ORG_RIVALRY_EVENT = "org.rivalry";
@@ -153,3 +155,253 @@ export function afterSectDuel(tie: OrgTie, side: "won" | "lost", event: EventId)
       : { ...s, respect: clamp01(s.respect - SECT_DUEL_WINNER_RESPECT) };
   return { ...tie, sentiment, history: [...tie.history, event] };
 }
+
+export const ORG_GRIEVANCE_EVENT = "org.grievance";
+
+/** Lo que pesa cada ofensa en el rencor de la secta ofendida (sin calibrar). */
+export const GRIEVANCE_RESENTMENT = {
+  theft: 0.05,
+  assault: 0.08,
+  /** Una agresión que dejó muerto al de la secta. */
+  killing: 0.25,
+} as const;
+
+export type GrievanceKind = keyof typeof GRIEVANCE_RESENTMENT;
+
+/**
+ * La ofensa que la secta guarda contra otra (novel4-grievance-record, organizations §10): el hecho
+ * queda en `grievances` y en la historia, y el rencor sube según su peso. La misma ofensa no se
+ * cuenta dos veces.
+ */
+export function addGrievance(tie: OrgTie, event: EventId, kind: GrievanceKind): OrgTie {
+  if (tie.grievances.includes(event)) return tie;
+  return {
+    ...tie,
+    sentiment: {
+      ...tie.sentiment,
+      resentment: clamp01(tie.sentiment.resentment + GRIEVANCE_RESENTMENT[kind]),
+    },
+    grievances: [...tie.grievances, event],
+    history: [...tie.history, event],
+  };
+}
+
+export const ORG_GRIEVANCE_MATTER_EVENT = "org.grievance_matter";
+
+/** Lo que la secta hace con una ofensa: exigir reparación, devolverla u olvidarla. */
+export type GrievanceResponse = "demand" | "retaliate" | "forget";
+
+/** Una ofensa que la secta guarda, con lo que decidió (si ya lo trató). */
+export interface SectGrievanceEntry {
+  /** El hecho (evento de la verdad) que la causó. */
+  readonly deed: EventId;
+  readonly against: EntityRef;
+  readonly kind: GrievanceKind;
+  readonly by: AgentId;
+  readonly victim: AgentId;
+  readonly at: Tick;
+  readonly response?: { readonly choice: GrievanceResponse; readonly at: Tick };
+  /** Cómo terminó (novel4-grievance-act): pagada, negada, vengada u olvidada. */
+  readonly outcome?: { readonly result: GrievanceOutcome; readonly at: Tick };
+  /**
+   * Exigir (novel4-grievance-envoy-mission): quien de la secta tomó la misión de llevarla y hasta
+   * cuándo. Mientras la tiene, la ranura no sale; si vence sin respuesta, sale la ranura desde `due`.
+   */
+  readonly envoy?: { readonly who: AgentId; readonly due: Tick };
+}
+
+export type GrievanceOutcome = "paid" | "refused" | "avenged" | "forgotten";
+
+export interface SectGrievances {
+  readonly entries: readonly SectGrievanceEntry[];
+}
+
+/** Las ofensas de cada secta como asuntos, en su entidad `org:N`. */
+export const SECT_GRIEVANCES = table<SectGrievances>("cultivation.sect_grievances");
+
+/** Cuánto pesa cada ofensa al tratarla (0-1, sin calibrar). */
+export const GRIEVANCE_WEIGHT: Readonly<Record<GrievanceKind, number>> = {
+  theft: 0.3,
+  assault: 0.5,
+  killing: 1,
+};
+
+/** Qué tan pareja es la elección: más bajo, más se impone la mejor opción (sin calibrar). */
+export const GRIEVANCE_TEMPERATURE = 0.15;
+
+/**
+ * Lo que vale cada respuesta para quien manda en la secta (organizations §4: una secta concentra
+ * el poder y decide el líder): olvidar si teme a la otra y la ofensa es chica; exigir reparación si
+ * la ofensa pesa y algo le cree a su palabra; devolverla si el rencor puede más que el miedo. Lee
+ * solo lo que la secta siente y cree de la otra (el miedo ya sale de la fuerza que le cree).
+ */
+export function grievanceUtilities(
+  tie: OrgTie,
+  kind: GrievanceKind,
+): Readonly<Record<GrievanceResponse, number>> {
+  const w = GRIEVANCE_WEIGHT[kind];
+  const { fear, resentment, trust } = tie.sentiment;
+  return {
+    forget: round3(0.2 + 0.5 * fear - 0.5 * w - 0.3 * resentment),
+    demand: round3(0.3 * w + 0.2 * resentment + 0.2 * trust),
+    retaliate: round3(-0.1 + 0.5 * w + 0.6 * resentment - 0.7 * fear),
+  };
+}
+
+const RESPONSES: readonly GrievanceResponse[] = ["demand", "retaliate", "forget"];
+
+/** Elige la respuesta con softmax sobre las utilidades, con una tirada `roll` en [0, 1). */
+export function chooseGrievanceResponse(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  roll: number,
+  temperature = GRIEVANCE_TEMPERATURE,
+): GrievanceResponse {
+  const u = grievanceUtilities(tie, kind);
+  const top = Math.max(...RESPONSES.map((r) => u[r]));
+  const weights = RESPONSES.map((r) => exp((u[r] - top) / temperature));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  for (let i = 0; i < RESPONSES.length; i++) {
+    acc += (weights[i] ?? 0) / total;
+    if (roll < acc) return RESPONSES[i] as GrievanceResponse;
+  }
+  return RESPONSES[RESPONSES.length - 1] as GrievanceResponse;
+}
+
+export const ORG_GRIEVANCE_REPLY_EVENT = "org.grievance_reply";
+export const ORG_GRIEVANCE_AVENGED_EVENT = "org.grievance_avenged";
+
+/** Cuántos días tarda el enviado en llevar la exigencia y volver con la respuesta (sin calibrar). */
+export const ENVOY_DAYS = 10;
+/**
+ * Cuántos días espera la secta a que uno de los suyos en carne pida llevar la exigencia (la misión
+ * `envoy`) antes de mandar a uno sin nombre (la ranura, en el agregado). Sin calibrar.
+ */
+export const ENVOY_WAIT_DAYS = 3;
+
+/**
+ * Cuándo vuelve la ranura con la respuesta (puro): si nadie tomó la misión, sale al terminar la
+ * espera; si alguien la tomó y se le venció, sale desde ese plazo. Mientras alguien la lleva, nunca.
+ */
+export function envoySlotReturns(
+  e: Pick<SectGrievanceEntry, "response" | "envoy">,
+  dayTicks: number,
+  carried: boolean,
+): Tick | undefined {
+  if (carried || e.response?.choice !== "demand") return undefined;
+  const leaves = e.envoy ? e.envoy.due : e.response.at + ENVOY_WAIT_DAYS * dayTicks;
+  return leaves + ENVOY_DAYS * dayTicks;
+}
+
+/** Si la exigencia todavía busca enviado entre los suyos (para darla como misión). */
+export const envoyWanted = (e: SectGrievanceEntry, now: Tick, dayTicks: number): boolean =>
+  openGrievance(e) &&
+  e.response?.choice === "demand" &&
+  e.envoy === undefined &&
+  now < e.response.at + ENVOY_WAIT_DAYS * dayTicks;
+
+/** Lo que la otra contesta a una exigencia: reparar (disculpa y compensación) o negarse. */
+export type GrievanceReply = "pay" | "refuse";
+
+/** Cuánto le cuesta a la que repara (cara ante la otra) y cuánto se enfría o calienta la ofendida. */
+export const REPLY_FACE_COST = 0.03;
+export const REPLY_TRUST = 0.05;
+export const REFUSAL_RESENTMENT = 0.05;
+
+/** Una ofensa abierta: ya tratada, sin terminar. */
+export const openGrievance = (e: SectGrievanceEntry): boolean =>
+  e.response !== undefined && e.outcome === undefined;
+
+/**
+ * Lo que vale cada respuesta para la que recibe la exigencia, con lo que ella siente por la que
+ * exige (`tie` es su lazo hacia la otra): repara si la teme, le cree y la ofensa pesa; se niega con
+ * rencor y sin miedo.
+ */
+export function replyUtilities(
+  tie: OrgTie,
+  kind: GrievanceKind,
+): Readonly<Record<GrievanceReply, number>> {
+  const w = GRIEVANCE_WEIGHT[kind];
+  const { fear, resentment, trust } = tie.sentiment;
+  return {
+    pay: round3(0.1 + 0.6 * fear + 0.3 * trust + 0.3 * w - 0.5 * resentment),
+    refuse: round3(0.3 + 0.5 * resentment - 0.4 * fear),
+  };
+}
+
+/** La respuesta a la exigencia, con softmax y una tirada `roll` en [0, 1). */
+export function chooseReply(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  roll: number,
+  temperature = GRIEVANCE_TEMPERATURE,
+): GrievanceReply {
+  const u = replyUtilities(tie, kind);
+  const top = Math.max(u.pay, u.refuse);
+  const pay = exp((u.pay - top) / temperature);
+  const refuse = exp((u.refuse - top) / temperature);
+  return roll < pay / (pay + refuse) ? "pay" : "refuse";
+}
+
+const withSentiment = (tie: OrgTie, s: Partial<OrgSentiment>): OrgTie => ({
+  ...tie,
+  sentiment: { ...tie.sentiment, ...s },
+});
+
+/**
+ * Lo que la respuesta deja en la ofendida (`tie` hacia la otra): si repara, el rencor que trajo la
+ * ofensa se va y le cree un poco más; si se niega, más rencor y menos confianza.
+ */
+export function afterReplyReceived(
+  tie: OrgTie,
+  kind: GrievanceKind,
+  reply: GrievanceReply,
+): OrgTie {
+  const { resentment, trust } = tie.sentiment;
+  return reply === "pay"
+    ? withSentiment(tie, {
+        resentment: clamp01(resentment - GRIEVANCE_RESENTMENT[kind]),
+        trust: clamp01(trust + REPLY_TRUST),
+      })
+    : withSentiment(tie, {
+        resentment: clamp01(resentment + REFUSAL_RESENTMENT),
+        trust: clamp01(trust - REPLY_TRUST),
+      });
+}
+
+/** Lo que reparar le deja a la que reparó (`tie` hacia la ofendida): le guarda un poco de rencor. */
+export function afterReplyGiven(tie: OrgTie): OrgTie {
+  return withSentiment(tie, {
+    resentment: clamp01(tie.sentiment.resentment + REPLY_FACE_COST),
+  });
+}
+
+/** La venganza cumplida (`tie` de la ofendida hacia la otra): el rencor de la ofensa se va. */
+export function afterAvenged(tie: OrgTie, kind: GrievanceKind, event: EventId): OrgTie {
+  return {
+    ...withSentiment(tie, {
+      resentment: clamp01(tie.sentiment.resentment - GRIEVANCE_RESENTMENT[kind]),
+    }),
+    history: [...tie.history, event],
+  };
+}
+
+/** Los ofensores que la secta salió a buscar (represalias abiertas), con el hecho de cada uno. */
+export function wantedBy(g: SectGrievances | undefined): ReadonlyMap<AgentId, SectGrievanceEntry> {
+  const out = new Map<AgentId, SectGrievanceEntry>();
+  for (const e of g?.entries ?? []) {
+    if (openGrievance(e) && e.response?.choice === "retaliate" && !out.has(e.by)) out.set(e.by, e);
+  }
+  return out;
+}
+
+/**
+ * Lo que la secta que repara le cobra al suyo que hizo la ofensa, en puntos de aporte
+ * (novel4-grievance-player; sin calibrar): la reparación sale de él.
+ */
+export const REPARATION_PENALTY: Readonly<Record<GrievanceKind, number>> = {
+  theft: 10,
+  assault: 20,
+  killing: 50,
+};
